@@ -1,3 +1,12 @@
+//
+//  ChangePhoneView.swift
+//  TrailMatesATX
+//
+//  Created by Jake Kinchen on 11/21/24.
+//
+import SwiftUI
+import UIKit
+
 struct ChangePhoneView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var userManager: UserManager
@@ -8,12 +17,11 @@ struct ChangePhoneView: View {
     @State private var isVerificationSent = false
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @FocusState private var focusedField: Field?
+    @FocusState.Binding var focusedField: Field?
     
-    enum Field {
-        case phone
-        case verification
-    }
+    init(focusedField: FocusState<Field?>.Binding) {
+            self._focusedField = focusedField
+        }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -29,11 +37,11 @@ struct ChangePhoneView: View {
                 FloatingLabelTextField(
                     placeholder: "New Phone Number",
                     text: $newPhoneNumber,
-                    keyboardType: .numberPad,
-                    contentType: .telephoneNumber,
+                    keyboardType: UIKeyboardType.numberPad,
+                    contentType: UITextContentType.telephoneNumber,
                     isEnabled: true,
-                    field: .phone,
-                    focusedField: $focusedField
+                    field: Field.phone,
+                    focusedField: _focusedField
                 )
                 
                 Button(action: {
@@ -47,11 +55,11 @@ struct ChangePhoneView: View {
                 FloatingLabelTextField(
                     placeholder: "Verification Code",
                     text: $verificationCode,
-                    keyboardType: .numberPad,
-                    contentType: .oneTimeCode,
+                    keyboardType: UIKeyboardType.numberPad,
+                    contentType: UITextContentType.oneTimeCode,
                     isEnabled: true,
-                    field: .verification,
-                    focusedField: $focusedField
+                    field: Field.verification,
+                    focusedField: _focusedField
                 )
                 
                 Button(action: {
@@ -84,13 +92,13 @@ struct ChangePhoneView: View {
         } message: {
             Text(alertMessage)
         }
-        .onChange(of: authViewModel.isAuthenticated) { newValue in
-            if newValue {
-                Task {
-                    await updateUserPhoneNumber()
+        .onChange(of: authViewModel.isAuthenticated) { oldValue, newValue in  // Updated onChange syntax
+                    if newValue {
+                        Task {
+                            try await updateUserPhoneNumber()
+                        }
+                    }
                 }
-            }
-        }
     }
     
     private func verifyNewPhone() {
@@ -106,8 +114,8 @@ struct ChangePhoneView: View {
         authViewModel.verifyCode(verificationCode)
     }
     
-    private func updateUserPhoneNumber() async {
-        await userManager.updatePhoneNumber(newPhoneNumber)
+    private func updateUserPhoneNumber() async throws {
+        try await userManager.updatePhoneNumber(newPhoneNumber)
         showAlert = true
         alertMessage = "Phone number successfully updated"
     }

@@ -1,41 +1,23 @@
+import SwiftUI
+@preconcurrency import Contacts
+import Combine
+import MessageUI
+
 struct ContactsListView: View {
-    @State private var contacts: [CNContact] = []
-    @State private var matchedUsers: [MatchedContact] = []
-    @State private var unmatchedContacts: [CNContact] = []
-    @State private var searchText: String = ""
+    @StateObject private var viewModel = ContactsListViewModel()
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userManager: UserManager
-    
-    struct MatchedContact: Identifiable {
-        let id: UUID
-        let contact: CNContact
-        let user: User
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case search
     }
-    
-   
-    
-    // Filtered contacts based on search
-    private var filteredMatchedUsers: [MatchedContact] {
-        if searchText.isEmpty { return matchedUsers }
-        return matchedUsers.filter { contact in
-            let fullName = "\(contact.contact.givenName) \(contact.contact.familyName)".lowercased()
-            return fullName.contains(searchText.lowercased())
-        }
-    }
-    
-    private var filteredUnmatchedContacts: [CNContact] {
-        if searchText.isEmpty { return unmatchedContacts }
-        return unmatchedContacts.filter { contact in
-            let fullName = "\(contact.givenName) \(contact.familyName)".lowercased()
-            return fullName.contains(searchText.lowercased())
-        }
-    }
-    
+
     var body: some View {
         ZStack {
             Color("beige").ignoresSafeArea()
-            
-            if contacts.isEmpty {
+
+            if viewModel.contacts.isEmpty {
                 EmptyContactsView()
             } else {
                 VStack(spacing: 0) {
@@ -43,12 +25,16 @@ struct ContactsListView: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(Color("pine"))
-                        TextField("Search contacts", text: $searchText)
+                        TextField("Search contacts", text: $viewModel.searchText)
                             .foregroundColor(Color("pine"))
-                        
-                        if !searchText.isEmpty {
+                            .focused($focusedField, equals: .search)
+                            .onSubmit {
+                                focusedField = nil
+                            }
+
+                        if !viewModel.searchText.isEmpty {
                             Button(action: {
-                                searchText = ""
+                                viewModel.searchText = ""
                             }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(Color("pine"))
@@ -61,16 +47,18 @@ struct ContactsListView: View {
                             .fill(Color("pine").opacity(0.1))
                     )
                     .padding()
-                    
+
                     // Contacts List
                     ContactsContentView(
-                        matchedUsers: $matchedUsers,
-                        unmatchedContacts: filteredUnmatchedContacts,
-                        userManager: userManager,
-                        filteredMatchedUsers: filteredMatchedUsers
+                        matchedUsers: $viewModel.matchedUsers,
+                        unmatchedContacts: viewModel.filteredUnmatchedContacts,
+                        filteredMatchedUsers: viewModel.filteredMatchedUsers
                     )
                 }
             }
+        }
+        .onTapGesture {
+            focusedField = nil
         }
         .navigationTitle("Contacts")
         .navigationBarTitleDisplayMode(.inline)
@@ -87,7 +75,7 @@ struct ContactsListView: View {
                     .foregroundColor(Color("pine"))
                 }
             }
-            
+
             ToolbarItem(placement: .principal) {
                 Text("Contacts")
                     .font(.headline)
@@ -96,72 +84,17 @@ struct ContactsListView: View {
         }
         .onAppear {
             Task {
-                await loadAndMatchContacts()
+                await viewModel.loadAndMatchContacts(userManager: userManager)
             }
-            
+
             let appearance = UINavigationBarAppearance()
             appearance.configureWithOpaqueBackground()
             appearance.backgroundColor = UIColor(Color("beige"))
             appearance.titleTextAttributes = [.foregroundColor: UIColor(Color("pine"))]
-            
+
             UINavigationBar.appearance().standardAppearance = appearance
             UINavigationBar.appearance().scrollEdgeAppearance = appearance
             UINavigationBar.appearance().tintColor = UIColor(Color("pine"))
-        }
-    }
-    
-    private func fetchContacts() async throws -> [CNContact] {
-        let store = CNContactStore()
-        let keysToFetch = [CNContactGivenNameKey, CNContactFamilyNameKey, CNContactPhoneNumbersKey] as [CNKeyDescriptor]
-        let request = CNContactFetchRequest(keysToFetch: keysToFetch)
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                var contacts: [CNContact] = []
-                do {
-                    try store.enumerateContacts(with: request) { contact, _ in
-                        contacts.append(contact)
-                    }
-                    continuation.resume(returning: contacts)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-    
-    private func loadAndMatchContacts() async {
-        do {
-            // Fetch contacts on background thread
-            let loadedContacts = try await fetchContacts()
-            
-            // Process contacts and match with users
-            var matched: [MatchedContact] = []
-            var unmatched: [CNContact] = []
-            
-            for contact in loadedContacts {
-                var isMatched = false
-                for phoneNumber in contact.phoneNumbers {
-                    let number = phoneNumber.value.stringValue
-                    if let user = await userManager.findUserByPhoneNumber(number) {
-                        matched.append(MatchedContact(id: UUID(), contact: contact, user: user))
-                        isMatched = true
-                        break
-                    }
-                }
-                if !isMatched {
-                    unmatched.append(contact)
-                }
-            }
-            
-            // Update UI on main thread
-            await MainActor.run {
-                self.contacts = loadedContacts
-                self.matchedUsers = matched
-                self.unmatchedContacts = unmatched
-            }
-        } catch {
-            print("Error fetching contacts: \(error)")
         }
     }
 }
@@ -174,11 +107,11 @@ private struct EmptyContactsView: View {
                 .resizable()
                 .frame(width: 60, height: 60)
                 .foregroundColor(.gray)
-            
+
             Text("List is empty")
                 .font(.title2)
                 .fontWeight(.medium)
-            
+
             Text("Your friends have not joined TrailMates")
                 .foregroundColor(.gray)
         }
@@ -187,11 +120,11 @@ private struct EmptyContactsView: View {
 
 // Main content view
 private struct ContactsContentView: View {
-    @Binding var matchedUsers: [ContactsListView.MatchedContact]
+    @Binding var matchedUsers: [ContactsListViewModel.MatchedContact]
     let unmatchedContacts: [CNContact]
-    @ObservedObject var userManager: UserManager
-    let filteredMatchedUsers: [ContactsListView.MatchedContact]
-    
+    @EnvironmentObject var userManager: UserManager
+    let filteredMatchedUsers: [ContactsListViewModel.MatchedContact]
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
@@ -199,11 +132,10 @@ private struct ContactsContentView: View {
                 if !filteredMatchedUsers.isEmpty {
                     MatchedUsersSection(
                         matchedUsers: $matchedUsers,
-                        userManager: userManager,
                         filteredMatchedUsers: filteredMatchedUsers
                     )
                 }
-                
+
                 // Unmatched Contacts Section
                 if !unmatchedContacts.isEmpty {
                     UnmatchedContactsSection(
@@ -216,28 +148,20 @@ private struct ContactsContentView: View {
     }
 }
 
-@MainActor
-struct MessageComposeDelegate: NSObject, MFMessageComposeViewControllerDelegate {
-    func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {
-        controller.dismiss(animated: true)
-    }
-}
-
 private struct MatchedUsersSection: View {
-    @Binding var matchedUsers: [ContactsListView.MatchedContact]
-    @ObservedObject var userManager: UserManager
-    let filteredMatchedUsers: [ContactsListView.MatchedContact]
-    
+    @Binding var matchedUsers: [ContactsListViewModel.MatchedContact]
+    @EnvironmentObject var userManager: UserManager
+    let filteredMatchedUsers: [ContactsListViewModel.MatchedContact]
+
     var body: some View {
         Section {
             ForEach(Array(filteredMatchedUsers.enumerated()), id: \.element.id) { index, matchedContact in
                 VStack(spacing: 0) {
                     MatchedUserRow(
                         matchedContact: matchedContact,
-                        matchedUsers: $matchedUsers,
-                        userManager: userManager
+                        matchedUsers: $matchedUsers
                     )
-                    
+
                     if index < filteredMatchedUsers.count - 1 {
                         Divider()
                             .background(Color("pine").opacity(0.2))
@@ -253,13 +177,13 @@ private struct MatchedUsersSection: View {
 
 private struct UnmatchedContactsSection: View {
     let contacts: [CNContact]
-    
+
     var body: some View {
         Section {
             ForEach(Array(contacts.enumerated()), id: \.element.identifier) { index, contact in
                 VStack(spacing: 0) {
                     UnmatchedContactRow(contact: contact)
-                    
+
                     if index < contacts.count - 1 {
                         Divider()
                             .background(Color("pine").opacity(0.2))
@@ -275,7 +199,7 @@ private struct UnmatchedContactsSection: View {
 
 private struct SectionHeader: View {
     let title: String
-    
+
     var body: some View {
         HStack {
             Text(title)
@@ -290,19 +214,25 @@ private struct SectionHeader: View {
 }
 
 private struct MatchedUserRow: View {
-    let matchedContact: ContactsListView.MatchedContact
-    @Binding var matchedUsers: [ContactsListView.MatchedContact]
-    @ObservedObject var userManager: UserManager
-    
+    let matchedContact: ContactsListViewModel.MatchedContact
+    @Binding var matchedUsers: [ContactsListViewModel.MatchedContact]
+    @EnvironmentObject var userManager: UserManager
+
     var body: some View {
         HStack {
             Text("\(matchedContact.contact.givenName) \(matchedContact.contact.familyName)")
                 .foregroundColor(Color("pine"))
             Spacer()
             Button("Add") {
-                userManager.addFriend(friendId: matchedContact.user.id)
-                if let index = matchedUsers.firstIndex(where: { $0.id == matchedContact.id }) {
-                    matchedUsers.remove(at: index)
+                Task {
+                    do {
+                        try await userManager.sendFriendRequest(to: matchedContact.user.id)
+                        if let index = matchedUsers.firstIndex(where: { $0.id == matchedContact.id }) {
+                            matchedUsers.remove(at: index)
+                        }
+                    } catch {
+                        print("Error sending friend request: \(error)")
+                    }
                 }
             }
             .foregroundColor(Color("beige"))
@@ -317,33 +247,20 @@ private struct MatchedUserRow: View {
     }
 }
 
-// handle the message composition
-struct MessageComposerView: UIViewControllerRepresentable {
-    let recipients: [String]
-    let messageBody: String
-    let delegate: MessageComposeDelegate
-    
-    func makeUIViewController(context: Context) -> MFMessageComposeViewController {
-        let controller = MFMessageComposeViewController()
-        controller.messageComposeDelegate = delegate
-        controller.recipients = recipients
-        controller.body = messageBody
-        return controller
-    }
-    
-    func updateUIViewController(_ uiViewController: MFMessageComposeViewController, context: Context) {}
-    
-    static func canSendText() -> Bool {
-        return MFMessageComposeViewController.canSendText()
-    }
-}
-
 private struct UnmatchedContactRow: View {
     let contact: CNContact
     @State private var showingMessageComposer = false
     @State private var messageDelegate = MessageComposeDelegate()
     @State private var showingAlert = false
     
+    private let appStoreLink = "https://apps.apple.com/app/id123456789" // Replace with your actual App Store link
+    private let inviteMessage: String
+
+    init(contact: CNContact) {
+        self.contact = contact
+        self.inviteMessage = "Hey! Join me on TrailMates, the best app for finding walking, running, and biking buddies in Austin! Download it here: \(appStoreLink)"
+    }
+
     var body: some View {
         HStack {
             Text("\(contact.givenName) \(contact.familyName)")
@@ -368,7 +285,7 @@ private struct UnmatchedContactRow: View {
             if let phoneNumber = contact.phoneNumbers.first?.value.stringValue {
                 MessageComposerView(
                     recipients: [phoneNumber],
-                    messageBody: "Hey! Join me on TrailMates, the best app for finding walking, running, and biking buddies in Austin! Download it here: [App Store Link]",
+                    messageBody: inviteMessage,
                     delegate: messageDelegate
                 )
             }
@@ -381,17 +298,18 @@ private struct UnmatchedContactRow: View {
         .contextMenu {
             if let phoneNumber = contact.phoneNumbers.first?.value.stringValue {
                 Button {
-                    UIPasteboard.general.string = "Hey! Join me on TrailMates, the best app for finding walking, running, and biking buddies in Austin! Download it here: [App Store Link]"
+                    UIPasteboard.general.string = inviteMessage
                     if let url = URL(string: "sms:\(phoneNumber)") {
-                        UIApplication.shared.open(url)
+                        DispatchQueue.main.async {
+                            UIApplication.shared.open(url)
+                        }
                     }
                 } label: {
                     Label("Send SMS", systemImage: "message.fill")
                 }
             }
-            
             Button {
-                UIPasteboard.general.string = "Hey! Join me on TrailMates, the best app for finding walking, running, and biking buddies in Austin! Download it here: [App Store Link]"
+                UIPasteboard.general.string = inviteMessage
             } label: {
                 Label("Copy Invite Message", systemImage: "doc.on.doc")
             }

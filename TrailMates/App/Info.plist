@@ -2,10 +2,50 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.bridges.trailmates.facebook</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fb453349974453925</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.bridges.trailmates.firebaseauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78</string>
+			</array>
+		</dict>
+	</array>
+	<key>FacebookAppID</key>
+	<string>453349974453925</string>
+	<key>FacebookClientToken</key>
+	<string>dfc71bba24a2219e87f783c2096ec303</string>
+	<key>FacebookDisplayName</key>
+	<string>TrailMates</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<string>true</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Trailmates needs to access to your calendar to add events you're attending</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>magic-retro.ttf</string>
 		<string>SF-Pro.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+		<string>fetch</string>
 	</array>
 </dict>
 </plist>

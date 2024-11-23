@@ -1,93 +1,164 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @EnvironmentObject var userManager: UserManager
+    @State private var showSettings = false
+    @State private var showEditProfile = false
+    @State private var userStats: UserStats?
+    @State private var isLoading = false
+    
     var body: some View {
-        VStack {
-            // Top bar with title
-            HStack {
-                Text("TrailMates")
-                    .font(.custom("MagicRetro", size: 24))
-                    .foregroundColor(Color("pine"))
-                Spacer()
-                Image(systemName: "bell")
-                    .foregroundColor(Color("pine"))
-            }
-            .padding()
-            .background(Color("beige").opacity(0.9))
+        ZStack {
+            Color("beige").ignoresSafeArea()
             
-            Spacer()
-            
-            // Profile Content
-            VStack(spacing: 20) {
-                // Profile Picture
-                Image("userProfilePic") // Replace with actual image name
-                    .resizable()
-                    .frame(width: 120, height: 120)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color("pine"), lineWidth: 4))
-                    .shadow(radius: 10)
+            VStack(spacing: 16) {
+                if let user = userManager.currentUser {
+                    ProfileHeader(user: user, actionButton: AnyView(
+                        Button(action: { showEditProfile = true }) {
+                            Text("Edit Profile")
+                                .font(.system(.body, design: .rounded))
+                                .fontWeight(.medium)
+                                .foregroundColor(Color("beige"))
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(Color("pine"))
+                                .cornerRadius(25)
+                        }
+                    ))
+                } else {
+                    ProgressView()
+                        .frame(width: 120, height: 120)
+                }
                 
-                // Username
-                Text("Your Name")
-                    .font(.title)
-                    .foregroundColor(Color("pine"))
-                
-                // Edit Profile Button
-                Button(action: {
-                    // Action to edit profile
-                }) {
-                    Text("Edit Profile")
-                        .font(.headline)
-                        .foregroundColor(Color("beige"))
-                        .padding()
+                // Stats Section
+                if let stats = userStats {
+                    StatsSection(stats: stats)
+                } else if isLoading {
+                    ProgressView()
                         .frame(maxWidth: .infinity)
-                        .background(Color("pine"))
-                        .cornerRadius(15)
+                        .padding()
                 }
-                
-                // Settings List
-                List {
-                    NavigationLink(destination: Text("Account Settings")) {
-                        HStack {
-                            Image(systemName: "person.crop.circle")
-                            Text("Account Settings")
-                        }
-                        .foregroundColor(Color("pine"))
-                    }
-                    NavigationLink(destination: Text("Privacy")) {
-                        HStack {
-                            Image(systemName: "lock.shield")
-                            Text("Privacy")
-                        }
-                        .foregroundColor(Color("pine"))
-                    }
-                    NavigationLink(destination: Text("Notifications")) {
-                        HStack {
-                            Image(systemName: "bell")
-                            Text("Notifications")
-                        }
-                        .foregroundColor(Color("pine"))
-                    }
-                    NavigationLink(destination: Text("Help")) {
-                        HStack {
-                            Image(systemName: "questionmark.circle")
-                            Text("Help")
-                        }
-                        .foregroundColor(Color("pine"))
-                    }
-                }
-                .listStyle(GroupedListStyle())
             }
             .padding()
-            
-            Spacer()
         }
-        .edgesIgnoringSafeArea(.top)
+        .withDefaultNavigation(
+            title: "Profile",
+            rightButtonIcon: "gear",
+            rightButtonAction: { showSettings = true }
+        )
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .sheet(isPresented: $showEditProfile) {
+            ProfileSetupView(isEditMode: true)
+        }
+        .task {
+            await refreshStats()
+        }
+        .onChange(of: showEditProfile) { oldValue, newValue in
+            if !newValue {
+                Task {
+                    await refreshStats()
+                }
+            }
+        }
+    }
+    
+    private func refreshStats() async {
+        isLoading = true
+        userStats = await userManager.getUserStats()
+        isLoading = false
+    }
+}
+// Keeping the existing supporting views and models
+struct StatCard: View {
+    let icon: String
+    let title: String
+    let value: String
+    
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(Color("pine"))
+            
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundColor(Color("pine").opacity(0.8))
+                
+                Text(value)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Color("pine"))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(10)
+        .background(
+            colorScheme == .dark ? Color.white.opacity(0.2) : Color("sage").opacity(0.2)
+        )
+        .cornerRadius(16)
+    }
+}
+
+struct UserStats {
+    let joinDate: String
+    let landmarkCompletion: Int
+    let friendCount: Int
+    let hostedEventCount: Int
+    let attendedEventCount: Int
+}
+
+struct StatsSection: View {
+    let stats: UserStats
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 16) {
+                StatCard(
+                    icon: "calendar",
+                    title: "Joined",
+                    value: stats.joinDate
+                )
+                
+                StatCard(
+                    icon: "flag.fill",
+                    title: "Landmarks Visited",
+                    value: "\(stats.landmarkCompletion)%"
+                )
+            }
+            
+            HStack(spacing: 16) {
+                StatCard(
+                    icon: "person.2.fill",
+                    title: "Friends",
+                    value: "\(stats.friendCount)"
+                )
+                
+                StatCard(
+                    icon: "star.fill",
+                    title: "Events Hosted",
+                    value: "\(stats.hostedEventCount)"
+                )
+            }
+            
+            StatCard(
+                icon: "figure.hiking",
+                title: "Events Attended",
+                value: "\(stats.attendedEventCount)"
+            )
+        }
     }
 }
 
 struct ProfileView_Previews: PreviewProvider {
     static var previews: some View {
-        ProfileView()
+        NavigationView {
+            ProfileView()
+                .environmentObject(UserManager())
+        }
     }
 }

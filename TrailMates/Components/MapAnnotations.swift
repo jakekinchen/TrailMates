@@ -1,5 +1,5 @@
 //
-//  FriendAnnotation.swift
+//  MapAnnotations.swift
 //  TrailMatesATX
 //
 //  Created by Jake Kinchen on 11/13/24.
@@ -43,6 +43,6 @@ final class RecommendedLocationAnnotation: MKPointAnnotation {
         self.locationItem = locationItem
         super.init()
         self.coordinate = locationItem.coordinate
-        self.title = locationItem.name
+        self.title = locationItem.title
     }
 }

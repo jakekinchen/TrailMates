@@ -1,8 +1,32 @@
+//
+//  EventRowView.swift
+//  TrailMatesATX
+//
+//  Created by Jake Kinchen on 11/4/24.
+//
+
+import SwiftUI
+
 struct EventRowView: View {
     let event: Event
     let currentUser: User?
     let onJoinTap: () -> Void
     let onLeaveTap: () -> Void
+    let showLeaveJoinButton: Bool
+    
+    init(
+            event: Event,
+            currentUser: User?,
+            onJoinTap: @escaping () -> Void,
+            onLeaveTap: @escaping () -> Void,
+            showLeaveJoinButton: Bool = true
+        ) {
+            self.event = event
+            self.currentUser = currentUser
+            self.onJoinTap = onJoinTap
+            self.onLeaveTap = onLeaveTap
+            self.showLeaveJoinButton = showLeaveJoinButton
+        }
     
     private var isUserAttending: Bool {
         guard let currentUser = currentUser else { return false }
@@ -19,13 +43,14 @@ struct EventRowView: View {
             // Event Type Icon
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.05), radius: 4)
+                    .fill(Color("pine").opacity(0.8))
+                    .shadow(color: Color("alwaysPine").opacity(0.8), radius: 4)
                     .frame(width: 80, height: 80)
-                
+                    
+                    
                 Image(systemName: event.eventType == .walk ? "figure.walk" :
                         event.eventType == .bike ? "bicycle" : "figure.run")
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(Color("beige"))
                     .font(.system(size: 30))
             }
             
@@ -49,6 +74,8 @@ struct EventRowView: View {
                 // Date and Time
                 HStack {
                     Image(systemName: "calendar")
+                        .frame(width: 12, alignment: .center)
+                        .padding(.trailing, 4)
                     Text(event.formattedDate())
                 }
                 .font(.system(size: 14))
@@ -57,7 +84,9 @@ struct EventRowView: View {
                 // Location
                 HStack {
                     Image(systemName: "mappin")
-                    Text(event.description ?? "No location")
+                        .frame(width: 12, alignment: .center)
+                        .padding(.trailing, 4)
+                    Text(event.getLocationName())
                 }
                 .font(.system(size: 14))
                 .foregroundColor(.gray)
@@ -65,17 +94,19 @@ struct EventRowView: View {
                 // Participants
                 HStack {
                     Image(systemName: "person.2")
+                        .frame(width: 12, alignment: .center)
+                        .padding(.trailing, 4)
                     Text("\(event.attendeeIds.count) participants")
                 }
                 .font(.system(size: 14))
                 .foregroundColor(.gray)
                 
                 // Join/Leave Button
-                if currentUser != nil && !isHostedByUser {
+                if currentUser != nil && !isHostedByUser && showLeaveJoinButton {
                     Button(action: isUserAttending ? onLeaveTap : onJoinTap) {
                         Text(isUserAttending ? "Leave" : "Join")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(isUserAttending ? .red : Color("beige"))
+                            .foregroundColor(isUserAttending ? .red : Color("alwaysBeige"))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 6)
                             .background(
@@ -96,8 +127,18 @@ struct EventRowView: View {
                 .padding(.top, 4)
         }
         .padding()
-        .background(Color.white)
+        .background(
+            Color(UIColor { traitCollection in
+                if traitCollection.userInterfaceStyle == .dark {
+                    return UIColor.black.withAlphaComponent(0.5) // Dark mode color with 80% opacity
+                } else {
+                    return UIColor.white // Light mode color
+                }
+            })
+        )
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 8)
     }
 }
+
+

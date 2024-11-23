@@ -12,9 +12,9 @@ class PermissionsViewModel: ObservableObject {
     let locationManager: LocationManager
     let userManager: UserManager
     
-    init(locationManager: LocationManager = LocationManager(), userManager: UserManager) {
-        self.locationManager = locationManager
+    init(locationManager: LocationManager? = nil, userManager: UserManager) {
         self.userManager = userManager
+        self.locationManager = locationManager ?? LocationManager(userManager: userManager)
     }
     
     var locationPermissionStatus: PermissionStatus {
@@ -87,7 +87,7 @@ class PermissionsViewModel: ObservableObject {
                 }
                 
                 print("Proceeding to location permissions")
-                handleLocationPermissions(afterNotifications: granted)
+                await handleLocationPermissions(afterNotifications: granted)
             } catch {
                 print("Error requesting notifications: \(error)")
                 isRequestingPermissions = false
@@ -101,7 +101,7 @@ class PermissionsViewModel: ObservableObject {
         userManager.persistUserSession()
     }
     
-    private func handleLocationPermissions(afterNotifications notificationGranted: Bool) {
+    private func handleLocationPermissions(afterNotifications notificationGranted: Bool) async {
         print("Handling location permissions. Notifications granted: \(notificationGranted)")
         let currentStatus = locationManager.authorizationStatus
         print("Current location authorization status: \(currentStatus.rawValue)")
@@ -111,11 +111,13 @@ class PermissionsViewModel: ObservableObject {
         switch currentStatus {
         case .notDetermined:
             print("Location status not determined, requesting permission")
-            locationManager.requestLocationPermission()
+            let status = await locationManager.requestLocationPermission()
+            handleLocationStatus(status, notificationGranted: notificationGranted)
             
         case .authorizedWhenInUse:
             print("Have when in use, requesting always authorization")
-            locationManager.requestAlwaysAuthorization()
+            let status = await locationManager.requestAlwaysAuthorization()
+            handleLocationStatus(status, notificationGranted: notificationGranted)
             
         case .denied, .restricted:
             print("Location access denied or restricted")
@@ -132,34 +134,31 @@ class PermissionsViewModel: ObservableObject {
         }
     }
     
+    private func handleLocationStatus(_ status: CLAuthorizationStatus, notificationGranted: Bool) {
+        switch status {
+        case .authorizedAlways:
+            completePermissionsFlow(notificationGranted: notificationGranted)
+        case .authorizedWhenInUse:
+            showLocationSettingsAlert = true
+            isRequestingPermissions = false
+        case .denied, .restricted:
+            showLocationSettingsAlert = true
+            isRequestingPermissions = false
+        case .notDetermined:
+            isRequestingPermissions = false
+        @unknown default:
+            isRequestingPermissions = false
+        }
+    }
+    
     private func setupLocationStatusObservation() {
         print("Setting up location status observation")
         locationManager.setAuthorizationCallback { [weak self] newStatus in
             guard let self = self else { return }
             print("Received new location status: \(newStatus.rawValue)")
             
-            switch newStatus {
-            case .authorizedAlways:
-                print("Received authorizedAlways status")
-                self.completePermissionsFlow(notificationGranted: true)
-                
-            case .authorizedWhenInUse:
-                print("Received whenInUse status, prompting for always")
-                self.showLocationSettingsAlert = true
-                self.isRequestingPermissions = false
-                
-            case .denied, .restricted:
-                print("Received denied/restricted status")
-                self.showLocationSettingsAlert = true
-                self.isRequestingPermissions = false
-                
-            case .notDetermined:
-                print("Status still not determined")
-                break
-                
-            @unknown default:
-                print("Received unknown status")
-                self.isRequestingPermissions = false
+            Task { @MainActor in
+                self.handleLocationStatus(newStatus, notificationGranted: true)
             }
         }
     }

@@ -10,12 +10,13 @@ struct NavigationBarModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .safeAreaInset(edge: .top) {
-                ZStack{
-                    // Glass background
+                ZStack {
+                    // Single glass background that covers the entire area
                     TransparentBlurView()
-                        .background(backgroundColor.opacity(0.3))
-                        .frame(height: 60)
+                        .background(backgroundColor.opacity(0.65))
                         .edgesIgnoringSafeArea(.top)
+                    
+                    // Content
                     HStack {
                         Text(title)
                             .font(Font.custom("Magic Retro", size: 24))
@@ -31,12 +32,7 @@ struct NavigationBarModifier: ViewModifier {
                     }
                     .padding()
                 }
-                .frame(height: 88)
-                .background(
-                                    TransparentBlurView()
-                                        .background(backgroundColor.opacity(0.3))
-                                        .edgesIgnoringSafeArea(.top)
-                                )
+                .frame(height: 60)
             }
     }
 }

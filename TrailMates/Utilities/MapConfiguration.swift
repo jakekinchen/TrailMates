@@ -18,13 +18,14 @@ struct MapConfiguration {
     var showEventLocations: Bool = false
     var showMockFriendLocations: Bool = false
     var isLocationPickerEnabled: Bool = false
+    var onRegionChanged: ((MKCoordinateRegion) -> Void)?
+    var showCustomPin: Binding<Bool>?
     
     // MARK: - Data Sources
     var friends: [User]?
     var events: [Event]?
     
     // MARK: - Map State
-    var mapRegion: MKCoordinateRegion
     var selectedLocation: Binding<LocationItem?>?
     var isDragging: Binding<Bool>?
     
@@ -33,12 +34,12 @@ struct MapConfiguration {
     
     // MARK: - Map Constants
     static let defaultRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 30.25903, longitude: -97.74349),
+        center: CLLocationCoordinate2D(latitude: 30.26074, longitude: -97.74550),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
     
     static let boundaryRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 30.25903, longitude: -97.74349),
+        center: CLLocationCoordinate2D(latitude: 30.26074, longitude: -97.74550),
         span: MKCoordinateSpan(latitudeDelta: 0.0325, longitudeDelta: 0.0601)
     )
     
@@ -57,10 +58,11 @@ struct MapConfiguration {
         isLocationPickerEnabled: Bool = false,
         friends: [User]? = nil,
         events: [Event]? = nil,
-        mapRegion: MKCoordinateRegion = defaultRegion,
         selectedLocation: Binding<LocationItem?>? = nil,
+        showCustomPin: Binding<Bool>? = nil,
         isDragging: Binding<Bool>? = nil,
-        onLocationSelected: ((LocationItem) -> Void)? = nil
+        onLocationSelected: ((LocationItem) -> Void)? = nil,
+        onRegionChanged: ((MKCoordinateRegion) -> Void)? = nil
     ) {
         self.showUserLocation = showUserLocation
         self.showFriendLocations = showFriendLocations
@@ -70,9 +72,10 @@ struct MapConfiguration {
         self.isLocationPickerEnabled = isLocationPickerEnabled
         self.friends = friends
         self.events = events
-        self.mapRegion = mapRegion
         self.selectedLocation = selectedLocation
+        self.showCustomPin = showCustomPin
         self.isDragging = isDragging
         self.onLocationSelected = onLocationSelected
+        self.onRegionChanged = onRegionChanged
     }
 }

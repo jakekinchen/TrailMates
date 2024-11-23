@@ -1,5 +1,5 @@
 //
-//  FriendAnnotationView.swift
+//  AnnotationViews.swift
 //  TrailMatesATX
 //
 //  Created by Jake Kinchen on 11/13/24.
@@ -9,6 +9,7 @@
 // MARK: - AnnotationViews.swift
 import UIKit
 import MapKit
+import SwiftUI
 
 // MARK: - Friend Annotation View
 final class FriendAnnotationView: MKAnnotationView {
@@ -48,12 +49,14 @@ final class FriendAnnotationView: MKAnnotationView {
     }
     
     func configure(with friend: User) {
-        if let imageData = friend.profileImageData,
-           let image = UIImage(data: imageData) {
-            imageView.image = image
-        } else {
-            imageView.image = UIImage(named: "defaultProfilePic")
-        }
+        let hostingController = UIHostingController(rootView: getProfileImage(friend: friend))
+        hostingController.view.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
+        hostingController.view.layer.cornerRadius = 25
+        hostingController.view.layer.masksToBounds = true
+        hostingController.view.layer.borderWidth = 2
+        hostingController.view.layer.borderColor = isMock ?
+            UIColor.systemGray.cgColor : UIColor.white.cgColor
+        imageView.addSubview(hostingController.view)
         
         if friend.isActive {
             radarView.startAnimating()
@@ -65,6 +68,31 @@ final class FriendAnnotationView: MKAnnotationView {
             imageView.alpha = 0.7
             radarView.alpha = 0.7
         }
+    }
+    
+    func getProfileImage(friend: User) -> some View {
+        Group {
+            if let thumbnailUrl = friend.profileThumbnailUrl {
+                AsyncImage(url: URL(string: thumbnailUrl)) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    ProgressView()
+                }
+            } else if let imageData = friend.profileImageData,
+                      let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .foregroundColor(.gray)
+            }
+        }
+        .frame(width: 50, height: 50)
+        .clipShape(Circle())
     }
 }
 
@@ -112,6 +140,12 @@ final class EventAnnotationView: MKAnnotationView {
 
 // MARK: - Recommended Location View
 final class RecommendedLocationView: MKMarkerAnnotationView {
+    override var isSelected: Bool {
+            didSet {
+              //  updateAppearance()
+            }
+        }
+    
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         setupView()
@@ -122,15 +156,81 @@ final class RecommendedLocationView: MKMarkerAnnotationView {
         setupView()
     }
     
-    private func setupView() {
-        markerTintColor = UIColor(named: "pine")
-        glyphImage = UIImage(systemName: "star.fill")
-        canShowCallout = true
+    override func prepareForReuse() {
+            super.prepareForReuse()
+            setupView()
+            // Reset transform and shadow when reusing
+            transform = .identity
+            layer.shadowOpacity = 0
+        }
+    
+    override func setSelected(_ selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
         
-        // Add right callout accessory view if needed
-        let button = UIButton(type: .detailDisclosure)
-        rightCalloutAccessoryView = button
+        if animated {
+            UIView.animate(withDuration: 0.3) {
+                self.transform = selected ? CGAffineTransform(scaleX: 1.2, y: 1.2) : .identity
+            }
+        } else {
+            self.transform = selected ? CGAffineTransform(scaleX: 1.2, y: 1.2) : .identity
+        }
     }
+    
+    private func setupView() {
+            markerTintColor = UIColor(named: "pine")
+            glyphImage = UIImage(systemName: "star.fill")
+            canShowCallout = true
+            
+            // Set up shadow (initially hidden)
+            layer.shadowColor = UIColor.black.cgColor
+            layer.shadowOffset = CGSize(width: 0, height: 2)
+            layer.shadowRadius = 4
+            layer.shadowOpacity = 0
+            
+            // Enable animations
+            animatesWhenAdded = true
+            
+            // Add right callout accessory view if needed
+            let button = UIButton(type: .detailDisclosure)
+            rightCalloutAccessoryView = button
+        }
+    
+    private func updateAppearance() {
+            if isSelected {
+                // Change to beige color and pine star icon when selected
+                markerTintColor = UIColor(named: "beige")
+                glyphTintColor = UIColor(named: "pine")
+                glyphImage = UIImage(systemName: "star.fill")?.withRenderingMode(.alwaysTemplate)
+                
+                // Optionally, add a subtle animation for the color change
+                UIView.animate(withDuration: 0.3) {
+                    self.layoutIfNeeded()
+                }
+            } else {
+                // Revert to original colors when not selected
+                markerTintColor = UIColor(named: "pine")
+                glyphTintColor = .white
+                glyphImage = UIImage(systemName: "star.fill")
+                
+                // Optionally, add a subtle animation for the color change
+                UIView.animate(withDuration: 0.3) {
+                    self.layoutIfNeeded()
+                }
+            }
+        }
+    
+    private func animateSelection(_ selected: Bool) {
+            UIView.animate(withDuration: 0.3,
+                          delay: 0,
+                          usingSpringWithDamping: 0.7,
+                          initialSpringVelocity: 0.5) {
+                // Scale the view
+                self.transform = selected ? CGAffineTransform(scaleX: 1.2, y: 1.2) : .identity
+                
+                // Animate shadow
+                self.layer.shadowOpacity = selected ? 0.3 : 0
+            }
+        }
 }
 
 // MARK: - Radar Pulse View

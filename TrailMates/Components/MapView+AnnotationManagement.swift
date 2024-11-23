@@ -19,3 +19,4 @@ extension UnifiedMapView {
         mapView.addAnnotations(annotations)
     }
 }
+

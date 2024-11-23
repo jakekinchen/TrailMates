@@ -1,61 +1,44 @@
-//
-//  ContentView.swift
-//  TrailMates
-//
-//  Created by Jake Kinchen on 10/3/24.
-//
-
 import SwiftUI
-import SwiftData
 
+// ContentView.swift
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @EnvironmentObject var userManager: UserManager
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
+        let content: AnyView
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
+        if !userManager.isLoggedIn {
+            content = AnyView(AuthView())
+        } else if userManager.currentUser?.firstName.isEmpty ?? true || userManager.currentUser?.username.isEmpty ?? true || userManager.currentUser?.lastName.isEmpty ?? true{
+                    // Profile setup is required after login but before welcome screen
+            content = AnyView(OnboardingAddFriendsView(onFinish: {
+                userManager.hasAddedFriends = true
+                userManager.isOnboardingComplete = true
+                userManager.persistUserSession()
+            }))
+        } else if !userManager.isWelcomeComplete {
+            content = AnyView(WelcomeView(onComplete: {
+                userManager.isWelcomeComplete = true
+                userManager.persistUserSession()
+            }))
+        } else if !userManager.isPermissionsGranted {
+            content = AnyView(PermissionsView(onComplete: {
+                userManager.isPermissionsGranted = true
+                userManager.persistUserSession()
+            }))
+        } else if !userManager.hasAddedFriends && !userManager.isOnboardingComplete {
+            content = AnyView(OnboardingAddFriendsView(onFinish: {
+                userManager.hasAddedFriends = true
+                userManager.isOnboardingComplete = true
+                userManager.persistUserSession()
+            }))
+        } else {
+            content = AnyView(HomeView())
         }
-    }
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+        return content
+            .onAppear {
+                Task { await userManager.initializeUserIfNeeded() }
             }
-        }
     }
-}
-
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }

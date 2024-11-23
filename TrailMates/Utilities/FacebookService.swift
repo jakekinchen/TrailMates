@@ -1,3 +1,11 @@
+//
+//  FacebookService.swift
+//  TrailMatesATX
+//
+//  Created by Jake Kinchen on 11/21/24.
+//
+
+
 // FacebookService.swift
 import Foundation
 import FBSDKLoginKit
@@ -11,14 +19,14 @@ class FacebookService: ObservableObject {
     
     func linkAccount() async throws -> FacebookUser {
         return try await withCheckedThrowingContinuation { continuation in
-            loginManager.logIn(permissions: ["public_profile", "email", "user_friends"], from: nil) { result, error in
+            loginManager.logIn(permissions: ["public_profile", "user_friends"], from: nil) { result, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                     return
                 }
                 
                 guard let result = result, !result.isCancelled else {
-                    continuation.resume(throwing: NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Facebook login was cancelled"]))
+                    continuation.resume(throwing: NSError(domain: "com.bridges.trailmatesatx", code: -1, userInfo: [NSLocalizedDescriptionKey: "Facebook login was cancelled"]))
                     return
                 }
                 
@@ -35,51 +43,50 @@ class FacebookService: ObservableObject {
     }
     
     func fetchFriends() async throws -> [FacebookFriend] {
-        return try await withCheckedThrowingContinuation { continuation in
-            let request = GraphRequest(graphPath: "me/friends", parameters: ["fields": "id,name,picture"])
+            return try await withCheckedThrowingContinuation { continuation in
+                let request = GraphRequest(graphPath: "me/friends", parameters: ["fields": "id,name,picture"])
+                request.start { _, result, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    
+                    guard let result = result as? [String: Any],
+                          let data = result["data"] as? [[String: Any]] else {
+                        continuation.resume(returning: [])
+                        return
+                    }
+                    
+                    let friends = data.compactMap { friendData -> FacebookFriend? in
+                        guard let id = friendData["id"] as? String,
+                              let name = friendData["name"] as? String else { return nil }
+                        return FacebookFriend(id: id, name: name)
+                    }
+                    
+                    continuation.resume(returning: friends)
+                }
+            }
+        }
+    
+    private func fetchProfile(completion: @escaping (FacebookUser?, Error?) -> Void) {
+            let request = GraphRequest(graphPath: "me", parameters: ["fields": "id,name"])
             request.start { _, result, error in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    completion(nil, error)
                     return
                 }
                 
                 guard let result = result as? [String: Any],
-                      let data = result["data"] as? [[String: Any]] else {
-                    continuation.resume(returning: [])
+                      let id = result["id"] as? String,
+                      let name = result["name"] as? String else {
+                    completion(nil, NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse Facebook profile"]))
                     return
                 }
                 
-                let friends = data.compactMap { friendData -> FacebookFriend? in
-                    guard let id = friendData["id"] as? String,
-                          let name = friendData["name"] as? String else { return nil }
-                    return FacebookFriend(id: id, name: name)
-                }
-                
-                continuation.resume(returning: friends)
+                let user = FacebookUser(id: id, name: name)
+                completion(user, nil)
             }
         }
-    }
-    
-    private func fetchProfile(completion: @escaping (FacebookUser?, Error?) -> Void) {
-        let request = GraphRequest(graphPath: "me", parameters: ["fields": "id,name,email,picture"])
-        request.start { _, result, error in
-            if let error = error {
-                completion(nil, error)
-                return
-            }
-            
-            guard let result = result as? [String: Any],
-                  let id = result["id"] as? String,
-                  let name = result["name"] as? String,
-                  let email = result["email"] as? String else {
-                completion(nil, NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse Facebook profile"]))
-                return
-            }
-            
-            let user = FacebookUser(id: id, name: name, email: email)
-            completion(user, nil)
-        }
-    }
     
     func unlinkAccount() {
         loginManager.logOut()
@@ -91,7 +98,6 @@ class FacebookService: ObservableObject {
 struct FacebookUser {
     let id: String
     let name: String
-    let email: String
 }
 
 struct FacebookFriend: Identifiable {
@@ -99,43 +105,3 @@ struct FacebookFriend: Identifiable {
     let name: String
 }
 
-// Updated UserManager methods
-extension UserManager {
-    func linkFacebook() async throws {
-        do {
-            let fbUser = try await FacebookService.shared.linkAccount()
-            isFacebookLinked = true
-            if var updatedUser = currentUser {
-                updatedUser.facebookId = fbUser.id
-                updatedUser.email = fbUser.email // Only if you want to update the email
-                await saveProfile(updatedUser: updatedUser)
-            }
-            persistUserSession()
-        } catch {
-            isFacebookLinked = false
-            throw error
-        }
-    }
-    
-    func unlinkFacebook() {
-        FacebookService.shared.unlinkAccount()
-        isFacebookLinked = false
-        if var updatedUser = currentUser {
-            updatedUser.facebookId = nil
-            Task {
-                await saveProfile(updatedUser: updatedUser)
-            }
-        }
-        persistUserSession()
-    }
-    
-    func fetchFacebookFriends() async throws -> [FacebookFriend] {
-        guard isFacebookLinked else { throw NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Facebook not linked"]) }
-        return try await FacebookService.shared.fetchFriends()
-    }
-}
-
-// Updated User model (add these properties to your existing User model)
-extension User {
-    var facebookId: String? { get set }
-}
