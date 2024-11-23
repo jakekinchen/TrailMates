@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "user_status": {
+      "$userId": {
+        // Users can only write their own status
+        ".write": "$userId === auth.uid",
+        // Status is readable by friends
+        ".read": "root.child('users').child(auth.uid).child('friends').hasChild($userId)"
+      }
+    },
+    "friend_requests": {
+      "$userId": {
+        // Only the target user can read their requests
+        ".read": "$userId === auth.uid",
+        "$requestId": {
+          // Anyone can create a request, but only involved parties can modify
+          ".write": "!data.exists() || auth.uid === data.child('fromUserId').val() || auth.uid === $userId"
+        }
+      }
+    },
+    "notifications": {
+      "$userId": {
+        // Users can only read their own notifications
+        ".read": "$userId === auth.uid",
+        "$notificationId": {
+          // System and involved users can create/update notifications
+          ".write": "auth.uid === $userId || root.child('users').child($userId).child('friends').hasChild(auth.uid)"
+        }
+      }
+    }
+  }
+}

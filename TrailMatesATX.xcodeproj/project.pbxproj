@@ -8,6 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */; };
+		73D868C62CED5F7000AF0CAD /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C52CED5F7000AF0CAD /* FirebaseAuth */; };
+		73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C72CED5F7000AF0CAD /* FirebaseCore */; };
+		73D868CA2CED5F7000AF0CAD /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C92CED5F7000AF0CAD /* FirebaseDatabase */; };
+		73D868CC2CED5F7000AF0CAD /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868CB2CED5F7000AF0CAD /* FirebaseFirestore */; };
+		73D869732CEF8D6C00AF0CAD /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D869722CEF8D6C00AF0CAD /* FacebookCore */; };
+		73D869752CEF8D6C00AF0CAD /* FacebookLogin in Frameworks */ = {isa = PBXBuildFile; productRef = 73D869742CEF8D6C00AF0CAD /* FacebookLogin */; };
+		73D869962CF02DA000AF0CAD /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 73D869952CF02DA000AF0CAD /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,13 +38,17 @@
 		73266DA92CAEDBF60087B7A1 /* TrailMatesATX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TrailMatesATX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73266DBB2CAEDBF80087B7A1 /* TrailMatesATXTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrailMatesATXTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		73266DC52CAEDBF80087B7A1 /* TrailMatesATXUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrailMatesATXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		73D869872CEFEBDC00AF0CAD /* TrailMatesATX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrailMatesATX.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		73266DED2CAF1DE80087B7A1 /* Exceptions for "TrailMates" folder in "TrailMatesATX" target */ = {
+		732D9AD62CE5ADF3004F62E7 /* Exceptions for "TrailMates" folder in "TrailMatesATX" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				App/Info.plist,
+				"Components/MapView+AnnotationManagement.swift",
+				"Preview Content/Preview Assets.xcassets",
+				"Resources/Preview Content/Preview Assets.xcassets",
 			);
 			target = 73266DA82CAEDBF60087B7A1 /* TrailMatesATX */;
 		};
@@ -47,7 +58,7 @@
 		73266DAB2CAEDBF60087B7A1 /* TrailMates */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				73266DED2CAF1DE80087B7A1 /* Exceptions for "TrailMates" folder in "TrailMatesATX" target */,
+				732D9AD62CE5ADF3004F62E7 /* Exceptions for "TrailMates" folder in "TrailMatesATX" target */,
 			);
 			path = TrailMates;
 			sourceTree = "<group>";
@@ -70,6 +81,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
+				73D869732CEF8D6C00AF0CAD /* FacebookCore in Frameworks */,
+				73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */,
+				73D868CA2CED5F7000AF0CAD /* FirebaseDatabase in Frameworks */,
+				73D868CC2CED5F7000AF0CAD /* FirebaseFirestore in Frameworks */,
+				73D869962CF02DA000AF0CAD /* FirebaseStorage in Frameworks */,
+				73D869752CEF8D6C00AF0CAD /* FacebookLogin in Frameworks */,
+				73D868C62CED5F7000AF0CAD /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,9 +111,11 @@
 		73266DA02CAEDBF60087B7A1 = {
 			isa = PBXGroup;
 			children = (
+				73D869872CEFEBDC00AF0CAD /* TrailMatesATX.entitlements */,
 				73266DAB2CAEDBF60087B7A1 /* TrailMates */,
 				73266DBE2CAEDBF80087B7A1 /* TrailMatesTests */,
 				73266DC82CAEDBF80087B7A1 /* TrailMatesUITests */,
+				73D868C42CED5F7000AF0CAD /* Frameworks */,
 				73266DAA2CAEDBF60087B7A1 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -110,6 +130,13 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		73D868C42CED5F7000AF0CAD /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -119,7 +146,7 @@
 			buildPhases = (
 				73266DA52CAEDBF60087B7A1 /* Sources */,
 				73266DA62CAEDBF60087B7A1 /* Frameworks */,
-				73266DA72CAEDBF60087B7A1 /* Resources */,
+				73D868B72CE6A29700AF0CAD /* Resources */,
 			);
 			buildRules = (
 			);
@@ -131,6 +158,13 @@
 			name = TrailMatesATX;
 			packageProductDependencies = (
 				73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */,
+				73D868C52CED5F7000AF0CAD /* FirebaseAuth */,
+				73D868C72CED5F7000AF0CAD /* FirebaseCore */,
+				73D868C92CED5F7000AF0CAD /* FirebaseDatabase */,
+				73D868CB2CED5F7000AF0CAD /* FirebaseFirestore */,
+				73D869722CEF8D6C00AF0CAD /* FacebookCore */,
+				73D869742CEF8D6C00AF0CAD /* FacebookLogin */,
+				73D869952CF02DA000AF0CAD /* FirebaseStorage */,
 			);
 			productName = TrailMates;
 			productReference = 73266DA92CAEDBF60087B7A1 /* TrailMatesATX.app */;
@@ -205,7 +239,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 73266DA42CAEDBF60087B7A1 /* Build configuration list for PBXProject "TrailMates" */;
+			buildConfigurationList = 73266DA42CAEDBF60087B7A1 /* Build configuration list for PBXProject "TrailMatesATX" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -216,6 +250,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				73D869712CEF8D6C00AF0CAD /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 73266DAA2CAEDBF60087B7A1 /* Products */;
@@ -230,13 +265,6 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		73266DA72CAEDBF60087B7A1 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		73266DB92CAEDBF80087B7A1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -245,6 +273,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		73266DC32CAEDBF80087B7A1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		73D868B72CE6A29700AF0CAD /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -415,15 +450,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TrailMatesATX.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"TrailMates/Preview Content\"";
 				DEVELOPMENT_TEAM = BN58T9KR6C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = TrailMates/Info.plist;
+				INFOPLIST_FILE = TrailMates/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to your camera to allow you to take profile pictures and use augmented reality features.";
+				INFOPLIST_KEY_NSContactsUsageDescription = "TrailMates would like access to your contacts to help you connect with friends.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "\"always and when in usage\"";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "\"always usage\"";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "\"TrailMates needs your location to connect you with friends, show trail events, and coordinate meetups.\"";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -435,7 +476,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = bridges.trailmatesatx;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bridges.trailmatesatx;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -448,15 +489,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TrailMatesATX.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"TrailMates/Preview Content\"";
 				DEVELOPMENT_TEAM = BN58T9KR6C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = TrailMates/Info.plist;
+				INFOPLIST_FILE = TrailMates/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to your camera to allow you to take profile pictures and use augmented reality features.";
+				INFOPLIST_KEY_NSContactsUsageDescription = "TrailMates would like access to your contacts to help you connect with friends.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "\"always and when in usage\"";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "\"always usage\"";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "\"TrailMates needs your location to connect you with friends, show trail events, and coordinate meetups.\"";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -468,7 +515,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = bridges.trailmatesatx;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bridges.trailmatesatx;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -551,7 +598,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		73266DA42CAEDBF60087B7A1 /* Build configuration list for PBXProject "TrailMates" */ = {
+		73266DA42CAEDBF60087B7A1 /* Build configuration list for PBXProject "TrailMatesATX" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				73266DCD2CAEDBF80087B7A1 /* Debug */,
@@ -598,6 +645,14 @@
 				minimumVersion = 11.3.0;
 			};
 		};
+		73D869712CEF8D6C00AF0CAD /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/facebook-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 14.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -605,6 +660,41 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalyticsWithoutAdIdSupport;
+		};
+		73D868C52CED5F7000AF0CAD /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		73D868C72CED5F7000AF0CAD /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		73D868C92CED5F7000AF0CAD /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
+		};
+		73D868CB2CED5F7000AF0CAD /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		73D869722CEF8D6C00AF0CAD /* FacebookCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73D869712CEF8D6C00AF0CAD /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookCore;
+		};
+		73D869742CEF8D6C00AF0CAD /* FacebookLogin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73D869712CEF8D6C00AF0CAD /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookLogin;
+		};
+		73D869952CF02DA000AF0CAD /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

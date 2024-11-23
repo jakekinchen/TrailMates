@@ -1,181 +1,212 @@
+//
+//  EventsView.swift
+//  TrailMatesATX
+//
+//  Created by Jake Kinchen on 10/22/24.
+//
+
 import SwiftUI
 
 struct EventsView: View {
     @ObservedObject var eventViewModel: EventViewModel
-    @State private var activeSegment = "today"
+    @EnvironmentObject var userManager: UserManager
+    @State private var activeSegment = "circle"
     @State private var showCreateEvent = false
+    @State private var showEventDetails = false
+    @State private var selectedEvent: Event?
+    @State private var showOnlyMyEvents = false
     
-    var segmentedOptions = ["today", "upcoming", "past"]
+    // MARK: - Event Filtering and Grouping
     
-    var filteredEvents: [Event] {
-        switch activeSegment {
-        case "today":
-            return eventViewModel.events.filter { event in
-                Calendar.current.isDateInToday(event.date)
-            }
-        case "upcoming":
-            return eventViewModel.events.filter { event in
-                event.date > Date() && !Calendar.current.isDateInToday(event.date)
-            }
-        case "past":
-            return eventViewModel.events.filter { event in
-                event.date < Date()
-            }
-        default:
-            return []
-        }
+    struct EventGroup: Identifiable {
+        let id = UUID()
+        let title: String
+        let events: [Event]
     }
     
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Custom Navigation Bar
-                ZStack {
-                    Color("pine")
-                        .ignoresSafeArea()
-                    
-                    HStack {
-                        Text("Events")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(Color("beige"))
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            showCreateEvent = true
-                        }) {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundColor(Color("beige"))
-                                .font(.title2)
-                        }
-                    }
-                    .padding()
-                }
-                .frame(height: 60)
+    private func getFilteredEvents() -> [Event] {
+            guard let currentUser = userManager.currentUser else { return [] }
+            return eventViewModel.getFilteredEvents(
+                for: currentUser,
+                activeSegment: activeSegment,
+                showOnlyMyEvents: showOnlyMyEvents
+            )
+        }
+        
+        private func emptyStateView() -> some View {
+            VStack(spacing: 12) {
+                Image(systemName: "calendar.badge.exclamationmark")
+                    .font(.system(size: 50))
+                    .foregroundColor(Color("pine"))
                 
-                // Segmented Control
-                VStack(spacing: 16) {
-                    HStack {
-                        ForEach(segmentedOptions, id: \.self) { segment in
-                            Button(action: {
-                                withAnimation {
-                                    activeSegment = segment
-                                }
-                            }) {
-                                Text(segment.capitalized)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .padding(.vertical, 8)
-                                    .padding(.horizontal, 16)
-                                    .background(
-                                        activeSegment == segment ?
-                                        Color("beige") :
-                                            Color.clear
-                                    )
-                                    .foregroundColor(
-                                        activeSegment == segment ?
-                                        Color("pine") :
-                                        Color("beige")
-                                    )
-                            }
-                        }
-                    }
-                    .padding(4)
-                    .background(Color("pine"))
-                    .cornerRadius(12)
+                Text(emptyStateMessage)
+                    .font(.headline)
+                    .foregroundColor(Color("pine"))
+                    .multilineTextAlignment(.center)
                     .padding(.horizontal)
-                    .padding(.top, 8)
-                }
-                
-                // Events List
-                ScrollView {
-                    LazyVStack(spacing: 16) {
-                        ForEach(filteredEvents) { event in
-                            EventRowView(event: event)
-                        }
+            }
+            .padding(.top, 40)
+        }
+        
+        private var emptyStateMessage: String {
+            switch activeSegment {
+            case "circle":
+                return "No events from your circle yet.\nConnect with more friends to see their events!"
+            case "explore":
+                return "No public events available.\nCheck back later for new events!"
+            case "myEvents":
+                return "You aren't hosting any upcoming events yet.\nTap the + button to get started!"
+            default:
+                return ""
+            }
+        }
+    
+    
+    private func makeEventRow(_ event: Event) -> some View {
+        EventRowView(
+            event: event,
+            currentUser: userManager.currentUser,
+            onJoinTap: {
+                if let userId = userManager.currentUser?.id {
+                    Task {
+                        try await eventViewModel.attendEvent(userId: userId, eventId: event.id)
+                        userManager.attendEvent(eventId: event.id)
                     }
-                    .padding()
                 }
-                .background(Color("beige"))
+            },
+            onLeaveTap: {
+                if let userId = userManager.currentUser?.id {
+                    Task {
+                        try await eventViewModel.leaveEvent(userId: userId, eventId: event.id)
+                        userManager.leaveEvent(eventId: event.id)
+                    }
+                }
+            }
+        )
+        .onTapGesture {
+            selectedEvent = event
+        }
+    }
+        
+        private func makeGroupHeader(_ title: String) -> some View {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(Color("pine"))
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                Spacer()
             }
             .background(Color("beige"))
         }
-        .sheet(isPresented: $showCreateEvent) {
-            // TODO: Add CreateEventView here
-            Text("Create Event")
-        }
-    }
-}
-
-struct EventRowView: View {
-    let event: Event
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            // Event Image
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.gray.opacity(0.2))
-                .frame(width: 80, height: 80)
-                .overlay(
-                    Image(systemName: event.eventType == .walk ? "figure.walk" :
-                            event.eventType == .bike ? "bicycle" : "figure.run")
+        
+    private func makeEventsList(_ groups: [EventGroup]) -> some View {
+        LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
+            if groups.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "calendar.badge.exclamationmark")
+                        .font(.system(size: 50))
                         .foregroundColor(Color("pine"))
-                        .font(.system(size: 30))
-                )
-            
-            // Event Details
-            VStack(alignment: .leading, spacing: 4) {
-                Text(event.title)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundColor(Color("pine"))
-                
-                // Date and Time
-                HStack {
-                    Image(systemName: "calendar")
-                        .foregroundColor(.gray)
-                    Text(event.formattedDate())
-                        .foregroundColor(.gray)
+                    
+                    Text(activeSegment == "circle" ?
+                         "No events from your circle yet.\nConnect with more friends to see their events!" :
+                         activeSegment == "explore" ?
+                         "No public events available.\nCheck back later for new events!" :
+                         "You haven't created any events yet.\nTap the + button to get started!")
+                        .font(.headline)
+                        .foregroundColor(Color("pine"))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
-                .font(.subheadline)
-                
-                // Location
-                HStack {
-                    Image(systemName: "mappin")
-                        .foregroundColor(.gray)
-                    Text(event.description ?? "No location")
-                        .foregroundColor(.gray)
+                .padding(.top, 40)
+            } else {
+                ForEach(groups) { group in
+                    Section {
+                        ForEach(group.events) { event in
+                            makeEventRow(event)
+                        }
+                    } header: {
+                        makeGroupHeader(group.title)
+                    }
                 }
-                .font(.subheadline)
-                
-                // Participants
-                HStack {
-                    Image(systemName: "person.2")
-                        .foregroundColor(.gray)
-                    Text("\(event.attendeeIds.count) participants")
-                        .foregroundColor(.gray)
-                }
-                .font(.subheadline)
             }
-            
-            Spacer()
-            
-            // Chevron
-            Image(systemName: "chevron.right")
-                .foregroundColor(.gray)
-                .font(.system(size: 14, weight: .semibold))
         }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .padding(.horizontal)
     }
+        
+        var body: some View {
+            ZStack {
+                Color("beige").ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    // Segment Control
+                    Picker("View", selection: $activeSegment) {
+                        Text("My Circle").tag("circle")
+                        Text("Explore").tag("explore")
+                        Text("My Events").tag("myEvents")
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .padding()
+                    
+                    
+                    ScrollView {
+                        let filteredEvents = getFilteredEvents()
+                        let groupedEvents = eventViewModel.groupEvents(filteredEvents)
+                        makeEventsList(groupedEvents)
+                    }
+                }
+                .withDefaultNavigation(
+                    title: navigationTitle,
+                    rightButtonIcon: "plus.circle.fill",
+                    rightButtonAction: { showCreateEvent = true }
+                )
+            }
+            .sheet(isPresented: $showCreateEvent) {
+                if let user = userManager.currentUser {
+                    CreateEventView(eventViewModel: eventViewModel, user: user)
+                }
+            }
+            .sheet(item: $selectedEvent) { event in
+                NavigationView {
+                    EventDetailView(
+                        event: event,
+                        eventViewModel: eventViewModel
+                    )
+                }
+            }
+        }
+
+    
+    private var navigationTitle: String {
+            switch activeSegment {
+            case "circle":
+                return "My Circle"
+            case "explore":
+                return "Explore Events"
+            case "myEvents":
+                return "My Events"
+            default:
+                return "TrailMates"
+            }
+        }
+    
+    private func sectionHeader(title: String) -> some View {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(Color("pine"))
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                Spacer()
+            }
+        
+        }
 }
 
-// Preview Provider
 struct EventsView_Previews: PreviewProvider {
     static var previews: some View {
-        EventsView(eventViewModel: EventViewModel())
+        EventsView(
+            eventViewModel: EventViewModel()
+        )
     }
 }

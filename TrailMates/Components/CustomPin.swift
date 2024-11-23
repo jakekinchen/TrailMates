@@ -5,9 +5,9 @@ struct CustomPin: View {
     let isSelected: Bool
     @Binding var isDragging: Bool
     
-    private let strokeLength: CGFloat = 16
+    private let strokeLength: CGFloat = 18
     private let circleSize: CGFloat = 10
-    private let topCircleSize: CGFloat = 16
+    private let topCircleSize: CGFloat = 22
     
     var body: some View {
         VStack(spacing: 0) {
@@ -17,7 +17,7 @@ struct CustomPin: View {
             
             Rectangle()
                 .fill(Color("pine"))
-                .frame(width: 2, height: strokeLength)
+                .frame(width: 3, height: strokeLength)
                 .offset(y: isDragging ? -10 : 0)
             
             Circle()

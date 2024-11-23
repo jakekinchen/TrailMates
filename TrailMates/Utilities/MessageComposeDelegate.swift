@@ -1,3 +1,11 @@
+//
+//  MessageComposeDelegate.swift
+//  TrailMatesATX
+//
+//  Created by Jake Kinchen on 11/20/24.
+//
+
+
 import SwiftUI
 import MessageUI
 

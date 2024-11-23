@@ -1,8 +1,18 @@
+//
+//  FriendsListCard.swift
+//  TrailMatesATX
+//
+//  Created by Jake Kinchen on 11/13/24.
+//
+
+import SwiftUI
+
 struct FriendsListCard: View {
     let friends: [User]
+    let onAddFriends: () -> Void
+    
     @State private var showAddFriends = false
-    var onAddFriends: () -> Void // Closure to trigger data reload
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -13,7 +23,7 @@ struct FriendsListCard: View {
                 Button(action: {
                     showAddFriends = true
                 }) {
-                    Image(systemName: "plus")
+                    Image(systemName: "person.badge.plus")
                         .foregroundColor(Color("pine"))
                         .font(.system(size: 20))
                 }
@@ -21,18 +31,19 @@ struct FriendsListCard: View {
             
             Divider()
             
-            FriendsSection(title: "Active", friends: friends.filter { $0.isActive })
+            FriendsSection(friends: friends.filter { $0.isActive })
             
-            Spacer() // Pushes content to the top
+            Spacer()
         }
         .padding()
-        //.background(Color("beige").opacity(0.9))
         .cornerRadius(15)
         .padding(.horizontal)
         .sheet(isPresented: $showAddFriends) {
-            AddFriendsView(isOnboarding: false, onSkip: nil) {
+            AddFriendsView(
+                isOnboarding: false
+            ) {
                 showAddFriends = false
-                onAddFriends() // Trigger the closure to reload data
+                onAddFriends()
             }
         }
     }

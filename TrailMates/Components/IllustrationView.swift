@@ -1,3 +1,12 @@
+//
+//  IllustrationView.swift
+//  TrailMatesATX
+//
+//  Created by Jake Kinchen on 11/19/24.
+//
+
+import SwiftUI
+
 struct IllustrationView: View {
     var body: some View {
         ZStack {

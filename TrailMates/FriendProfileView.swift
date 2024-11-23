@@ -1,14 +1,27 @@
+//
+//  FriendProfileView.swift
+//  TrailMatesATX
+//
+//  Created by Jake Kinchen on 11/20/24.
+//
+
+import SwiftUI
+
 struct FriendProfileView: View {
     let user: User
     @EnvironmentObject var userManager: UserManager
     @State private var userStats: UserStats?
     @State private var isLoading = false
-    @State private var isFriend: Bool
     @State private var isProcessingFriendAction = false
+    @State private var showUnfriendAlert = false
     
-    init(user: User, userManager: UserManager) {
+    private var isFriend: Bool {
+            guard let currentUser = userManager.currentUser else { return false }
+            return currentUser.friends.contains(user.id)
+        }
+    
+    init(user: User) {
         self.user = user
-        _isFriend = State(initialValue: userManager.currentUser?.friends.contains(user.id) ?? false)
     }
     
     var body: some View {
@@ -17,11 +30,20 @@ struct FriendProfileView: View {
             
             VStack(spacing: 16) {
                 ProfileHeader(user: user, actionButton: AnyView(
-                    Button(action: {
+                    Button {
                         Task {
-                            await toggleFriendStatus()
+                            do {
+                                if isFriend {
+                                    try await userManager.removeFriend(user.id)
+                                } else {
+                                    try await userManager.sendFriendRequest(to: user.id)
+                                }
+                            } catch {
+                                print("Error managing friend relationship: \(error)")
+                                // TODO: Show error alert to user
+                            }
                         }
-                    }) {
+                    } label: {
                         HStack(spacing: 8) {
                             if isFriend {
                                 Image(systemName: "checkmark")
@@ -70,16 +92,22 @@ struct FriendProfileView: View {
         isLoading = false
     }
     
-    private func toggleFriendStatus() async {
+    private func handleFriendAction() async {
         isProcessingFriendAction = true
         defer { isProcessingFriendAction = false }
         
-        if isFriend {
-            await userManager.removeFriend(user.id)
-        } else {
-            await userManager.addFriend(user.id)
+        do {
+            if isFriend {
+               try await userManager.removeFriend(user.id)
+            } else {
+              try await userManager.addFriend(user.id)
+            }
+            
+            // Refresh the stats after friend action
+            await refreshStats()
         }
-        
-        isFriend.toggle()
+        catch {
+            print("Error processing friend action: \(error.localizedDescription)")
+        }
     }
 }
