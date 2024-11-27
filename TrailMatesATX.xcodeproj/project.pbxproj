@@ -459,6 +459,7 @@
 				FACEBOOK_CLIENT_TOKEN = b430c6ab2b0651f6b8409e09dcf57579;
 				FIREBASE_AUTH_URL_SCHEME = "app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78";
 				GENERATE_INFOPLIST_FILE = YES;
+				GOOGLE_API_KEY = ***REMOVED***;
 				INFOPLIST_FILE = TrailMates/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
@@ -501,6 +502,7 @@
 				FACEBOOK_CLIENT_TOKEN = b430c6ab2b0651f6b8409e09dcf57579;
 				FIREBASE_AUTH_URL_SCHEME = "app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78";
 				GENERATE_INFOPLIST_FILE = YES;
+				GOOGLE_API_KEY = ***REMOVED***;
 				INFOPLIST_FILE = TrailMates/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
