@@ -1,4 +1,5 @@
 // MARK: - MapView+AnnotationManagement.swift
+import MapKit
 extension UnifiedMapView {
     // Helper methods for managing annotations
     func addFriendAnnotations(_ friends: [User], to mapView: MKMapView, isMock: Bool = false) {

@@ -46,7 +46,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				App/Info.plist,
-				"Components/MapView+AnnotationManagement.swift",
 				"Preview Content/Preview Assets.xcassets",
 				"Resources/Preview Content/Preview Assets.xcassets",
 			);
@@ -456,6 +455,9 @@
 				DEVELOPMENT_ASSET_PATHS = "\"TrailMates/Preview Content\"";
 				DEVELOPMENT_TEAM = BN58T9KR6C;
 				ENABLE_PREVIEWS = YES;
+				FACEBOOK_APP_ID = 453349974453925;
+				FACEBOOK_CLIENT_TOKEN = b430c6ab2b0651f6b8409e09dcf57579;
+				FIREBASE_AUTH_URL_SCHEME = "app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TrailMates/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
@@ -495,6 +497,9 @@
 				DEVELOPMENT_ASSET_PATHS = "\"TrailMates/Preview Content\"";
 				DEVELOPMENT_TEAM = BN58T9KR6C;
 				ENABLE_PREVIEWS = YES;
+				FACEBOOK_APP_ID = 453349974453925;
+				FACEBOOK_CLIENT_TOKEN = b430c6ab2b0651f6b8409e09dcf57579;
+				FIREBASE_AUTH_URL_SCHEME = "app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TrailMates/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
