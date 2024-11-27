@@ -21,20 +21,20 @@
 			<string>com.bridges.trailmates.firebaseauth</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78</string>
+				<string>${FIREBASE_AUTH_URL_SCHEME</string>
 			</array>
 		</dict>
 	</array>
 	<key>FacebookAppID</key>
-	<string>453349974453925</string>
+	<string>${FACEBOOK_APP_ID}</string>
 	<key>FacebookClientToken</key>
-	<string>dfc71bba24a2219e87f783c2096ec303</string>
+	<string>${FACEBOOK_CLIENT_TOKEN}</string>
 	<key>FacebookDisplayName</key>
 	<string>TrailMates</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<string>true</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
-	<string>Trailmates needs to access to your calendar to add events you're attending</string>
+	<string>Trailmates needs to access to your calendar to add events you&apos;re attending</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>magic-retro.ttf</string>

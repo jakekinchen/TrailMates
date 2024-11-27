@@ -51,43 +51,55 @@ struct LocationPickerView: View {
     @State private var mapView: MKMapView?
     @State private var isDragging = false
     @State private var showCustomPin = true
+    @State private var isMapInitialized = false
     
-    @State private var isProgrammaticChange = false  // Add this
+    // Add this to track internal state
+    @State private var internalSelectedLocation: LocationSelection?
+    
+    // Add this to track the current map center for custom locations
+    @State private var currentCustomLocation: LocationSelection?
+    
+    // Add a debounce time state
+    @State private var lastGeocodingTime: Date = .distantPast
+    
+    init(selectedLocation: Binding<LocationSelection?>) {
+        self._selectedLocation = selectedLocation
+        self._internalSelectedLocation = State(initialValue: selectedLocation.wrappedValue)
+    }
+    
+    private func updateSelectedLocation(_ location: LocationSelection) {
+        print("🎯 START updateSelectedLocation")
+        print("🎯 Before update - internalSelectedLocation: \(String(describing: internalSelectedLocation))")
+        print("🎯 Before update - selectedLocation: \(String(describing: selectedLocation))")
         
-        // Modify selectRecommendedLocation:
-        private func selectRecommendedLocation(_ item: LocationItem) {
-            guard selectedLocation?.name != item.title else { return }
-            print("📍 selectRecommendedLocation called for \(item.title)")
-            guard let mapView = mapView else { return }
-            
-            // Update selected location
-            selectedLocation = LocationSelection.fromLocationItem(item)
-            showCustomPin(false)
-            
-            // Mark as programmatic change
-            isProgrammaticChange = true
-            
-            // Use coordinator to handle region change
-            let newRegion = MKCoordinateRegion(
-                center: item.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            )
-            mapView.setRegionProgrammatically(newRegion)
-            
-            // Reset after slight delay
+        internalSelectedLocation = location
+        selectedLocation = location
+        
+        print("🎯 After update - internalSelectedLocation: \(String(describing: internalSelectedLocation))")
+        print("🎯 After update - selectedLocation: \(String(describing: selectedLocation))")
+        print("🎯 END updateSelectedLocation")
+    }
+    
+    private func selectRecommendedLocation(_ item: LocationItem) {
+        print("🎯 START selectRecommendedLocation")
+        print("🎯 Current selectedLocation: \(String(describing: selectedLocation))")
+        print("🎯 Current internalSelectedLocation: \(String(describing: internalSelectedLocation))")
+        
+        guard isMapInitialized else {
+            print("🎯 Map not initialized, deferring")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                isProgrammaticChange = false
+                self.selectRecommendedLocation(item)
             }
-            
-            if let annotation = mapView.annotations.first(where: { annotation in
-                if let recommendedAnnotation = annotation as? RecommendedLocationAnnotation {
-                    return recommendedAnnotation.locationItem.title == item.title
-                }
-                return false
-            }) {
-                mapView.selectAnnotation(annotation, animated: true)
-            }
+            return
         }
+        
+        let newLocation = LocationSelection.fromLocationItem(item)
+        print("🎯 Created new location: \(newLocation.name)")
+        updateSelectedLocation(newLocation)
+        print("🎯 After updateSelectedLocation - selectedLocation: \(String(describing: selectedLocation))")
+        showCustomPin(false)
+        print("🎯 END selectRecommendedLocation")
+    }
     
     var body: some View {
         NavigationView {
@@ -103,15 +115,22 @@ struct LocationPickerView: View {
                         onLocationSelected: { location in
                             selectRecommendedLocation(location)
                         },
-                        onRegionChanged: { _ in
+                        onRegionChanged: { region in
                             handleMapRegionChange()
+                            if showCustomPin {
+                                updateCustomLocation(for: region.center)
+                            }
                         }
                     )
                 )
                 .ignoresSafeArea(edges: .bottom)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        isMapInitialized = true
+                    }
+                }
                 
-                // Center indicator - only show when no recommended location is selected
-                if showCustomPin {
+                if showCustomPin && isMapInitialized {
                     CustomPin(isSelected: false, isDragging: $isDragging)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -151,23 +170,30 @@ struct LocationPickerView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Select") {
-                        if !showCustomPin {
-                            // We have a recommended location selected
-                            dismiss()
-                        } else {
-                            // We're selecting a custom location
-                            Task {
-                                await selectCustomLocation()
-                                await MainActor.run {
-                                    dismiss()
-                                }
-                            }
-                        }
+                        confirmSelection()
                     }
                     .foregroundColor(Color("pine"))
-                    .disabled(selectedLocation == nil && showCustomPin)
+                    .disabled(selectedLocation == nil && currentCustomLocation == nil)
                 }
             }
+        }
+        .onAppear {
+            print("📍 LocationPickerView appeared with location: \(String(describing: selectedLocation))")
+            if let existing = selectedLocation {
+                internalSelectedLocation = existing
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isMapInitialized = true
+            }
+        }
+        .onChange(of: selectedLocation) { oldValue, newValue in
+            print("🗺 LocationPickerView: selectedLocation changed to: \(String(describing: newValue))")
+        }
+        .onDisappear {
+            // No longer needed
+            // geocodingDebouncer?.invalidate()
+            // geocodingDebouncer = nil
         }
     }
     
@@ -183,37 +209,38 @@ struct LocationPickerView: View {
     }
     
     private func handleMapRegionChange() {
-        print("🗺 handleMapRegionChange called, isDragging: \(isDragging), isProgrammatic: \(isProgrammaticChange)")
-        
-        // Ignore programmatic changes
-        if isProgrammaticChange {
-            print("🗺 Ignoring programmatic change")
-            return
-        }
+        print("🗺 handleMapRegionChange called, isDragging: \(isDragging)")
         
         guard let mapView = mapView else {
             print("🗺 Early return - no mapView")
             return
         }
         
-        if let selectedLocation = selectedLocation, selectedLocation.isRecommended {
+        let center = mapView.region.center
+        guard isValidCoordinate(center) else {
+            print("🗺 Invalid coordinates detected in region change")
+            return
+        }
+        
+        if let selectedLocation = selectedLocation,
+           selectedLocation.isRecommended,
+           isValidCoordinate(selectedLocation.coordinate) {
             let selectedCoordinate = selectedLocation.coordinate
-            let centerCoordinate = mapView.region.center
+            let centerCoordinate = center
             
             let distance = CLLocation(latitude: selectedCoordinate.latitude, longitude: selectedCoordinate.longitude)
                 .distance(from: CLLocation(latitude: centerCoordinate.latitude, longitude: centerCoordinate.longitude))
             
-            let thresholdDistance: CLLocationDistance = 5  // Increased from 2m to 5m
+            let thresholdDistance: CLLocationDistance = 5
             
             print("🗺 Distance between selected RL and center: \(distance) meters")
             
             if distance > thresholdDistance {
-                print("🗺 Distance threshold exceeded, showing custom pin")
                 self.selectedLocation = nil
-                showCustomPin(true)  // Using centralized method
+                currentCustomLocation = nil  // Reset custom location too
+                showCustomPin(true)
             }
         } else if !showCustomPin {
-            // Ensure custom pin is visible when no RL is selected
             showCustomPin(true)
         }
     }
@@ -224,15 +251,25 @@ struct LocationPickerView: View {
     }
     
     private func selectCustomLocation() async {
-            guard let mapView = mapView else { return }
-            
-            let locationName = await getLocationName(for: mapView.region.center)
-            selectedLocation = LocationSelection(
-                coordinate: mapView.region.center,
-                name: locationName,
-                isRecommended: false
-            )
+        print("🗺 selectCustomLocation called")
+        guard let mapView = mapView else {
+            print("🗺 No mapView available")
+            return
         }
+        
+        let center = mapView.region.center
+        guard isValidCoordinate(center) else {
+            print("🗺 Invalid coordinates detected")
+            return
+        }
+            
+        let locationName = await getLocationName(for: center)
+        selectedLocation = LocationSelection(
+            coordinate: center,
+            name: locationName,
+            isRecommended: false
+        )
+    }
     
     private func getLocationName(for coordinate: CLLocationCoordinate2D) async -> String {
             let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
@@ -261,6 +298,64 @@ struct LocationPickerView: View {
             
             return "Selected Location"
         }
+    
+    private func isValidCoordinate(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        return coordinate.latitude.isFinite && 
+               coordinate.longitude.isFinite &&
+               coordinate.latitude >= -90 && coordinate.latitude <= 90 &&
+               coordinate.longitude >= -180 && coordinate.longitude <= 180
+    }
+    
+    private func updateCustomLocation(for coordinate: CLLocationCoordinate2D) {
+        let now = Date()
+        // Only update if enough time has passed (500ms)
+        guard now.timeIntervalSince(lastGeocodingTime) > 0.5 else { return }
+        
+        Task {
+            guard isValidCoordinate(coordinate) else { return }
+            let locationName = await getLocationName(for: coordinate)
+            await MainActor.run {
+                currentCustomLocation = LocationSelection(
+                    coordinate: coordinate,
+                    name: locationName,
+                    isRecommended: false
+                )
+                lastGeocodingTime = Date()
+            }
+        }
+    }
+    
+    private func confirmSelection() {
+        print("🎯 Confirming selection")
+        
+        // Create a local copy of the location to update
+        let locationToConfirm: LocationSelection?
+        
+        if !showCustomPin, let location = selectedLocation {
+            print("🎯 Confirming recommended location: \(location.name)")
+            locationToConfirm = location
+        } else if let customLocation = currentCustomLocation {
+            print("🎯 Confirming custom location: \(customLocation.name)")
+            locationToConfirm = customLocation
+        } else {
+            locationToConfirm = nil
+        }
+        
+        // Update the binding on the main thread
+        if let location = locationToConfirm {
+            DispatchQueue.main.async {
+                selectedLocation = location
+                print("🎯 Updated selectedLocation: \(String(describing: selectedLocation))")
+                
+                // Dismiss after a short delay to ensure the binding is updated
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    dismiss()
+                }
+            }
+        } else {
+            dismiss()
+        }
+    }
 }
 
 extension CLLocationCoordinate2D {

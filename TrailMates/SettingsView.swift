@@ -48,7 +48,7 @@ struct SettingsView: View {
                                     NavigationLink(destination: PrivacySettingsView()) {
                                         SettingsRow(icon: "hand.raised.fill",
                                                   title: "Privacy",
-                                                  subtitle: "Location sharing, visibility settings")
+                                                  subtitle: "Trail Location sharing, visibility settings")
                                     }
                                     
                                     NavigationLink(destination: NotificationSettingsView()) {
@@ -219,7 +219,7 @@ struct PrivacySettingsView: View {
 
     var body: some View {
             List {
-                Section(header: Text("Location Sharing")) {
+                Section(header: Text("Trail Location Sharing")) {
                     Toggle("Share with Friends", isOn: Binding(
                         get: { userManager.currentUser?.shareLocationWithFriends ?? false },
                         set: { newValue in

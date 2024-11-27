@@ -34,132 +34,136 @@ struct CreateEventView: View {
     let availableTags = ["Casual", "Fast-Paced", "Scenic", "Training", "Social", "Nature", "Urban"]
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Background tap gesture to dismiss the keyboard
+        NavigationStack {
+            Form {
+                Section(header: Text("Event Details").foregroundColor(Color("pine"))) {
+                    TextField("Title", text: $title)
+                        .foregroundColor(Color("pine"))
+                        .focused($focusedField, equals: .title)
+                        .submitLabel(.next)
+                        .onSubmit {
+                            focusedField = .description
+                        }
                     
-                Form {
-                    Section(header: Text("Event Details").foregroundColor(Color("pine"))) {
-                        TextField("Title", text: $title)
-                            .foregroundColor(Color("pine"))
-                            .focused($focusedField, equals: .title)
-                            .submitLabel(.next)
-                            .onSubmit {
-                                focusedField = .description
-                            }
-                        
-                        TextField("Description", text: $description)
-                            .foregroundColor(Color("pine"))
-                            .focused($focusedField, equals: .description)
-                            .submitLabel(.next)
-                            .onSubmit {
-                               // dateFieldIsFocused = true
-                            }
-                        
-                        FocusableDatePicker(
-                            title: "Date & Time",
-                            date: $date,
-                            isFocused: $dateFieldIsFocused,
-                            minuteInterval: 15
-                        )
-                        .onChange(of: date) {
-                            dateFieldIsFocused = false
+                    TextField("Description", text: $description)
+                        .foregroundColor(Color("pine"))
+                        .focused($focusedField, equals: .description)
+                        .submitLabel(.next)
+                        .onSubmit {
+                           // dateFieldIsFocused = true
                         }
-                        
-                        Picker("Event Type", selection: $eventType) {
-                            Text("Walk").tag(Event.EventType.walk)
-                            Text("Run").tag(Event.EventType.run)
-                            Text("Bike").tag(Event.EventType.bike)
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-                        .padding(.vertical, 8)
+                    
+                    FocusableDatePicker(
+                        title: "Date & Time",
+                        date: $date,
+                        minuteInterval: 15
+                    )
+                    .onChange(of: date) {
+                        dateFieldIsFocused = false
                     }
                     
-                    Section(header: Text("Location").foregroundColor(Color("pine"))) {
-                        LocationSectionView(
-                            selectedLocationInfo: $selectedLocationInfo,
-                            onTap: {
-                                showLocationPicker = true
-                            }
-                        )
+                    Picker("Event Type", selection: $eventType) {
+                        Text("Walk").tag(Event.EventType.walk)
+                        Text("Run").tag(Event.EventType.run)
+                        Text("Bike").tag(Event.EventType.bike)
                     }
-                    
-                    Section(header: Text("Tags").foregroundColor(Color("pine"))) {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
-                                ForEach(availableTags, id: \.self) { tag in
-                                    TagButton(
-                                        title: tag,
-                                        isSelected: selectedTags.contains(tag),
-                                        action: {
-                                            if selectedTags.contains(tag) {
-                                                selectedTags.remove(tag)
-                                            } else {
-                                                selectedTags.insert(tag)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        
+                    .pickerStyle(SegmentedPickerStyle())
+                    .padding(.vertical, 8)
+                }
+                
+                Section(header: Text("Location").foregroundColor(Color("pine"))) {
+                    LocationSectionView(
+                        selectedLocationInfo: $selectedLocationInfo,
+                        onTap: handleLocationSelection
+                    )
+                    .contentShape(Rectangle())
+                }
+                
+                Section(header: Text("Tags").foregroundColor(Color("pine"))) {
+                    ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
-                            TextField("Add custom tag", text: $customTag)
-                                .focused($focusedField, equals: .customTag)
-                                .submitLabel(.done)
-                                .onSubmit {
-                                    addCustomTag()
-                                }
-                            Button("Add") {
+                            ForEach(availableTags, id: \.self) { tag in
+                                TagButton(
+                                    title: tag,
+                                    isSelected: selectedTags.contains(tag),
+                                    action: {
+                                        if selectedTags.contains(tag) {
+                                            selectedTags.remove(tag)
+                                        } else {
+                                            selectedTags.insert(tag)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    HStack {
+                        TextField("Add custom tag", text: $customTag)
+                            .focused($focusedField, equals: .customTag)
+                            .submitLabel(.done)
+                            .onSubmit {
                                 addCustomTag()
                             }
-                            .disabled(customTag.isEmpty)
+                        Button("Add") {
+                            addCustomTag()
                         }
-                    }
-                    
-                    Section(header: Text("Privacy").foregroundColor(Color("pine"))) {
-                        Toggle("Public Event", isOn: Binding(
-                            get: { !isPublic },
-                            set: { isPublic = !$0 }
-                        ))
-                        .tint(Color("pine"))
-                    }
-                    
-                    Section {
-                        Button(action: createEvent) {
-                            Text("Create Event")
-                                .frame(maxWidth: .infinity)
-                                .foregroundColor(Color("alwaysBeige"))
-                                .fontWeight(.semibold)
-                        }
-                        .listRowBackground(Color("pumpkin"))
+                        .disabled(customTag.isEmpty)
                     }
                 }
-                .onTapGesture {
-                    focusedField = nil
-                    dateFieldIsFocused = false
+                
+                Section(header: Text("Privacy").foregroundColor(Color("pine"))) {
+                    Toggle("Public Event", isOn: Binding(
+                        get: { !isPublic },
+                        set: { isPublic = !$0 }
+                    ))
+                    .tint(Color("pine"))
                 }
-                .navigationTitle("Create Event")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Cancel") {
-                            dismiss()
-                        }
-                        .foregroundColor(Color("pine"))
+                
+                Section {
+                    Button(action: createEvent) {
+                        Text("Create Event")
+                            .frame(maxWidth: .infinity)
+                            .foregroundColor(Color("alwaysBeige"))
+                            .fontWeight(.semibold)
                     }
+                    .listRowBackground(Color("pumpkin"))
                 }
+            }
+            .navigationTitle("Create Event")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(Color("pine"))
+                }
+            }
+            .onTapGesture {
+                focusedField = nil
+                dateFieldIsFocused = false
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
         }
         .sheet(isPresented: $showLocationPicker) {
             LocationPickerView(selectedLocation: $selectedLocationInfo)
+                .transition(.opacity)
+                .animation(.easeInOut, value: showLocationPicker)
+                .onDisappear {
+                    print("📍 LocationPickerView disappeared with location: \(String(describing: selectedLocationInfo))")
+                }
         }
         .alert("Error", isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(alertMessage)
         }
+        .onChange(of: selectedLocationInfo) { oldValue, newValue in
+            print("📍 CreateEventView: Location changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
+        }
     }
+
     
     private func addCustomTag() {
             if !customTag.isEmpty {
@@ -211,7 +215,13 @@ struct CreateEventView: View {
         return true
     }
     
-   
+    private func handleLocationSelection() {
+        DispatchQueue.main.async {
+            showLocationPicker = true
+            print(" Location picker presented with current location: \(String(describing: selectedLocationInfo))")
+        }
+    }
+    
 }
 
 struct IntervalDatePicker: UIViewRepresentable {
@@ -253,43 +263,37 @@ struct IntervalDatePicker: UIViewRepresentable {
 struct FocusableDatePicker: View {
     let title: String
     @Binding var date: Date
-    @FocusState.Binding var isFocused: Bool
     let minuteInterval: Int
 
-    init(title: String, date: Binding<Date>, isFocused: FocusState<Bool>.Binding, minuteInterval: Int = 15) {
-            self.title = title
-            self._date = date
-            self._isFocused = isFocused
-            self.minuteInterval = minuteInterval
-        }
-
-        var body: some View {
-            HStack {
-                        Text(title)
-                        Spacer()
-                        IntervalDatePicker(date: $date, minuteInterval: minuteInterval, title: title)
-                    }
-            .overlay(
-                Button(action: {
-                    isFocused = true
-                }) {
-                    Color.clear
-                }
-            )
-            .focused($isFocused)
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            IntervalDatePicker(date: $date, minuteInterval: 15, title: "Date & Time")
         }
     }
+}
 
 struct LocationSectionView: View {
     @Binding var selectedLocationInfo: LocationSelection?
     let onTap: () -> Void
     
+    private func isValidCoordinate(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        return coordinate.latitude.isFinite && 
+               coordinate.longitude.isFinite &&
+               coordinate.latitude >= -90 && coordinate.latitude <= 90 &&
+               coordinate.longitude >= -180 && coordinate.longitude <= 180
+    }
+    
     var body: some View {
-        Button(action: onTap) {
+        Button(action: onTap) {  // Change to Button instead of using onTapGesture
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(selectedLocationInfo?.name ?? "Select Location")
                         .foregroundColor(selectedLocationInfo == nil ? .gray : Color("pine"))
+                        .onAppear {
+                            print("📍 LocationSectionView appeared with location: \(String(describing: selectedLocationInfo))")
+                        }
                     
                     if let location = selectedLocationInfo {
                         Text("Lat: \(String(format: "%.4f", location.coordinate.latitude)), Long: \(String(format: "%.4f", location.coordinate.longitude))")
@@ -300,8 +304,8 @@ struct LocationSectionView: View {
                 
                 Spacer()
                 
-                if let location = selectedLocationInfo {
-                    // Mini Map Preview
+                if let location = selectedLocationInfo,
+                   isValidCoordinate(location.coordinate) {
                     Map(position: .constant(MapCameraPosition.region(MKCoordinateRegion(
                         center: location.coordinate,
                         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
@@ -318,6 +322,7 @@ struct LocationSectionView: View {
                 }
             }
         }
+        .buttonStyle(PlainButtonStyle())  // This ensures the button doesn't have default styling
     }
 }
 
@@ -367,6 +372,8 @@ extension LocationPickerView {
 
 struct DatePickerWrapper: View {
     @Binding var date: Date
+    // add minuteInterval
+    
         
         var body: some View {
             DatePicker(
