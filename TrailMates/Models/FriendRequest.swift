@@ -7,8 +7,18 @@ enum FriendRequestStatus: String {
 }
 
 struct FriendRequest: Identifiable {
-    let id: UUID
-    let fromUserId: UUID
+    let id: String           // Changed to String
+    let fromUserId: String   // Changed to String
     let timestamp: Date
     let status: FriendRequestStatus
+    
+    init(id: String,
+         fromUserId: String,
+         timestamp: Date,
+         status: FriendRequestStatus) {
+        self.id = id
+        self.fromUserId = fromUserId
+        self.timestamp = timestamp
+        self.status = status
+    }
 }

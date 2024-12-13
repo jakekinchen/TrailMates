@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		73611DDC2D01FD8F00868529 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 73611DDB2D01FD8F00868529 /* FirebaseFunctions */; };
 		73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */; };
 		73D868C62CED5F7000AF0CAD /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C52CED5F7000AF0CAD /* FirebaseAuth */; };
 		73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C72CED5F7000AF0CAD /* FirebaseCore */; };
@@ -82,6 +83,7 @@
 				73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
 				73D869732CEF8D6C00AF0CAD /* FacebookCore in Frameworks */,
 				73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */,
+				73611DDC2D01FD8F00868529 /* FirebaseFunctions in Frameworks */,
 				73D868CA2CED5F7000AF0CAD /* FirebaseDatabase in Frameworks */,
 				73D868CC2CED5F7000AF0CAD /* FirebaseFirestore in Frameworks */,
 				73D869962CF02DA000AF0CAD /* FirebaseStorage in Frameworks */,
@@ -164,6 +166,7 @@
 				73D869722CEF8D6C00AF0CAD /* FacebookCore */,
 				73D869742CEF8D6C00AF0CAD /* FacebookLogin */,
 				73D869952CF02DA000AF0CAD /* FirebaseStorage */,
+				73611DDB2D01FD8F00868529 /* FirebaseFunctions */,
 			);
 			productName = TrailMates;
 			productReference = 73266DA92CAEDBF60087B7A1 /* TrailMatesATX.app */;
@@ -663,6 +666,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		73611DDB2D01FD8F00868529 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
 		73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

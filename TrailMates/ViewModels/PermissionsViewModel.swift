@@ -153,7 +153,7 @@ class PermissionsViewModel: ObservableObject {
     
     private func setupLocationStatusObservation() {
         print("Setting up location status observation")
-        locationManager.setAuthorizationCallback { [weak self] newStatus in
+        locationManager.setAuthorizationCallback { [weak self] (newStatus: CLAuthorizationStatus) in
             guard let self = self else { return }
             print("Received new location status: \(newStatus.rawValue)")
             

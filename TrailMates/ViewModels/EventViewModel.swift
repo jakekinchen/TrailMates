@@ -4,20 +4,37 @@ import CoreLocation
 
 @MainActor
 class EventViewModel: ObservableObject {
+    // MARK: - Singleton
+    static let shared = EventViewModel()
+    
     // MARK: - Published Properties
-    @Published var events: [Event] = []
-    @Published var errorMessage: String? = nil  // Optional property to handle errors if needed in the future
+    @Published private(set) var events: [Event] = []
+    @Published private(set) var isLoading = false
+    @Published private(set) var errorMessage: String?
     
     // MARK: - Private Properties
-    private let dataProvider: DataProvider
+    let dataProvider: FirebaseDataProvider
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
-    /// Synchronous initializer compatible with SwiftUI's @StateObject
-    /// - Parameter dataProvider: An object conforming to DataProvider protocol. Defaults to MockDataProvider.
-    init(dataProvider: DataProvider = MockDataProvider()) {
+    private init(dataProvider: FirebaseDataProvider = FirebaseDataProvider.shared) {
         self.dataProvider = dataProvider
-        // Initiate asynchronous task to load events without blocking the initializer
+        setupSubscriptions()
         Task { await loadEvents() }
+    }
+    
+    // MARK: - Private Methods
+    private func setupSubscriptions() {
+        // Add any Combine subscriptions here
+    }
+    // MARK: - Public Methods
+    
+    /// Asynchronously loads all events from the data provider
+    func loadEvents() async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        self.events = await dataProvider.fetchAllEvents()
     }
     
     /// Groups events by their date sections
@@ -28,10 +45,7 @@ class EventViewModel: ObservableObject {
         // Sort events by date
         let sortedEvents = events.sorted { $0.dateTime < $1.dateTime }
         
-        // Create array to group events with their section date
-        var groupedEvents: [(sectionDate: Date, title: String, events: [Event])] = []
-        
-        // Create a dictionary to collect events for each section
+        // Create dictionary to collect events for each section
         var sectionDict: [Date: [Event]] = [:]
         
         for event in sortedEvents {
@@ -50,9 +64,10 @@ class EventViewModel: ObservableObject {
             sectionDict[sectionDate, default: []].append(event)
         }
         
-        // Now create the groupedEvents array
+        // Create the groupedEvents array with proper titles
+        var groupedEvents: [(sectionDate: Date, title: String, events: [Event])] = []
+        
         for (sectionDate, events) in sectionDict {
-            // Determine the section title
             let title: String
             if calendar.isDateInToday(sectionDate) {
                 title = "Today"
@@ -61,94 +76,21 @@ class EventViewModel: ObservableObject {
             } else if sectionDate < now {
                 title = "Past"
             } else {
-                // Add day of the week for future dates
                 let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE, MMMM d" // "Monday, January 1"
+                formatter.dateFormat = "EEEE, MMMM d"
                 title = formatter.string(from: sectionDate)
             }
             
             groupedEvents.append((sectionDate: sectionDate, title: title, events: events))
         }
         
-        // Sort the groupedEvents by sectionDate
-        let sortedGroupedEvents = groupedEvents.sorted { $0.sectionDate < $1.sectionDate }
-        
-        // Map to EventGroup and apply custom sorting for special titles
-        return sortedGroupedEvents.map { EventsView.EventGroup(title: $0.title, events: $0.events) }
-            .sorted { group1, group2 in
-                let order = ["Today", "Tomorrow", "Past"]
-                let index1 = order.firstIndex(of: group1.title) ?? Int.max
-                let index2 = order.firstIndex(of: group2.title) ?? Int.max
-                
-                if index1 != index2 {
-                    return index1 < index2
-                } else {
-                    // If both titles are not special, compare their dates
-                    let date1 = groupedEvents.first { $0.title == group1.title }?.sectionDate ?? Date.distantFuture
-                    let date2 = groupedEvents.first { $0.title == group2.title }?.sectionDate ?? Date.distantFuture
-                    return date1 < date2
-                }
-            }
+        return groupedEvents
+            .sorted { $0.sectionDate < $1.sectionDate }
+            .map { EventsView.EventGroup(title: $0.title, events: $0.events) }
     }
     
-    /// Filters events based on user preferences and active segment
-    func getFilteredEvents(for user: User, activeSegment: String, showOnlyMyEvents: Bool) -> [Event] {
-        let allEvents = events
-        
-        // First apply the showOnlyMyEvents filter if enabled
-        let eventsAfterMyEventsFilter = showOnlyMyEvents ?
-        allEvents.filter { event in
-            event.hostId == user.id || event.attendeeIds.contains(user.id)
-        } : allEvents
-        
-        // Then filter based on segment
-        switch activeSegment {
-        case "myEvents":
-            // Show only events where the user is the host
-            return eventsAfterMyEventsFilter.filter { event in
-                event.hostId == user.id
-            }
-            
-        case "circle":
-            // Show events from friends, including events user is attending
-            return eventsAfterMyEventsFilter.filter { event in
-                user.friends.contains(event.hostId)
-            }
-            
-        case "explore":
-            // Show all public events except those from friends
-            // But don't exclude events user is attending
-            return eventsAfterMyEventsFilter.filter { event in
-                event.isPublic &&
-                event.hostId != user.id &&
-                !user.friends.contains(event.hostId)
-            }
-            
-        default:
-            return []
-        }
-    }
-    
-    // MARK: - Private Methods
-    
-    /// Asynchronously loads all events from the data provider
-    func loadEvents() async {
-        // Since fetchAllEvents() does not throw, directly assign the result
-        self.events = await dataProvider.fetchAllEvents()
-    }
-    
-    // MARK: - Public Methods
-    
-    /// Creates a new event and refreshes the events list
-    /// - Parameters:
-    ///   - user: The user creating the event
-    ///   - title: Title of the event
-    ///   - description: Optional description of the event
-    ///   - location: Geographical location of the event
-    ///   - date: Date and time of the event
-    ///   - isPublic: Privacy setting of the event
-    ///   - eventType: Type/category of the event
-    ///   - tags: Optional tags associated with the event
+    /// Creates a new event
+    /// Creates a new event
     func createEvent(
         for user: User,
         title: String,
@@ -159,8 +101,12 @@ class EventViewModel: ObservableObject {
         eventType: Event.EventType = .walk,
         tags: [String]? = nil
     ) async throws {
+        // 1. Generate a Firestore reference with a new ID
+        let (_, eventId) = dataProvider.generateNewEventReference()
+        
+        // 2. Create the event using this new ID
         let newEvent = Event(
-            id: UUID(),
+            id: eventId,
             title: title,
             description: description,
             location: location,
@@ -172,77 +118,88 @@ class EventViewModel: ObservableObject {
             attendeeIds: [],
             status: .upcoming
         )
+        
+        // 3. Save the event to Firestore using dataProvider
         try await dataProvider.saveEvent(newEvent)
+        
+        // 4. Reload events if needed
         await loadEvents()
     }
+
     
     /// Allows a user to attend an event
-    /// - Parameters:
-    ///   - userId: UUID of the user attending
-    ///   - eventId: UUID of the event to attend
-    func attendEvent(userId: UUID, eventId: UUID) async throws {
+    func attendEvent(userId: String, eventId: String) async throws {
         guard var event = await dataProvider.fetchEvent(by: eventId) else {
-            // Optionally, set an error message if the event is not found
-            self.errorMessage = "Event not found."
-            return
+            throw EventError.eventNotFound
         }
+        
         event.attendeeIds.insert(userId)
         try await dataProvider.saveEvent(event)
         await loadEvents()
     }
     
-    /// Cancels an event if the requester is the host
-    /// - Parameters:
-    ///   - eventId: UUID of the event to cancel
-    ///   - hostId: UUID of the host requesting cancellation
-    /// - Returns: Boolean indicating success or failure
-    func cancelEvent(eventId: UUID, hostId: UUID) async throws -> Bool {
-        guard let event = await dataProvider.fetchEvent(by: eventId),
-              event.hostId == hostId else {
-            // Optionally, set an error message if unauthorized or event not found
-            self.errorMessage = "Unauthorized to cancel this event or event not found."
-            return false
-        }
-        try await dataProvider.deleteEvent(eventId)
-        await loadEvents()
-        return true
-    }
-    
-    /// Allows a user to leave an event they are attending
-    /// - Parameters:
-    ///   - userId: UUID of the user leaving
-    ///   - eventId: UUID of the event to leave
-    func leaveEvent(userId: UUID, eventId: UUID) async throws {
+    /// Allows a user to leave an event
+    func leaveEvent(userId: String, eventId: String) async throws {
         guard var event = await dataProvider.fetchEvent(by: eventId) else {
-            // Optionally, set an error message if the event is not found
-            self.errorMessage = "Event not found."
-            return
+            throw EventError.eventNotFound
         }
+        
         event.attendeeIds.remove(userId)
         try await dataProvider.saveEvent(event)
         await loadEvents()
     }
     
-    /// Fetches events specific to a user
-    /// - Parameter user: The user whose events are to be fetched
-    /// - Returns: Array of events associated with the user
-    func fetchEventsForUser(_ user: User) async -> [Event] {
-        return await dataProvider.fetchUserEvents(for: user.id)
+    /// Cancels an event if the requester is the host
+    func cancelEvent(eventId: String, hostId: String) async throws -> Bool {
+        guard let event = await dataProvider.fetchEvent(by: eventId) else {
+            throw EventError.eventNotFound
+        }
+        
+        guard event.hostId == hostId else {
+            throw EventError.unauthorized
+        }
+        
+        try await dataProvider.deleteEvent(eventId)
+        await loadEvents()
+        return true
     }
     
-    /// Fetches all public events
-    /// - Returns: Array of public events
-    func fetchPublicEvents() async -> [Event] {
-        return await dataProvider.fetchPublicEvents()
+    /// Filters events based on user preferences and active segment
+    func getFilteredEvents(for user: User, activeSegment: String, showOnlyMyEvents: Bool) -> [Event] {
+        let filteredEvents = showOnlyMyEvents ?
+            events.filter { $0.hostId == user.id || $0.attendeeIds.contains(user.id) } :
+            events
+        
+        switch activeSegment {
+        case "myEvents":
+            return filteredEvents.filter { $0.hostId == user.id }
+        case "circle":
+            return filteredEvents.filter { user.friends.contains($0.hostId) }
+        case "explore":
+            return filteredEvents.filter {
+                $0.isPublic &&
+                $0.hostId != user.id &&
+                !user.friends.contains($0.hostId)
+            }
+        default:
+            return []
+        }
     }
-    
-    
-    /// Fetches events filtered by their type
-    /// - Parameter type: The event type to filter by
-    /// - Returns: Array of events matching the specified type
-    func fetchEventsByType(_ type: Event.EventType) async -> [Event] {
-        let allEvents = await dataProvider.fetchAllEvents()
-        return allEvents.filter { $0.eventType == type }
+}
+
+// MARK: - Error Types
+extension EventViewModel {
+    enum EventError: LocalizedError {
+        case eventNotFound
+        case unauthorized
+        
+        var errorDescription: String? {
+            switch self {
+            case .eventNotFound:
+                return "Event not found"
+            case .unauthorized:
+                return "You are not authorized to perform this action"
+            }
+        }
     }
-    
 }

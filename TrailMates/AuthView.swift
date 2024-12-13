@@ -1,23 +1,26 @@
 import SwiftUI
 
+// MARK: - Field Type
+enum Field: Hashable {
+    case phone
+    case verification
+}
+
 struct AuthView: View {
-    @State private var showingLoginFields = false
-    @State private var showingSignupFields = false
+    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject var userManager: UserManager
+    @FocusState private var focusedField: Field?
     @State private var phoneNumber = ""
     @State private var verificationCode = ""
+    @State private var showingLoginFields = false
+    @State private var showingSignupFields = false
     @State private var isVerificationStage = false
-    @FocusState private var focusedField: Field?
-    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var isVerificationSent = false
-    @State private var errorMessage: String? = nil
+    @State private var isCheckingPhoneNumber = false
     
-    func dismissKeyboard() {
-            focusedField = nil
-        }
-
     var body: some View {
         ZStack {
-            
+            // Background from first version
             let background = Image("background")
                 .resizable()
                 .scaledToFill()
@@ -25,7 +28,7 @@ struct AuthView: View {
             background
             
             VStack(spacing: 0) {
-                // Fixed height container for header and circle
+                // Fixed height container for header and circle from first version
                 VStack(spacing: 0) {
                     // Header with back button and title
                     ZStack {
@@ -40,6 +43,8 @@ struct AuthView: View {
                                             showingSignupFields = false
                                             phoneNumber = ""
                                             verificationCode = ""
+                                            authViewModel.showError = false
+                                            authViewModel.errorMessage = ""
                                         }
                                     }
                                 }) {
@@ -72,60 +77,42 @@ struct AuthView: View {
                 Spacer()
                 Spacer()
                 
-                // Auth Buttons and Fields
+                // Auth Fields Container
                 VStack(spacing: 16) {
                     if showingLoginFields || showingSignupFields {
                         VStack(spacing: 16) {
                             if isVerificationStage {
-                                // Display phone number (non-editable)
-                                FloatingLabelTextField(
-                                    placeholder: "Phone Number",
-                                    text: .constant(phoneNumber),
-                                    keyboardType: .numberPad,
-                                    contentType: .telephoneNumber,
-                                    isEnabled: false,
-                                    field: .phone,
-                                    focusedField: $focusedField
-                                )
-                                
-                                // Verification Code Input
                                 FloatingLabelTextField(
                                     placeholder: "Verification Code",
                                     text: $verificationCode,
                                     keyboardType: .numberPad,
                                     contentType: .oneTimeCode,
-                                    isEnabled: true,
+                                    isEnabled: !authViewModel.isLoading,
                                     field: .verification,
                                     focusedField: $focusedField
                                 )
+                                .onChange(of: verificationCode) { oldValue, newValue in
+                                    authViewModel.verificationCode = newValue
+                                }
                                 .transition(.moveAndFade)
                             } else {
-                                // Regular phone number input
                                 FloatingLabelTextField(
                                     placeholder: "Phone Number",
                                     text: $phoneNumber,
-                                    keyboardType: .numberPad,
+                                    keyboardType: .phonePad,
                                     contentType: .telephoneNumber,
-                                    isEnabled: true,
+                                    isEnabled: !authViewModel.isLoading,
                                     field: .phone,
                                     focusedField: $focusedField
                                 )
-                                .onChange(of: phoneNumber) { oldValue, newValue in
-                                    let digitsOnly = newValue.filter { $0.isNumber }
-                                    if digitsOnly.count > 11 {
-                                        phoneNumber = String(digitsOnly.prefix(11)) // Limit to 10 digits
-                                    } else {
-                                        phoneNumber = digitsOnly
-                                    }
-                                }
                             }
                         }
                         .padding(.horizontal, 20)
                         .transition(.moveAndFade)
                     }
 
-                    if let errorMessage = authViewModel.errorMessage {
-                        Text(errorMessage)
+                    if !authViewModel.errorMessage.isEmpty {
+                        Text(authViewModel.errorMessage)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(Color("alwaysBeige"))
                             .multilineTextAlignment(.center)
@@ -147,56 +134,100 @@ struct AuthView: View {
                     // Buttons Container
                     VStack(spacing: 12) {
                         if isVerificationStage {
-                            // Verify Button
                             Button(action: {
-                                authViewModel.verifyCode(verificationCode)
+                                Task {
+                                    await authViewModel.verifyCode()
+                                }
                             }) {
                                 Text("Verify")
                                     .buttonStyle(primary: true)
                             }
                             .disabled(verificationCode.isEmpty)
                         } else {
-                            // Login Button
                             Button(action: {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                withAnimation(.easeOut(duration: 0.2)) {
                                     if !phoneNumber.isEmpty {
-                                        authViewModel.sendVerificationCode(to: phoneNumber)
-                                        isVerificationStage = true
-                                        showingLoginFields = true
-                                        showingSignupFields = false
-                                        isVerificationSent = true
+                                        isCheckingPhoneNumber = true
+                                        print("🔄 Login - Starting phone number check: \(phoneNumber)")
+                                        Task {
+                                            print("🔍 Login - Checking if user exists")
+                                            if (await userManager.findUserByPhoneNumber(phoneNumber)) != nil {
+                                                print("✅ Login - User found, proceeding with verification")
+                                                // User exists, proceed with login
+                                                authViewModel.phoneNumber = phoneNumber
+                                                await authViewModel.sendCode()
+                                                isVerificationStage = true
+                                                showingLoginFields = true
+                                                showingSignupFields = false
+                                                isVerificationSent = true
+                                            } else {
+                                                print("❌ Login - No user found with phone number")
+                                                // No user found with this phone number
+                                                authViewModel.showError = true
+                                                authViewModel.errorMessage = "No account found with this phone number. Please sign up instead."
+                                            }
+                                            isCheckingPhoneNumber = false
+                                        }
                                     } else {
+                                        print("⚠️ Login - Empty phone number field")
                                         showingLoginFields = true
                                         showingSignupFields = false
                                     }
                                 }
                             }) {
-                                Text("Log In")
-                                    .buttonStyle(primary: true)
+                                if isCheckingPhoneNumber {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: Color("alwaysBeige")))
+                                        .frame(maxWidth: .infinity)
+                                } else {
+                                    Text("Log In")
+                                        .buttonStyle(primary: true)
+                                }
                             }
+                            .disabled(isCheckingPhoneNumber)
                             .opacity(!showingSignupFields ? 1 : 0)
-                            .animation(.easeInOut(duration: 0.2), value: showingSignupFields)
+                            .animation(.easeOut(duration: 0.1), value: showingSignupFields)
                             
-                            // Sign Up Button
                             Button(action: {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                withAnimation(.easeOut(duration: 0.2)) {
                                     if !phoneNumber.isEmpty {
-                                        authViewModel.sendVerificationCode(to: phoneNumber)
-                                        isVerificationStage = true
-                                        showingSignupFields = true
-                                        showingLoginFields = false
-                                        isVerificationSent = true
+                                        isCheckingPhoneNumber = true
+                                        Task {
+                                            if (await userManager.findUserByPhoneNumber(phoneNumber)) != nil {
+                                                // User already exists
+                                                authViewModel.showError = true
+                                                authViewModel.errorMessage = "An account already exists with this phone number. Please log in instead."
+                                                isCheckingPhoneNumber = false
+                                                return
+                                            }
+                                            // No existing user, proceed with signup
+                                            authViewModel.phoneNumber = phoneNumber
+                                            authViewModel.isSigningUp = true
+                                            await authViewModel.sendCode()
+                                            isVerificationStage = true
+                                            showingSignupFields = true
+                                            showingLoginFields = false
+                                            isVerificationSent = true
+                                            isCheckingPhoneNumber = false
+                                        }
                                     } else {
                                         showingSignupFields = true
                                         showingLoginFields = false
                                     }
                                 }
                             }) {
-                                Text("Sign Up")
-                                    .buttonStyle(primary: false)
+                                if isCheckingPhoneNumber {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: Color("alwaysBeige")))
+                                        .frame(maxWidth: .infinity)
+                                } else {
+                                    Text("Sign Up")
+                                        .buttonStyle(primary: false)
+                                }
                             }
+                            .disabled(isCheckingPhoneNumber)
                             .opacity(!showingLoginFields ? 1 : 0)
-                            .animation(.easeInOut(duration: 0.2), value: showingLoginFields)
+                            .animation(.easeOut(duration: 0.1), value: showingLoginFields)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -205,18 +236,39 @@ struct AuthView: View {
                 Spacer()
                 Spacer()
             }
-            .onChange(of: phoneNumber) {
+            .onChange(of: phoneNumber) { oldValue, newValue in
                 if phoneNumber.count == 10 {
                     dismissKeyboard()
                 }
             }
         }
         .simultaneousGesture(TapGesture().onEnded {
-                dismissKeyboard()
-            })
+            dismissKeyboard()
+        })
         .ignoresSafeArea(.keyboard)
+        // .alert("Error", isPresented: $authViewModel.showError) {
+        //     Button("OK", role: .cancel) { }
+        // } message: {
+        //     Text(authViewModel.errorMessage)
+        // }
     }
-        
+    
+    private func dismissKeyboard() {
+        focusedField = nil
+    }
+}
+
+struct InputFormattingModifier: ViewModifier {
+    @Binding var text: String
+    let field: Field
+    
+    func body(content: Content) -> some View {
+        if field == .phone {
+            content.modifier(PhoneNumberFormatter(text: $text))
+        } else {
+            content
+        }
+    }
 }
 
 struct FloatingLabelTextField: View {
@@ -228,25 +280,9 @@ struct FloatingLabelTextField: View {
     let field: Field
     @FocusState.Binding var focusedField: Field?
 
-    init(placeholder: String,
-         text: Binding<String>,
-         keyboardType: UIKeyboardType,
-         contentType: UITextContentType,
-         isEnabled: Bool = true,
-         field: Field,
-         focusedField: FocusState<Field?>.Binding) {
-        self.placeholder = placeholder
-        self._text = text
-        self.keyboardType = keyboardType
-        self.contentType = contentType
-        self.isEnabled = isEnabled
-        self.field = field
-        self._focusedField = focusedField
-    }
-
     var body: some View {
         ZStack(alignment: .leading) {
-            // Placeholder Label
+            // Placeholder Label that floats above
             Text(placeholder)
                 .font(.system(size: !text.isEmpty ? 10 : 16))
                 .padding(.horizontal, 8)
@@ -256,33 +292,52 @@ struct FloatingLabelTextField: View {
                 .allowsHitTesting(false)
                 .zIndex(1)
 
-            // TextField for Input
             TextField("", text: $text)
-                .focused($focusedField, equals: field)
                 .keyboardType(keyboardType)
                 .textContentType(contentType)
                 .disabled(!isEnabled)
-                .offset(y: 4)
-                .padding(.horizontal, 16)
+                .focused($focusedField, equals: field)
+                .offset(y: !text.isEmpty ? 2 : 0)
+                .onTapGesture {
+                    if focusedField == field {
+                        UIPasteboard.general.string = text
+                        text = ""
+                    }
+                    focusedField = field
+                }
+                .onChange(of: text) { oldValue, newValue in
+                    let oldDigitCount = oldValue.filter { $0.isNumber }.count
+                    let newDigitCount = newValue.filter { $0.isNumber }.count
+                    
+                    // Handle phone number field
+                    if field == .phone && newDigitCount >= 11 && newDigitCount > oldDigitCount {
+                        focusedField = nil
+                    }
+                    
+                    // Handle verification code field
+                    if field == .verification {
+                        // Only allow 6 digits for verification code
+                        if newDigitCount > 6 {
+                            text = String(newValue.filter { $0.isNumber }.prefix(6))
+                        }
+                        // Dismiss keyboard when 6 digits are entered
+                        if newDigitCount == 6 && newDigitCount > oldDigitCount {
+                            focusedField = nil
+                        }
+                    }
+                }
+                .modifier(InputFormattingModifier(text: $text, field: field))
                 .padding(.vertical, 16)
+                .padding(.horizontal, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color("alwaysPine"))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color("alwaysBeige"), lineWidth: isEnabled ? 1 : 0.5)
+                                .stroke(Color("alwaysBeige"), lineWidth: 1)
                         )
                 )
                 .foregroundColor(Color("alwaysBeige"))
-                .opacity(isEnabled ? 1 : 0.7)
-                .if(field == .phone) { view in
-                    view.modifier(PhoneNumberFormatter(text: $text))
-                }
-                .onChange(of: text) { oldValue, newValue in
-                    if newValue.count >= 10 {
-                        focusedField = nil  // Dismiss keyboard
-                    }
-                }
         }
         .padding(.top, 12)
     }

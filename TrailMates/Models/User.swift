@@ -2,24 +2,41 @@ import Foundation
 import CoreLocation
 import MapKit
 import UIKit
+import SwiftData
 
-struct User: Codable, Identifiable, Equatable {
-    let id: UUID
+/// A user model that represents a TrailMates user with both local and remote data storage capabilities.
+/// The model uses SwiftData for local persistence and Firebase for remote storage.
+@Model
+final class User: Codable, Identifiable, Equatable {
+    var id: String
     var firstName: String
     var lastName: String
     var username: String
-    var profileImage: UIImage?
-    var profileImageData: Data?
+    var phoneNumber: String
+    var joinDate: Date
+    
+    // Profile Image properties
+    @Attribute(.externalStorage) var profileImageData: Data?
     var profileImageUrl: String?
     var profileThumbnailUrl: String?
+    var profileImage: UIImage? {
+        get {
+            if let data = profileImageData {
+                return UIImage(data: data)
+            }
+            return nil
+        }
+        set {
+            profileImageData = newValue?.jpegData(compressionQuality: 0.8)
+        }
+    }
+    
     var isActive: Bool
-    var friends: [UUID]
+    var friends: [String]
     var doNotDisturb: Bool
-    var phoneNumber: String
-    var createdEventIds: [UUID]
-    var attendingEventIds: [UUID]
-    let joinDate: Date
-    var visitedLandmarkIds: [UUID]
+    var createdEventIds: [String]
+    var attendingEventIds: [String]
+    var visitedLandmarkIds: [String]
     
     // Notification Settings
     var receiveFriendRequests: Bool
@@ -60,31 +77,30 @@ struct User: Codable, Identifiable, Equatable {
     }
     
     private enum CodingKeys: String, CodingKey {
-        case id, firstName, lastName, username, profileImageData, profileImageUrl, profileThumbnailUrl
-        case isActive, friends, doNotDisturb, phoneNumber, createdEventIds, attendingEventIds
-        case joinDate, visitedLandmarkIds, receiveFriendRequests, receiveFriendEvents
+        case id, firstName, lastName, username, phoneNumber, joinDate
+        case profileImageUrl, profileThumbnailUrl, profileImageData
+        case isActive, friends, doNotDisturb, createdEventIds, attendingEventIds
+        case visitedLandmarkIds, receiveFriendRequests, receiveFriendEvents
         case receiveEventUpdates, shareLocationWithFriends, shareLocationWithEventHost
-        case shareLocationWithEventGroup, allowFriendsToInviteOthers, facebookId
-        case location, latitude, longitude
+        case shareLocationWithEventGroup, allowFriendsToInviteOthers
+        case latitude, longitude, facebookId
     }
     
-    // Custom initializer with default values
-    init(id: UUID,
-         firstName: String,
-         lastName: String,
-         username: String,
+    init(id: String,
+         firstName: String = "",
+         lastName: String = "",
+         username: String = "",
+         phoneNumber: String,
+         joinDate: Date = Date(),
          profileImage: UIImage? = nil,
-         profileImageData: Data? = nil,
          profileImageUrl: String? = nil,
          profileThumbnailUrl: String? = nil,
          isActive: Bool = true,
-         friends: [UUID] = [],
+         friends: [String] = [],
          doNotDisturb: Bool = false,
-         phoneNumber: String,
-         createdEventIds: [UUID] = [],
-         attendingEventIds: [UUID] = [],
-         joinDate: Date,
-         visitedLandmarkIds: [UUID] = [],
+         createdEventIds: [String] = [],
+         attendingEventIds: [String] = [],
+         visitedLandmarkIds: [String] = [],
          receiveFriendRequests: Bool = true,
          receiveFriendEvents: Bool = true,
          receiveEventUpdates: Bool = true,
@@ -94,52 +110,67 @@ struct User: Codable, Identifiable, Equatable {
          allowFriendsToInviteOthers: Bool = true,
          location: CLLocationCoordinate2D? = nil) {
         
+        // Initialize all stored properties first
         self.id = id
         self.firstName = firstName
         self.lastName = lastName
         self.username = username
-        self.profileImage = profileImage
-        self.profileImageData = profileImageData
+        self.phoneNumber = phoneNumber
+        self.joinDate = joinDate
+        
+        // Initialize profile image data directly
+        self.profileImageData = profileImage?.jpegData(compressionQuality: 0.8)
         self.profileImageUrl = profileImageUrl
         self.profileThumbnailUrl = profileThumbnailUrl
-        self.isActive = isActive
+        
+        // Initialize arrays
         self.friends = friends
-        self.doNotDisturb = doNotDisturb
-        self.phoneNumber = phoneNumber
         self.createdEventIds = createdEventIds
         self.attendingEventIds = attendingEventIds
-        self.joinDate = joinDate
         self.visitedLandmarkIds = visitedLandmarkIds
+        
+        // Initialize boolean flags
+        self.isActive = isActive
+        self.doNotDisturb = doNotDisturb
+        
+        // Initialize notification settings
         self.receiveFriendRequests = receiveFriendRequests
         self.receiveFriendEvents = receiveFriendEvents
         self.receiveEventUpdates = receiveEventUpdates
+        
+        // Initialize privacy settings
         self.shareLocationWithFriends = shareLocationWithFriends
         self.shareLocationWithEventHost = shareLocationWithEventHost
         self.shareLocationWithEventGroup = shareLocationWithEventGroup
         self.allowFriendsToInviteOthers = allowFriendsToInviteOthers
+        
+        // Initialize optional properties
+        self.facebookId = nil
         self.location = location
     }
     
-    // Implement custom decoding
-    init(from decoder: Decoder) throws {
+    required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         // Decode required properties
-        id = try container.decode(UUID.self, forKey: .id)
+        id = try container.decode(String.self, forKey: .id)
         firstName = try container.decode(String.self, forKey: .firstName)
         lastName = try container.decode(String.self, forKey: .lastName)
         username = try container.decode(String.self, forKey: .username)
+        
+        // Handle profile image data with SwiftData external storage
         profileImageData = try container.decodeIfPresent(Data.self, forKey: .profileImageData)
         profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
         profileThumbnailUrl = try container.decodeIfPresent(String.self, forKey: .profileThumbnailUrl)
+        
         isActive = try container.decode(Bool.self, forKey: .isActive)
-        friends = try container.decode([UUID].self, forKey: .friends)
+        friends = try container.decode([String].self, forKey: .friends)
         doNotDisturb = try container.decode(Bool.self, forKey: .doNotDisturb)
         phoneNumber = try container.decode(String.self, forKey: .phoneNumber)
-        createdEventIds = try container.decode([UUID].self, forKey: .createdEventIds)
-        attendingEventIds = try container.decode([UUID].self, forKey: .attendingEventIds)
+        createdEventIds = try container.decode([String].self, forKey: .createdEventIds)
+        attendingEventIds = try container.decode([String].self, forKey: .attendingEventIds)
         joinDate = try container.decode(Date.self, forKey: .joinDate)
-        visitedLandmarkIds = try container.decode([UUID].self, forKey: .visitedLandmarkIds)
+        visitedLandmarkIds = try container.decode([String].self, forKey: .visitedLandmarkIds)
         
         // Decode notification settings with default values if not present
         receiveFriendRequests = try container.decodeIfPresent(Bool.self, forKey: .receiveFriendRequests) ?? true
@@ -152,22 +183,28 @@ struct User: Codable, Identifiable, Equatable {
         shareLocationWithEventGroup = try container.decodeIfPresent(Bool.self, forKey: .shareLocationWithEventGroup) ?? false
         allowFriendsToInviteOthers = try container.decodeIfPresent(Bool.self, forKey: .allowFriendsToInviteOthers) ?? true
         
-        // Handle location decoding
-        if let latitude = try container.decodeIfPresent(Double.self, forKey: .latitude),
-           let longitude = try container.decodeIfPresent(Double.self, forKey: .longitude) {
-            location = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-        } else {
+        // Handle location decoding with validation
+        let latitude = try container.decodeIfPresent(Double.self, forKey: .latitude)
+        let longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
+        
+        // Ensure both latitude and longitude are present or neither is present
+        switch (latitude, longitude) {
+        case let (lat?, lon?):
+            location = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        case (nil, nil):
             location = nil
+        default:
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "Latitude and longitude must both be present or both be absent"
+                )
+            )
         }
         
         facebookId = try container.decodeIfPresent(String.self, forKey: .facebookId)
-        
-        if let imageData = profileImageData {
-            profileImage = UIImage(data: imageData)
-        }
     }
     
-    // Implement custom encoding
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
@@ -208,11 +245,14 @@ struct User: Codable, Identifiable, Equatable {
     }
     
     static func == (lhs: User, rhs: User) -> Bool {
-        // Add all relevant properties for comparison
+        // Compare all properties including optional ones
         lhs.id == rhs.id &&
         lhs.firstName == rhs.firstName &&
         lhs.lastName == rhs.lastName &&
         lhs.username == rhs.username &&
+        lhs.profileImageData == rhs.profileImageData &&
+        lhs.profileImageUrl == rhs.profileImageUrl &&
+        lhs.profileThumbnailUrl == rhs.profileThumbnailUrl &&
         lhs.isActive == rhs.isActive &&
         lhs.friends == rhs.friends &&
         lhs.doNotDisturb == rhs.doNotDisturb &&
@@ -226,7 +266,10 @@ struct User: Codable, Identifiable, Equatable {
         lhs.shareLocationWithFriends == rhs.shareLocationWithFriends &&
         lhs.shareLocationWithEventHost == rhs.shareLocationWithEventHost &&
         lhs.shareLocationWithEventGroup == rhs.shareLocationWithEventGroup &&
-        lhs.allowFriendsToInviteOthers == rhs.allowFriendsToInviteOthers
+        lhs.allowFriendsToInviteOthers == rhs.allowFriendsToInviteOthers &&
+        lhs.facebookId == rhs.facebookId &&
+        lhs.location?.latitude == rhs.location?.latitude &&
+        lhs.location?.longitude == rhs.location?.longitude
     }
 }
 

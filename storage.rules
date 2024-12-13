@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size <= 5 * 1024 * 1024; // 5MB max
+    }
+    
+    // Profile images rules
+    match /profile_images/{userId}/{imageId} {
+      // Anyone authenticated can read profile images
+      allow read: if isAuthenticated();
+      
+      // Only owner can write their profile images
+      // Must be valid image type and size
+      allow write: if isAuthenticated() 
+        && isOwner(userId)
+        && isValidImage();
+        
+      // Allow deletion only by owner
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Default deny for everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -202,11 +202,3 @@ struct EventsView: View {
         
         }
 }
-
-struct EventsView_Previews: PreviewProvider {
-    static var previews: some View {
-        EventsView(
-            eventViewModel: EventViewModel()
-        )
-    }
-}

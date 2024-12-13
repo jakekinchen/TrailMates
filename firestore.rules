@@ -1,108 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;  
-    }
-    
-    function isValidNewUser() {
-      return request.resource.data.keys().hasAll(['id', 'phoneNumber']) 
-        && request.resource.data.id is string 
-        && request.resource.data.id.size() > 0
-        && request.resource.data.phoneNumber is string 
-        && request.resource.data.phoneNumber.size() > 0;
-    }
-    
-    function isValidUserUpdate() {
-      let requiredFields = [
-        'id',
-        'firstName', 
-        'lastName', 
-        'username',
-        'phoneNumber'
-      ];
-      
-      let optionalFields = [
-        'profileImageUrl',
-        'profileThumbnailUrl',
-        'isActive',
-        'friends',
-        'doNotDisturb',
-        'createdEventIds',
-        'attendingEventIds',
-        'joinDate',
-        'visitedLandmarkIds',
-        'receiveFriendRequests',
-        'receiveFriendEvents',
-        'receiveEventUpdates',
-        'shareLocationWithFriends',
-        'shareLocationWithEventHost',
-        'shareLocationWithEventGroup',
-        'allowFriendsToInviteOthers'
-      ];
-      
-      let allFields = requiredFields.concat(optionalFields);
-      
-      return request.resource.data.keys().hasAll(requiredFields)
-        && request.resource.data.keys().hasOnly(allFields)
-        && request.resource.data.id is string 
-        && request.resource.data.id.size() > 0
-        && request.resource.data.firstName is string 
-        && request.resource.data.firstName.size() > 0
-        && request.resource.data.lastName is string 
-        && request.resource.data.lastName.size() > 0
-        && request.resource.data.username is string 
-        && request.resource.data.username.size() > 0
-        && request.resource.data.phoneNumber is string 
-        && request.resource.data.phoneNumber.size() > 0;
-    }
-    
-    // Landmarks collection - readable by all authenticated users
-    match /landmarks/{landmark} {
-      allow read: if isAuthenticated();
-      allow write: if false;  // Only admins should be able to modify landmarks
-    }
-    
-    // Users collection rules
-    match /users/{userId} {
-      // Anyone can read basic user profile info if authenticated
-      allow read: if isAuthenticated();
-      
-      // Allow initial user creation with just id and phone number
-      allow create: if isAuthenticated() && isValidNewUser();
-      
-      // Allow updates if authenticated and document exists
-      allow update: if isAuthenticated() 
-        && (isValidNewUser() || isValidUserUpdate());
-      
-      allow delete: if isAuthenticated() && isOwner(userId);
-      
-      // Friend requests subcollection
-      match /friendRequests/{requestId} {
-        allow read, write: if isAuthenticated();
-      }
-    }
-    
-    // Events collection rules with more specific permissions
-    match /events/{eventId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && resource.data.creatorId == request.auth.uid;
-    }
-    
-    // Notifications collection rules
-    match /notifications/{notificationId} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    // Default deny
+    // Deny all reads and writes by default
     match /{document=**} {
       allow read, write: if false;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      // Allow authenticated users to read their own profile
+      allow get: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow authenticated users to update their own profile
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow creating new user documents
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.id;
+      
+      // Allow the Cloud Function to read user profiles
+      allow get: if request.auth.token.admin == true;
+      
+      // Allow querying by phone number during authentication
+      allow list: if request.auth != null 
+        && ('phoneNumber' in request.query.filters[0])
+        && request.query.filters.size() == 1;
     }
   }
 }

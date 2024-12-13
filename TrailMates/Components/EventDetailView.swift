@@ -15,7 +15,7 @@ struct EventDetailView: View {
     @ObservedObject var eventViewModel: EventViewModel
     @EnvironmentObject var userManager: UserManager
     @State private var camera: MapCameraPosition
-    @State private var localAttendeeIds: Set<UUID>
+    @State private var localAttendeeIds: Set<String>
     private let eventEditViewDelegate = EventEditViewDelegate()
         
         init(event: Event, eventViewModel: EventViewModel) {

@@ -2,17 +2,12 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var userManager: UserManager
-    @StateObject private var eventViewModel = EventViewModel()
+    @StateObject private var eventViewModel = EventViewModel.shared
     @State private var selectedTab = 0
+    @State private var showCreateEvent = false
+    @State private var showEventDetails = false
+    @State private var selectedEvent: Event?
     @State private var isRefreshing = false
-    
-    init() {
-        configureTabBarAppearance()
-        let dataProvider = FirebaseDataProvider() // or use MockDataProvider() for testing
-        _eventViewModel = StateObject(wrappedValue: EventViewModel(dataProvider: dataProvider))
-    }
-   
-    
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -62,42 +57,39 @@ struct HomeView: View {
     }
     
     private func initialRefresh() async {
-            isRefreshing = true
-            defer { isRefreshing = false }
-            
-            await userManager.refreshUserData()
-            await eventViewModel.loadEvents()
-        }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        
+        await userManager.refreshUserData()
+        await eventViewModel.loadEvents()
+    }
     
     private func refreshContent(for tab: Int) async {
         isRefreshing = true
         defer { isRefreshing = false }
         
-            switch tab {
-            case 0: // Map
-                await userManager.refreshUserData()
-                // Add any map-specific refresh logic
-                
-            case 1: // Events
-                await userManager.refreshUserData()
-                await eventViewModel.loadEvents()
-                
-            case 2: // Friends
-                await userManager.refreshUserData()
-                // Friends view has its own refresh logic
-                
-            case 3: // Profile
-                await userManager.refreshUserData()
-                
-            default:
-                break
-            }
+        switch tab {
+        case 0: // Map
+            await userManager.refreshUserData()
+            // Add any map-specific refresh logic
+            
+        case 1: // Events
+            await userManager.refreshUserData()
+            await eventViewModel.loadEvents()
+            
+        case 2: // Friends
+            await userManager.refreshUserData()
+            // Friends view has its own refresh logic
+            
+        case 3: // Profile
+            await userManager.refreshUserData()
+            
+        default:
+            break
+        }
     }
-}
-
-// UI Configuration Extension
-private extension HomeView {
-    func configureTabBarAppearance() {
+    
+    private func configureTabBarAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
         
@@ -131,13 +123,5 @@ struct RefreshIndicator: View {
             .scaleEffect(1.5)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.black.opacity(0.2))
-    }
-}
-
-// Preview
-struct HomeView_Previews: PreviewProvider {
-    static var previews: some View {
-        HomeView()
-            .environmentObject(UserManager())
     }
 }
