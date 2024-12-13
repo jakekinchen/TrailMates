@@ -11,12 +11,12 @@ import CoreLocation
 // Event Model
 struct Event: Codable, Identifiable {
     // Core properties
-    let id: UUID
+    let id: String
     var title: String
     var description: String?
     var location: CLLocationCoordinate2D
     var dateTime: Date
-    var hostId: UUID
+    var hostId: String
     
     // Event configuration
     var eventType: EventType
@@ -24,7 +24,7 @@ struct Event: Codable, Identifiable {
     var tags: [String]
     
     // Attendance tracking
-    var attendeeIds: Set<UUID>
+    var attendeeIds: Set<String>
     
     // Status
     var status: EventStatus

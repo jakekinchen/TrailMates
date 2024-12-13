@@ -12,7 +12,7 @@ import SwiftUI
 
 // MARK: - Friend Protocol
 protocol FriendRepresentable {
-    var id: UUID { get }
+    var id: String { get }
     var firstName: String { get }
     var lastName: String { get }
     var username: String { get }
@@ -38,7 +38,7 @@ struct FriendViewModel: Identifiable {
         self.friend = user
     }
     
-    var id: UUID { friend.id }
+    var id: String { friend.id }
     var firstName: String { friend.firstName }
     var lastName: String { friend.lastName }
     var fullName: String { "\(firstName) \(lastName)" }

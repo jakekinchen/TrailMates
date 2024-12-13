@@ -142,17 +142,6 @@ extension UnifiedMapView {
                 }
             }
         
-        // MARK: - Mock Data
-        func getMockFriends() async -> [User] {
-            let mockProvider = MockDataProvider()
-            let allUsers = await mockProvider.fetchAllUsers()
-            return allUsers.map { user in
-                var activeUser = user
-                activeUser.isActive = true
-                return activeUser
-            }
-        }
-        
         // MARK: - MKMapViewDelegates
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
                     switch annotation {

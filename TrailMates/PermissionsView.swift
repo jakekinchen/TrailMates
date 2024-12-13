@@ -14,8 +14,8 @@ struct PermissionsView: View {
     
     init(onComplete: @escaping () -> Void) {
         self.onComplete = onComplete
-        // Initialize LocationManager with a temporary UserManager
-        _locationManager = StateObject(wrappedValue: LocationManager(userManager: UserManager(dataProvider: MockDataProvider())))
+        // Initialize LocationManager with UserManager.shared
+        _locationManager = StateObject(wrappedValue: LocationManager(userManager: UserManager.shared))
     }
     
     var body: some View {
@@ -79,7 +79,6 @@ struct PermissionsView: View {
             }
             .navigationBarHidden(true)
             .onAppear {
-                locationManager.updateUserManager(userManager)
                 checkNotificationStatus()
             }
             .alert("Location Access Required", isPresented: $showLocationSettingsAlert) {

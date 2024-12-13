@@ -2,6 +2,22 @@ import SwiftUI
 import PhotosUI
 import Combine
 
+enum ProfileValidationError: LocalizedError {
+    case missingRequiredFields(String)
+    case invalidField(String)
+    case noCurrentUser
+    
+    var errorDescription: String? {
+        switch self {
+        case .missingRequiredFields(let message),
+             .invalidField(let message):
+            return message
+        case .noCurrentUser:
+            return "No current user found. Please try logging in again."
+        }
+    }
+}
+
 struct ProfileSetupView: View {
     @Environment(\.presentationMode) var presentationMode
         @EnvironmentObject var userManager: UserManager
@@ -10,7 +26,6 @@ struct ProfileSetupView: View {
         @State private var firstName: String = ""
         @State private var lastName: String = ""
         @State private var username: String = ""
-        let phoneNumber: String? = nil
         @State private var profileImage: UIImage?
         @State private var originalImage: UIImage?
         @State private var isLoading = false
@@ -84,11 +99,11 @@ struct ProfileSetupView: View {
         
         private var profileImageOverlay: some View {
             Circle()
-                .fill(Color.black.opacity(0.4))
+                .fill(Color.white.opacity(0.4))
                 .frame(width: 120, height: 120)
                 .overlay(
                     Image(systemName: "camera.fill")
-                        .foregroundColor(.white)
+                        .foregroundColor(Color("pine"))
                         .font(.system(size: 30))
                 )
         }
@@ -227,13 +242,22 @@ struct ProfileSetupView: View {
         
         // MARK: - Setup
         private func setupView() {
+            print("\n🔄 ProfileSetupView - Setting up view")
             if let user = userManager.currentUser {
+                print("Current User State:")
+                print("   First Name: '\(user.firstName)'")
+                print("   Last Name: '\(user.lastName)'")
+                print("   Username: '\(user.username)'")
+                
                 firstName = user.firstName
                 lastName = user.lastName
                 username = user.username
                 if let imageData = user.profileImageData {
                     profileImage = UIImage(data: imageData)
+                    print("   Profile Image: \(profileImage != nil ? "Loaded" : "Failed to load")")
                 }
+            } else {
+                print("⚠️ No current user available during setup")
             }
             
             setupKeyboardNotifications()
@@ -263,9 +287,19 @@ struct ProfileSetupView: View {
         let placeholder: String
         @Binding var text: String
         var textContentType: UITextContentType?
+        var keyboardType: UIKeyboardType = .default
+        var contentType: UITextContentType?
+        var isEnabled: Bool = true
         var autocapitalization: UITextAutocapitalizationType = .sentences
         var field: ProfileSetupView.Field
         @FocusState.Binding var focusedField: ProfileSetupView.Field?
+        
+        // Color customization
+        var backgroundColor: Color = Color("beige")
+        var foregroundColor: Color = Color("pine")
+        var borderColor: Color = Color("pine")
+        var labelColor: Color = Color("pine")
+        var backgroundOpacity: Double = 1.0
         
         @State private var isAnimated = false
         
@@ -273,16 +307,16 @@ struct ProfileSetupView: View {
             ZStack(alignment: .leading) {
                 // Background
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color("beige"))
+                    .fill(backgroundColor.opacity(backgroundOpacity))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color("pine"), lineWidth: 2)
+                            .stroke(borderColor, lineWidth: 2)
                     )
                 
                 // Floating Label
                 Text(placeholder)
                     .font(.custom("SF Pro", size: isAnimated ? 12 : 16))
-                    .foregroundColor(Color("pine").opacity(0.8))
+                    .foregroundColor(labelColor.opacity(0.8))
                     .offset(y: isAnimated ? -14 : 0)
                     .offset(x: isAnimated ? 10 : 10)
                     .animation(.spring(response: 0.2), value: isAnimated)
@@ -290,10 +324,12 @@ struct ProfileSetupView: View {
                 // Text Field
                 TextField("", text: $text)
                     .textContentType(textContentType)
+                    .keyboardType(keyboardType)
                     .autocapitalization(autocapitalization)
+                    .disabled(!isEnabled)
                     .focused($focusedField, equals: field)
                     .font(.custom("SF Pro", size: 16))
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(foregroundColor)
                     .padding(.horizontal, 12)
                     .padding(.top, isAnimated ? 8 : 0)
             }
@@ -366,105 +402,160 @@ struct ProfileSetupView: View {
         }
     }
 
-    // Save Profile Function
+    // MARK: - Save Profile Function
     private func saveProfile() async throws {
+            print("\n📝 ProfileSetupView - Starting Save Profile")
+            print("Current State Variables:")
+            print("   First Name: '\(firstName)'")
+            print("   Last Name: '\(lastName)'")
+            print("   Username: '\(username)'")
+            print("   Has Profile Image: \(profileImage != nil)")
+            
             isLoading = true
             defer { isLoading = false }
             
-            guard await validateInputs() else { return }
+            print("\n🔍 Validating Inputs...")
+            guard await validateInputs() else {
+                print("❌ Input validation failed")
+                return
+            }
+            print("✅ Input validation passed")
             
+            print("\n🔄 Updating User Profile...")
             try await updateUserProfile()
+            print("✅ User profile updated")
             
             if isEditMode {
                 presentationMode.wrappedValue.dismiss()
+            } else {
+                // For initial profile setup, persist the session and let ContentView handle navigation
+                userManager.persistUserSession()
             }
         }
 
     // Input Validation
     private func validateInputs() async -> Bool {
-            // First name validation
-            guard !firstName.isEmpty else {
-                alertMessage = "Please enter a first name."
-                showAlert = true
-                return false
-            }
+        print("\n🔍 Validating Profile Inputs")
+        print("Current Values:")
+        print("   First Name: '\(firstName)'")
+        print("   Last Name: '\(lastName)'")
+        print("   Username: '\(username)'")
         
-            // Last name validation
-            guard !lastName.isEmpty else {
-                alertMessage = "Please enter a last name."
-                showAlert = true
-                return false
-            }
-            
-            // Username presence validation
-            guard !username.isEmpty else {
-                alertMessage = "Please enter a username."
-                showAlert = true
-                return false
-            }
-            
-            // Username format validation
-            let usernameRegex = "^[a-zA-Z0-9_]{1,20}$"
-            guard username.range(of: usernameRegex, options: .regularExpression) != nil else {
-                alertMessage = "Username can only contain letters, numbers, and underscores, and must be between 1-20 characters."
-                showAlert = true
-                return false
-            }
-            
-            // Check if username is taken
-            if await userManager.isUsernameTaken(username) {
-                alertMessage = "This username is already taken. Please choose another."
-                showAlert = true
-                return false
-            }
-            
-            return true
+        // First name validation
+        guard !firstName.isEmpty else {
+            print("❌ First name is empty")
+            alertMessage = "Please enter a first name."
+            showAlert = true
+            return false
         }
+        
+        // Last name validation
+        guard !lastName.isEmpty else {
+            print("❌ Last name is empty")
+            alertMessage = "Please enter a last name."
+            showAlert = true
+            return false
+        }
+        
+        // Username presence validation
+        guard !username.isEmpty else {
+            print("❌ Username is empty")
+            alertMessage = "Please enter a username."
+            showAlert = true
+            return false
+        }
+        
+        // Username format validation
+        let usernameRegex = "^[a-zA-Z0-9_]{1,20}$"
+        guard username.range(of: usernameRegex, options: .regularExpression) != nil else {
+            print("❌ Username format invalid")
+            alertMessage = "Username can only contain letters, numbers, and underscores, and must be between 1-20 characters."
+            showAlert = true
+            return false
+        }
+        
+        // Check if username is taken
+        if await userManager.isUsernameTaken(username) {
+            print("❌ Username is already taken")
+            alertMessage = "This username is already taken. Please choose another."
+            showAlert = true
+            return false
+        }
+        
+        print("✅ All validations passed")
+        return true
+    }
 
     // Create or Update User
-    // In ProfileSetupView
     private func updateUserProfile() async throws {
-        if var currentUser = userManager.currentUser {
-            // Update existing user
+        print("\n🔄 Updating User Profile")
+        if let currentUser = userManager.currentUser {
+            print("Current User Before Update:")
+            print("   ID: \(currentUser.id)")
+            print("   First Name: '\(currentUser.firstName)'")
+            print("   Last Name: '\(currentUser.lastName)'")
+            print("   Username: '\(currentUser.username)'")
+            
+            // Detect if this is initial setup
+            let isInitialSetup = currentUser.firstName.isEmpty || 
+                                currentUser.lastName.isEmpty || 
+                                currentUser.username.isEmpty
+            
+            if isInitialSetup {
+                print("📝 Initial profile setup detected - will force save")
+            }
+            
+            // Handle profile image first if it exists
+            if let image = profileImage {
+                print("📸 Uploading profile image...")
+                try await userManager.setProfileImage(image)
+                print("✅ Profile image uploaded")
+            }
+            
+            // Update user info
+            print("\nUpdating user fields...")
             currentUser.firstName = firstName
             currentUser.lastName = lastName
             currentUser.username = username
-            if let image = profileImage {
-                currentUser.profileImageData = image.jpegData(compressionQuality: 0.8)
+            
+            print("Updated User State:")
+            print("   First Name: '\(currentUser.firstName)'")
+            print("   Last Name: '\(currentUser.lastName)'")
+            print("   Username: '\(currentUser.username)'")
+            
+            // Save updated user info - force save for initial setup
+            print("\n💾 Saving updated user...")
+            if isInitialSetup {
+                // Use a special save method that forces the update
+                try await userManager.saveInitialProfile(updatedUser: currentUser)
+            } else {
+                try await userManager.saveProfile(updatedUser: currentUser)
             }
+            print("✅ User saved successfully")
             
-            try await userManager.saveProfile(updatedUser: currentUser)
-        } else {
-            // Let UserManager handle new user creation through the login method
-            guard let phoneNumber = phoneNumber else {
-                fatalError("Phone number is required for new user creation")
-            }
-            
-            // First login/create the user
-            await userManager.login(phoneNumber: phoneNumber)
-            
-            // After login, update the user's profile information
-            if var user = userManager.currentUser {
-                user.firstName = firstName
-                user.lastName = lastName
-                user.username = username
-                if let image = profileImage {
-                    user.profileImageData = image.jpegData(compressionQuality: 0.8)
-                }
+            // Update the local state with the latest user data
+            if let updatedUser = userManager.currentUser {
+                print("\nUpdating local state with saved user:")
+                print("   First Name: '\(updatedUser.firstName)'")
+                print("   Last Name: '\(updatedUser.lastName)'")
+                print("   Username: '\(updatedUser.username)'")
                 
-                try await userManager.saveProfile(updatedUser: user)
+                firstName = updatedUser.firstName
+                lastName = updatedUser.lastName
+                username = updatedUser.username
+                
+                // Fetch the latest profile image
+                if let image = try? await userManager.fetchProfileImage(for: updatedUser, forceRefresh: true) {
+                    profileImage = image
+                    print("✅ Profile image refreshed")
+                }
             }
-        }
-    }
-}
-
-struct ProfileSetupView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            
-            // Preview for profile editing
-            ProfileSetupView(isEditMode: true)
-                .environmentObject(UserManager())
+        } else {
+            print("❌ Error: No current user available")
+            // Show error if no current user
+            alertMessage = "Error: No user found. Please try logging in again."
+            showAlert = true
+            throw ProfileValidationError.noCurrentUser
         }
     }
 }

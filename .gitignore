@@ -1,0 +1,68 @@
+# -----------------------
+# Operating System Files
+# -----------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------
+# Xcode
+# -----------------------
+## Build and derived data
+DerivedData/
+build/
+*.xcworkspace/xcuserdata/
+*.xcuserdatad/
+xcuserdata/
+*.xcuserstate
+
+## Project files
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xccheckout
+*.xcscmblueprint
+
+# User-specific schemes
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/xcuserdata/*
+
+## Logs
+*.log
+
+# -----------------------
+# Swift Package Manager
+# -----------------------
+/.swiftpm
+/.build
+
+# -----------------------
+# CocoaPods
+# -----------------------
+Pods/
+Podfile.lock
+
+# -----------------------
+# Carthage
+# -----------------------
+Carthage/Build/
+
+# -----------------------
+# Fastlane
+# -----------------------
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# -----------------------
+# Firebase or Other Secrets
+# -----------------------
+# If you store your real secrets in GoogleService-Info.plist, exclude it:
+TrailMates/App/GoogleService-Info.plist
+*.plist
+
+# Instead, you might keep a template version in the repo:
+# TrailMates/App/GoogleService-Info.plist.template

@@ -1,0 +1,105 @@
+# TrailMates UID Rules
+
+## UID Types and Contexts
+
+1. Firebase Auth UID (String)
+   - Authentication identifier
+   - Required for all users
+   - Used for all real-time features
+   - Used in security rules
+   - Format: Custom Firebase string
+
+2. SwiftData UUID
+   - Primary key for local database
+   - Used in Firestore document IDs
+   - Used for model relationships
+   - Format: Standard UUID string
+
+## Service-Specific Usage
+
+1. SwiftData & Firestore
+   - Use SwiftData UUID for:
+     - Local database primary keys
+     - Model relationships
+     - Firestore document IDs
+     - Collection references
+   - Example collections: users, events, landmarks
+
+2. Firebase Realtime Database
+   - Use Firebase Auth UID for EVERYTHING:
+     - Path construction
+     - Data references
+     - Security rules
+     - User identification
+   - Example: locations/{id}/coordinates
+
+3. Firebase Authentication
+   - Use Firebase Auth UID only
+   - Store in User model as non-optional
+
+## Implementation Guidelines
+
+1. Path Construction
+   ```swift
+   // Realtime Database - ALWAYS use Firebase UID
+   rtdb.child("locations").child(user.id)
+   
+   // Firestore - ALWAYS use SwiftData UUID
+   db.collection("users").document(user.id.uuidString)
+   ```
+
+2. Data Storage
+   ```swift
+   // Realtime Database data - ALWAYS use Firebase UID
+   let locationData = [
+       "userId": user.id,
+       "coordinates": [lat, lon]
+   ]
+   
+   // Firestore/SwiftData - ALWAYS use SwiftData UUID
+   let eventData = [
+       "creatorId": user.id.uuidString,
+       "attendees": [user1.id.uuidString, user2.id.uuidString]
+   ]
+   ```
+
+3. Security Rules
+   ```javascript
+   // Firebase rules ALWAYS use auth.uid
+   "locations/{uid}": {
+     ".read": "auth != null && auth.uid == uid"
+   }
+   ```
+
+## Error Prevention
+
+1. Never Cross Streams
+   - Realtime Database: Firebase UID ONLY
+   - Firestore/SwiftData: SwiftData UUID ONLY
+   - No translation between systems needed
+
+2. Type Safety
+   - Firebase UID is non-optional String
+   - SwiftData UUID is non-optional UUID
+   - Use clear variable names (id vs id)
+
+3. Error Handling
+   - Validate Firebase UID on user creation
+   - Ensure both IDs are present before operations
+   - Clear error messages about which ID is missing
+
+## Debugging Tips
+
+1. Log Format
+   ```swift
+   print("Firebase UID: \(user.id)")
+   print("SwiftData UUID: \(user.id)")
+   ```
+
+2. Validation Checks
+   ```swift
+   // Both IDs should always be present
+   guard !user.id.isEmpty else {
+       throw AuthError.missingid
+   }
+   ``` 

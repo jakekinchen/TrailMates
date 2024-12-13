@@ -9,26 +9,24 @@ struct ContentView: View {
 
         if !userManager.isLoggedIn {
             content = AnyView(AuthView())
-        } else if userManager.currentUser?.firstName.isEmpty ?? true || userManager.currentUser?.username.isEmpty ?? true || userManager.currentUser?.lastName.isEmpty ?? true{
-                    // Profile setup is required after login but before welcome screen
-            content = AnyView(OnboardingAddFriendsView(onFinish: {
-                userManager.hasAddedFriends = true
-                userManager.isOnboardingComplete = true
-                userManager.persistUserSession()
-            }))
+        } else if userManager.currentUser?.firstName.isEmpty ?? true || userManager.currentUser?.username.isEmpty ?? true || userManager.currentUser?.lastName.isEmpty ?? true {
+            // Profile setup is required first
+            content = AnyView(ProfileSetupView())
         } else if !userManager.isWelcomeComplete {
+            // Then welcome screen
             content = AnyView(WelcomeView(onComplete: {
                 userManager.isWelcomeComplete = true
                 userManager.persistUserSession()
             }))
         } else if !userManager.isPermissionsGranted {
+            // Then permissions
             content = AnyView(PermissionsView(onComplete: {
                 userManager.isPermissionsGranted = true
                 userManager.persistUserSession()
             }))
-        } else if !userManager.hasAddedFriends && !userManager.isOnboardingComplete {
+        } else if !userManager.isOnboardingComplete {
+            // Finally, optional friend adding (but don't block on it)
             content = AnyView(OnboardingAddFriendsView(onFinish: {
-                userManager.hasAddedFriends = true
                 userManager.isOnboardingComplete = true
                 userManager.persistUserSession()
             }))

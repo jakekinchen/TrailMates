@@ -1,0 +1,280 @@
+# Code Flow Based on Logs
+
+## 1. AuthView.swift - Initial Check
+```swift
+print("🔄 Login - Starting phone number check: \(phoneNumber)")
+print("🔍 Login - Checking if user exists")
+if let user = await userManager.findUserByPhoneNumber(phoneNumber) {
+    print("✅ Login - User found, proceeding with verification")
+    authViewModel.phoneNumber = phoneNumber
+    await authViewModel.sendCode()
+    isVerificationStage = true
+    showingLoginFields = true
+    showingSignupFields = false
+    isVerificationSent = true
+}
+```
+
+## 2. UserManager.swift - Finding User
+```swift
+func findUserByPhoneNumber(_ phoneNumber: String) async -> User? {
+    print("📱 UserManager - Finding user by phone: \(phoneNumber)")
+    let result = await dataProvider.fetchUser(byPhoneNumber: phoneNumber)
+    if let user = result {
+        print("✅ UserManager - Found user: \(user.firstName) \(user.lastName)")
+    } else {
+        print("❌ UserManager - No user found for phone number")
+    }
+    return result
+}
+```
+
+## 3. FirebaseDataProvider.swift - Fetching User
+```swift
+func fetchUser(byPhoneNumber phoneNumber: String) async -> User? {
+    do {
+        guard !phoneNumber.isEmpty else {
+            print("❌ Empty phone number provided")
+            return nil
+        }
+        
+        // Normalize the phone number
+        let normalizedPhone = normalizePhoneNumber(phoneNumber)
+        guard !normalizedPhone.isEmpty else {
+            print("❌ Normalization resulted in empty phone number")
+            return nil
+        }
+        
+        print("🔍 FirebaseDataProvider - Preparing Cloud Function call")
+        print("   Function name: getUserByPhoneNumber")
+        
+        // Create parameters dictionary
+        let params: [String: Any] = [
+            "data": [  // Wrap in data object as per Firebase docs
+                "phoneNumber": normalizedPhone,
+                "region": "US"
+            ]
+        ]
+        
+        // Log the exact parameters
+        print("📤 Cloud Function parameters:")
+        print("   Raw dictionary: \(params)")
+        
+        print("📞 Calling Cloud Function...")
+        let result = try await functions.httpsCallable("getUserByPhoneNumber")
+            .call(params)
+        // ... rest of implementation
+    } catch {
+        print("❌ FirebaseDataProvider - Cloud Function error")
+        print("   Error: \(error.localizedDescription)")
+        print("   Details: \(error)")
+        return nil
+    }
+}
+```
+
+## 4. Cloud Function (functions/index.js) - Complete Implementation
+```javascript
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+
+admin.initializeApp();
+
+/**
+ * Normalizes a phone number by removing all non-digit characters.
+ * @param {string} phoneNumber - The phone number to normalize
+ * @return {string} The normalized phone number containing only digits
+ */
+function normalizePhoneNumber(phoneNumber) {
+  // Remove all non-digit characters
+  return phoneNumber.replace(/\D/g, "");
+}
+
+// Cloud Function: getUserByPhoneNumber
+exports.getUserByPhoneNumber = functions.https.onCall(async (data, context) => {
+  console.log("📞 Cloud Function received raw data:", data);
+  console.log("   Type:", typeof data);
+  console.log("   Keys:", Object.keys(data));
+
+  // Handle both nested and direct data formats
+  const inputData = (data.data && data.data.phoneNumber) ? data.data : data;
+  console.log("📦 Processed input data:", inputData);
+
+  if (!inputData || typeof inputData !== "object") {
+    console.error("❌ Invalid request data format - not an object");
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Invalid request format.",
+    );
+  }
+
+  // Extract and validate phone number
+  const phoneNumber = inputData.phoneNumber;
+  const region = inputData.region || "US";
+
+  console.log("📞 Extracted parameters:");
+  console.log("   phoneNumber:", phoneNumber);
+  console.log("   region:", region);
+  console.log("   phoneNumber type:", typeof phoneNumber);
+
+  if (!phoneNumber || typeof phoneNumber !== "string") {
+    console.error("❌ Invalid phone number format");
+    console.error("   Received phoneNumber:", phoneNumber);
+    console.error("   Type:", typeof phoneNumber);
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Phone number is required and must be a string.",
+    );
+  }
+
+  try {
+    // Normalize the phone number for comparison
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+    if (!normalizedPhone) {
+      throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Phone number normalization failed.",
+      );
+    }
+
+    console.log("🔍 Phone number processing:");
+    console.log(`   Original: "${phoneNumber}"`);
+    console.log(`   Normalized: "${normalizedPhone}"`);
+    console.log(`   Region: ${region}`);
+
+    const snapshot = await admin.firestore()
+        .collection("users")
+        .where("phoneNumber", "==", normalizedPhone)
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) {
+      console.log(`❌ No user found with phone: "${normalizedPhone}"`);
+      return {userExists: false};
+    }
+
+    const userDoc = snapshot.docs[0];
+    console.log(`✅ Found user with ID: ${userDoc.id}`);
+    return {
+      userExists: true,
+      userId: userDoc.id,
+    };
+  } catch (error) {
+    console.error("❌ Error processing request:", error);
+    throw new functions.https.HttpsError(
+        "unknown",
+        "An error occurred while fetching user data.",
+    );
+  }
+});
+```
+
+## 5. AuthViewModel.swift - Verification Flow
+```swift
+func verifyCode() async {
+    guard let verificationId = verificationId else {
+        showError = true
+        errorMessage = "Missing verification ID"
+        return
+    }
+    
+    isLoading = true
+    showError = false
+    
+    do {
+        let credential = PhoneAuthProvider.provider().credential(
+            withVerificationID: verificationId,
+            verificationCode: verificationCode
+        )
+        
+        // First authenticate with Firebase
+        let authResult = try await auth.signIn(with: credential)
+        print("🔐 Successfully signed in with phone auth")
+        
+        do {
+            // Check if user exists in our database
+            let userExists = await userManager.checkUserExists(phoneNumber: phoneNumber)
+            
+            if isSigningUp && userExists {
+                // Prevent existing users from using signup
+                throw NSError(
+                    domain: "com.trailmates.error",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "An account with this phone number already exists. Please use the login option."]
+                )
+            } else if !isSigningUp && !userExists {
+                // Prevent non-existent users from using login
+                throw NSError(
+                    domain: "com.trailmates.error",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "No account found with this phone number. Please sign up first."]
+                )
+            }
+            
+            if isSigningUp {
+                // For signup, create new user with Firebase UID
+                try await userManager.createNewUser(phoneNumber: phoneNumber, id: authResult.user.uid)
+                print("📱 New user created successfully")
+            } else {
+                // For login, initialize existing user
+                try await userManager.login(phoneNumber: phoneNumber, id: authResult.user.uid)
+                print("📱 Existing user logged in successfully")
+            }
+            
+            // Update UI state after successful operation
+            await MainActor.run {
+                self.isAuthenticated = true
+                userManager.isLoggedIn = true
+                self.isLoading = false
+                self.isVerifying = false
+                print("✅ Auth state updated: isAuthenticated=true, isLoggedIn=true")
+            }
+        } catch {
+            print("❌ User initialization failed: \(error.localizedDescription)")
+            // If initialization fails, sign out to maintain consistent state
+            try? auth.signOut()
+            print("🔥 Auth: User signed out")
+            throw error
+        }
+    } catch {
+        print("❌ Verification failed: \(error.localizedDescription)")
+        await MainActor.run {
+            self.showError = true
+            self.errorMessage = error.localizedDescription
+            self.isLoading = false
+            self.isVerifying = false
+            self.isAuthenticated = false
+            userManager.isLoggedIn = false
+        }
+    }
+}
+```
+
+## Key Issue Identified
+The data structure being sent from Swift:
+```json
+{
+  "data": {
+    "region": "US",
+    "phoneNumber": "12253804208"
+  }
+}
+```
+
+The Cloud Function's data extraction:
+```javascript
+const inputData = (data.data && data.data.phoneNumber) ? data.data : data;
+const phoneNumber = inputData.phoneNumber;
+```
+
+The condition `data.data && data.data.phoneNumber` is evaluating to false because the structure is:
+```javascript
+data = {
+  data: {
+    region: "US",
+    phoneNumber: "12253804208"
+  }
+}
+```
+
+So `data.data` exists but `data.data.phoneNumber` is being accessed incorrectly in the condition.

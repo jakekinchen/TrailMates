@@ -1,0 +1,60 @@
+# TrailMates Profile Image Storage Rules
+
+## Profile Image Storage Hierarchy
+1. Remote Storage (Firebase)
+   - profileImageUrl: Primary full-size image URL
+   - profileThumbnailUrl: Optimized thumbnail URL
+   - These URLs are the source of truth when available
+
+2. Local Storage (SwiftData)
+   - @Attribute(.externalStorage) profileImageData: Binary image data
+   - Stored outside main database for performance
+   - Used for offline access and caching
+
+3. In-Memory (Computed)
+   - profileImage: UIImage computed property
+   - Provides convenient UIImage interface
+   - Automatically manages conversion to/from Data
+
+## Data Flow Rules
+1. Image Upload
+   - Set profileImage (converts to profileImageData)
+   - Upload to Firebase
+   - Clear local data
+   - Store remote URLs
+
+2. Image Download
+   - Try remote URLs first (AsyncImage)
+   - Fall back to local data if offline
+   - Cache as needed
+
+3. Offline Mode
+   - Use profileImageData
+   - Sync when online resumes
+
+## SwiftData Integration
+1. External Storage
+   - Large binary data stored separately
+   - Automatic cleanup by SwiftData
+   - Better performance than inline storage
+
+2. Model Requirements
+   - User must be final class
+   - @Model attribute required
+   - Codable conformance maintained
+
+## Validation Rules
+1. Location Coordinates
+   - Both latitude and longitude required if either present
+   - Throws error if only one coordinate provided
+
+2. Image Data
+   - JPEG compression at 0.8 quality
+   - Thumbnail generation handled by Firebase
+
+## Equality Comparison
+All properties compared including:
+- Profile image data
+- Remote URLs
+- Location coordinates
+- Optional properties 

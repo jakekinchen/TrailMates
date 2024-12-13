@@ -8,7 +8,7 @@ extension Color {
 // MARK: - Main Map View
 struct MapView: View {
     @EnvironmentObject var userManager: UserManager
-    @StateObject private var eventViewModel: EventViewModel
+    @StateObject private var eventViewModel = EventViewModel.shared
     @State private var friends: [User] = []
     @State private var isBottomSheetOpen = false
     @State private var activeSegment = "friends"
@@ -16,11 +16,6 @@ struct MapView: View {
     @State private var showNotifications = false
     @State private var selectedEvent: Event?
     @State private var locationUpdateTimer: Timer?
-    
-    init() {
-        let dataProvider = FirebaseDataProvider() // or use MockDataProvider() for testing
-        _eventViewModel = StateObject(wrappedValue: EventViewModel(dataProvider: dataProvider))
-    }
     
     var currentUser: User? {
         return userManager.currentUser
@@ -351,16 +346,6 @@ struct FriendsSection: View {
                     Spacer()
                 }
             }
-        }
-    }
-    
-    
-    
-    // MARK: - Preview Provider
-    struct MapView_Previews: PreviewProvider {
-        static var previews: some View {
-            MapView()
-                .environmentObject(UserManager(dataProvider: MockDataProvider()))
         }
     }
 }

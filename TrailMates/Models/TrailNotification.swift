@@ -9,25 +9,25 @@ enum NotificationType: String, Codable {
 }
 
 struct TrailNotification: Identifiable, Codable {
-    let id: UUID
+    let id: String
     let type: NotificationType
     let title: String
     let message: String
     let timestamp: Date
     let isRead: Bool
-    let userId: UUID
-    let fromUserId: UUID?
-    let relatedEventId: UUID?
+    let userId: String
+    let fromUserId: String?
+    let relatedEventId: String?
     
-    init(id: UUID = UUID(),
+    init(id: String = UUID().uuidString,
          type: NotificationType,
          title: String,
          message: String,
          timestamp: Date = Date(),
          isRead: Bool = false,
-         userId: UUID,
-         fromUserId: UUID? = nil,
-         relatedEventId: UUID? = nil) {
+         userId: String,
+         fromUserId: String? = nil,
+         relatedEventId: String? = nil) {
         self.id = id
         self.type = type
         self.title = title

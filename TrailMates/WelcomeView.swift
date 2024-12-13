@@ -3,33 +3,35 @@
 import SwiftUI
 import MapKit
 
+// Add this struct at the top of the file
+struct NonInteractiveMapView: UIViewRepresentable {
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        mapView.isScrollEnabled = false
+        mapView.isZoomEnabled = false
+        mapView.isRotateEnabled = false
+        mapView.isPitchEnabled = false
+        mapView.isUserInteractionEnabled = false
+        
+        // Set initial region
+        mapView.setRegion(MapConfiguration.defaultRegion, animated: false)
+        return mapView
+    }
+    
+    func updateUIView(_ mapView: MKMapView, context: Context) {}
+}
 
 struct WelcomeView: View {
     @EnvironmentObject var userManager: UserManager
     @State private var showSignInOptions = false
-    @State private var isDragging = false
     let onComplete: () -> Void
-    @StateObject private var mapCoordinator = WelcomeMapCoordinator()
-
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // Background Map Layer
-                UnifiedMapView(
-                    mapView: $mapCoordinator.mapView,
-                    configuration: MapConfiguration(
-                        showUserLocation: false,
-                        showFriendLocations: false,
-                        showRecommendedLocations: false,
-                        showEventLocations: false,
-                        isLocationPickerEnabled: true,
-                        isDragging: $mapCoordinator.isDragging,
-                        onRegionChanged: { newRegion in
-                            mapCoordinator.updateRegion(newRegion)
-                        }
-                    )
-                )
-                .ignoresSafeArea()
+                NonInteractiveMapView()
+                    .ignoresSafeArea()
                 
                 // Glass effect layer
                 ZStack {
@@ -42,7 +44,6 @@ struct WelcomeView: View {
                 .ignoresSafeArea()
                 
                 // Content Layer
-                ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
                         Spacer(minLength: 60)
                         
@@ -61,21 +62,11 @@ struct WelcomeView: View {
                         }
                         .allowsHitTesting(false)
                         
-                        // Focused map - using the same mapView reference
-                        UnifiedMapView(
-                            mapView: $mapCoordinator.mapView,
-                            configuration: MapConfiguration(
-                                showUserLocation: false,
-                                showFriendLocations: false,
-                                showRecommendedLocations: false,
-                                showEventLocations: false,
-                                isLocationPickerEnabled: true,
-                                isDragging: $mapCoordinator.isDragging,
-                                onRegionChanged: { newRegion in
-                                    mapCoordinator.updateRegion(newRegion)
-                                }
-                            )
-                        )
+                        // Focused map
+                        Map(position: .constant(MapCameraPosition.region(MapConfiguration.defaultRegion)), 
+                            interactionModes: []) {
+                            // Add any markers or overlays here if needed
+                        }
                         .frame(height: 200)
                         .cornerRadius(20)
                         .overlay(
@@ -103,8 +94,6 @@ struct WelcomeView: View {
                         .padding(.horizontal, 30)
                         .padding(.bottom, 40)
                     }
-                }
-                .scrollDisabled(mapCoordinator.isDragging)
             }
         }
     }

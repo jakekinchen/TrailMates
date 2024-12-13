@@ -128,6 +128,7 @@ struct CreateEventView: View {
                             .fontWeight(.semibold)
                     }
                     .listRowBackground(Color("pumpkin"))
+                    .buttonStyle(BorderlessButtonStyle())
                 }
             }
             .navigationTitle("Create Event")
@@ -140,11 +141,11 @@ struct CreateEventView: View {
                     .foregroundColor(Color("pine"))
                 }
             }
-            .onTapGesture {
+            .simultaneousGesture(TapGesture().onEnded {
                 focusedField = nil
                 dateFieldIsFocused = false
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
+            })
         }
         .sheet(isPresented: $showLocationPicker) {
             LocationPickerView(selectedLocation: $selectedLocationInfo)
@@ -177,16 +178,28 @@ struct CreateEventView: View {
         
     
     private func createEvent() {
-            guard validateInput() else { return }
-            
-            guard let locationInfo = selectedLocationInfo else {
-                alertMessage = "Please select a location"
-                showAlert = true
-                return
-            }
-            
-            // Create the event asynchronously using Task
-            Task {
+        print("🎯 Create Event button tapped")
+        
+        guard validateInput() else {
+            print("❌ Input validation failed")
+            return
+        }
+        
+        guard let locationInfo = selectedLocationInfo else {
+            print("❌ No location selected")
+            alertMessage = "Please select a location"
+            showAlert = true
+            return
+        }
+        
+        print("✅ All validation passed, attempting to create event")
+        print("📍 Location: \(locationInfo.coordinate)")
+        print("📝 Title: \(title)")
+        print("📅 Date: \(date)")
+        
+        // Create the event asynchronously using Task
+        Task {
+            do {
                 try await eventViewModel.createEvent(
                     for: user,
                     title: title,
@@ -198,12 +211,21 @@ struct CreateEventView: View {
                     tags: Array(selectedTags)
                 )
                 
+                print("✅ Event created successfully")
+                
                 // Dismiss the view on the main thread
                 await MainActor.run {
                     dismiss()
                 }
+            } catch {
+                print("❌ Error creating event: \(error)")
+                await MainActor.run {
+                    alertMessage = "Failed to create event: \(error.localizedDescription)"
+                    showAlert = true
+                }
             }
         }
+    }
     
     private func validateInput() -> Bool {
         if title.isEmpty {

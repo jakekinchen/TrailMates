@@ -33,10 +33,17 @@ struct ProfileView: View {
                 // Stats Section
                 if let stats = userStats {
                     StatsSection(stats: stats)
-                } else if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                } else {
+                    // Show placeholder stats while loading
+                    StatsSection(stats: UserStats(
+                        joinDate: "Loading...",
+                        landmarkCompletion: 0,
+                        friendCount: 0,
+                        hostedEventCount: 0,
+                        attendedEventCount: 0
+                    ))
+                    .redacted(reason: .placeholder)
+                    .shimmering()
                 }
             }
             .padding()
@@ -53,21 +60,55 @@ struct ProfileView: View {
             ProfileSetupView(isEditMode: true)
         }
         .task {
-            await refreshStats()
+            // Load cached stats immediately if available
+            if let cachedStats = loadCachedStats() {
+                userStats = cachedStats
+            }
+            
+            // Then refresh in background if needed
+            if userManager.shouldRefreshUser() {
+                await refreshProfileData()
+            }
         }
         .onChange(of: showEditProfile) { oldValue, newValue in
             if !newValue {
                 Task {
-                    await refreshStats()
+                    await refreshProfileData()
                 }
             }
         }
+        .refreshable {
+            await refreshProfileData()
+        }
     }
     
-    private func refreshStats() async {
+    private func refreshProfileData() async {
         isLoading = true
-        userStats = await userManager.getUserStats()
-        isLoading = false
+        defer { isLoading = false }
+        
+        // Refresh user data in background
+        await userManager.refreshUserInBackground()
+        
+        // Refresh stats
+        if let newStats = await userManager.getUserStats() {
+            userStats = newStats
+            // Cache the new stats
+            cacheStats(newStats)
+        }
+    }
+    
+    private func cacheStats(_ stats: UserStats) {
+        if let encoded = try? JSONEncoder().encode(stats) {
+            UserDefaults.standard.set(encoded, forKey: "cachedUserStats")
+        }
+    }
+    
+    private func loadCachedStats() -> UserStats? {
+        guard let data = UserDefaults.standard.data(forKey: "cachedUserStats"),
+              let stats = try? JSONDecoder().decode(UserStats.self, from: data) else {
+            return nil
+        }
+        return stats
     }
 }
 // Keeping the existing supporting views and models
@@ -104,12 +145,20 @@ struct StatCard: View {
     }
 }
 
-struct UserStats {
+struct UserStats: Codable {
     let joinDate: String
     let landmarkCompletion: Int
     let friendCount: Int
     let hostedEventCount: Int
     let attendedEventCount: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case joinDate
+        case landmarkCompletion
+        case friendCount
+        case hostedEventCount
+        case attendedEventCount
+    }
 }
 
 struct StatsSection: View {
@@ -154,11 +203,45 @@ struct StatsSection: View {
     }
 }
 
-struct ProfileView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationView {
-            ProfileView()
-                .environmentObject(UserManager())
-        }
+// MARK: - Shimmering Effect
+extension View {
+    func shimmering() -> some View {
+        self.modifier(ShimmeringEffect())
+    }
+}
+
+struct ShimmeringEffect: ViewModifier {
+    @State private var phase: CGFloat = 0
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                GeometryReader { geometry in
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            .clear,
+                            .white.opacity(0.5),
+                            .clear
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: geometry.size.width * 3)
+                    .offset(x: -geometry.size.width)
+                    .offset(x: phase)
+                    .animation(
+                        Animation.linear(duration: 1.5)
+                            .repeatForever(autoreverses: false),
+                        value: phase
+                    )
+                }
+            )
+            .onAppear {
+                phase = 0
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                    phase = UIScreen.main.bounds.width
+                }
+            }
+            .mask(content)
     }
 }

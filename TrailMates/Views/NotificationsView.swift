@@ -134,19 +134,20 @@ class NotificationsViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var error: Error?
     
-    private let dataProvider: DataProvider
+    private let dataProvider = FirebaseDataProvider.shared
+    private let userManager = UserManager.shared
     
-    init(dataProvider: DataProvider = FirebaseDataProvider()) {
-        self.dataProvider = dataProvider
-    }
+    init() { }
     
     func fetchNotifications() async {
         isLoading = true
         error = nil
         
         do {
-            guard let currentUser = Auth.auth().currentUser else { return }
-            notifications = try await dataProvider.fetchNotifications(for: UUID(uuidString: currentUser.uid) ?? UUID())
+            guard let firebaseUser = Auth.auth().currentUser,
+                  let currentUser = userManager.currentUser else { return }
+            
+            notifications = try await dataProvider.fetchNotifications(forid: firebaseUser.uid, userID: currentUser.id)
         } catch {
             self.error = error
         }
@@ -156,7 +157,11 @@ class NotificationsViewModel: ObservableObject {
     
     func deleteNotification(_ notification: TrailNotification) async {
         do {
-            try await dataProvider.deleteNotification(userId: notification.userId, notificationId: notification.id)
+            guard let firebaseUser = Auth.auth().currentUser else { return }
+            try await dataProvider.deleteNotification(
+                id: firebaseUser.uid,
+                notificationId: notification.id
+            )
             if let index = notifications.firstIndex(where: { $0.id == notification.id }) {
                 notifications.remove(at: index)
             }
@@ -174,16 +179,19 @@ class NotificationsViewModel: ObservableObject {
 
 @MainActor
 class NotificationRowViewModel: ObservableObject {
-    private let dataProvider: DataProvider
     
-    init(dataProvider: DataProvider = FirebaseDataProvider()) {
-        self.dataProvider = dataProvider
-    }
+    private let dataProvider = FirebaseDataProvider.shared
+    
+
     
     func handleNotificationTap(_ notification: TrailNotification) async {
         if !notification.isRead {
             do {
-                try await dataProvider.markNotificationAsRead(userId: notification.userId, notificationId: notification.id)
+                guard let firebaseUser = Auth.auth().currentUser else { return }
+                try await dataProvider.markNotificationAsRead(
+                    id: firebaseUser.uid,
+                    notificationId: notification.id
+                )
             } catch {
                 print("Error marking notification as read: \(error)")
             }
@@ -208,9 +216,4 @@ class NotificationRowViewModel: ObservableObject {
             break
         }
     }
-}
-
-#Preview {
-    NotificationsView()
-        .environmentObject(UserManager())
 }

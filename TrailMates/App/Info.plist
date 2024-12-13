@@ -32,9 +32,13 @@
 	<key>FacebookDisplayName</key>
 	<string>TrailMates</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
-	<string>true</string>
+	<true/>
+	<key>GoogleUtilitiesAppDelegateProxyEnabled</key>
+	<true/>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Trailmates needs to access to your calendar to add events you&apos;re attending</string>
+	<key>FirebaseAutomaticScreenReportingEnabled</key>
+	<false/>
 	<key>UIAppFonts</key>
 	<array>
 		<string>magic-retro.ttf</string>

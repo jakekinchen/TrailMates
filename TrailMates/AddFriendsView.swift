@@ -423,7 +423,7 @@ struct FacebookFriendRow: View {
     
 
     
-    private func sendFriendRequest(to userId: UUID) {
+    private func sendFriendRequest(to userId: String) {
         Task {
             isProcessing = true
             defer { isProcessing = false }
