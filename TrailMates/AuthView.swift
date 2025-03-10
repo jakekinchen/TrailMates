@@ -151,7 +151,7 @@ struct AuthView: View {
                                         print("🔄 Login - Starting phone number check: \(phoneNumber)")
                                         Task {
                                             print("🔍 Login - Checking if user exists")
-                                            if (await userManager.findUserByPhoneNumber(phoneNumber)) != nil {
+                                            if await userManager.checkUserExists(phoneNumber: phoneNumber) {
                                                 print("✅ Login - User found, proceeding with verification")
                                                 // User exists, proceed with login
                                                 authViewModel.phoneNumber = phoneNumber
@@ -193,7 +193,7 @@ struct AuthView: View {
                                     if !phoneNumber.isEmpty {
                                         isCheckingPhoneNumber = true
                                         Task {
-                                            if (await userManager.findUserByPhoneNumber(phoneNumber)) != nil {
+                                            if await userManager.checkUserExists(phoneNumber: phoneNumber) {
                                                 // User already exists
                                                 authViewModel.showError = true
                                                 authViewModel.errorMessage = "An account already exists with this phone number. Please log in instead."

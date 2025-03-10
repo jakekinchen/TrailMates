@@ -7,15 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		487383AAFA8E5D22F80E249C /* Pods_TrailMatesATXTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15AB30E49C6964094EED86E0 /* Pods_TrailMatesATXTests.framework */; };
 		73611DDC2D01FD8F00868529 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 73611DDB2D01FD8F00868529 /* FirebaseFunctions */; };
+		736EC68C2D3C475E00664BA1 /* PhoneNumberKit in Frameworks */ = {isa = PBXBuildFile; productRef = 736EC68B2D3C475E00664BA1 /* PhoneNumberKit */; };
 		73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */; };
 		73D868C62CED5F7000AF0CAD /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C52CED5F7000AF0CAD /* FirebaseAuth */; };
 		73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C72CED5F7000AF0CAD /* FirebaseCore */; };
 		73D868CA2CED5F7000AF0CAD /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C92CED5F7000AF0CAD /* FirebaseDatabase */; };
 		73D868CC2CED5F7000AF0CAD /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868CB2CED5F7000AF0CAD /* FirebaseFirestore */; };
-		73D869732CEF8D6C00AF0CAD /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D869722CEF8D6C00AF0CAD /* FacebookCore */; };
-		73D869752CEF8D6C00AF0CAD /* FacebookLogin in Frameworks */ = {isa = PBXBuildFile; productRef = 73D869742CEF8D6C00AF0CAD /* FacebookLogin */; };
 		73D869962CF02DA000AF0CAD /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 73D869952CF02DA000AF0CAD /* FirebaseStorage */; };
+		92DDCA45D03401DEF0316489 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBE303B5867650D316F6A973 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework */; };
+		F70A2B83D159591BDA4F7CA7 /* Pods_TrailMatesATX.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D82C2401057F16999D6F15F4 /* Pods_TrailMatesATX.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,10 +38,19 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		030191C7FF78D364E9FABC7E /* Pods-TrailMatesATX.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATX.release.xcconfig"; path = "Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX.release.xcconfig"; sourceTree = "<group>"; };
+		15AB30E49C6964094EED86E0 /* Pods_TrailMatesATXTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TrailMatesATXTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		5FEF23103267851868BD6CAC /* Pods-TrailMatesATX.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATX.debug.xcconfig"; path = "Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX.debug.xcconfig"; sourceTree = "<group>"; };
+		648088AB38921F8F79E12232 /* Pods-TrailMatesATXTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATXTests.debug.xcconfig"; path = "Target Support Files/Pods-TrailMatesATXTests/Pods-TrailMatesATXTests.debug.xcconfig"; sourceTree = "<group>"; };
 		73266DA92CAEDBF60087B7A1 /* TrailMatesATX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TrailMatesATX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73266DBB2CAEDBF80087B7A1 /* TrailMatesATXTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrailMatesATXTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		73266DC52CAEDBF80087B7A1 /* TrailMatesATXUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrailMatesATXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		73D869872CEFEBDC00AF0CAD /* TrailMatesATX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrailMatesATX.entitlements; sourceTree = "<group>"; };
+		8F851F652CAAF28BDBA9B96C /* Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig"; path = "Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig"; sourceTree = "<group>"; };
+		B6A6A13BB3B93BE667A9C14D /* Pods-TrailMatesATXTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATXTests.release.xcconfig"; path = "Target Support Files/Pods-TrailMatesATXTests/Pods-TrailMatesATXTests.release.xcconfig"; sourceTree = "<group>"; };
+		BBE303B5867650D316F6A973 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TrailMatesATX_TrailMatesATXUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D82C2401057F16999D6F15F4 /* Pods_TrailMatesATX.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TrailMatesATX.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F52DA2B3EF539E2F343D2E87 /* Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig"; path = "Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -81,14 +92,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
-				73D869732CEF8D6C00AF0CAD /* FacebookCore in Frameworks */,
 				73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */,
 				73611DDC2D01FD8F00868529 /* FirebaseFunctions in Frameworks */,
 				73D868CA2CED5F7000AF0CAD /* FirebaseDatabase in Frameworks */,
 				73D868CC2CED5F7000AF0CAD /* FirebaseFirestore in Frameworks */,
 				73D869962CF02DA000AF0CAD /* FirebaseStorage in Frameworks */,
-				73D869752CEF8D6C00AF0CAD /* FacebookLogin in Frameworks */,
+				736EC68C2D3C475E00664BA1 /* PhoneNumberKit in Frameworks */,
 				73D868C62CED5F7000AF0CAD /* FirebaseAuth in Frameworks */,
+				F70A2B83D159591BDA4F7CA7 /* Pods_TrailMatesATX.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -96,6 +107,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				487383AAFA8E5D22F80E249C /* Pods_TrailMatesATXTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -103,6 +115,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				92DDCA45D03401DEF0316489 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +131,7 @@
 				73266DC82CAEDBF80087B7A1 /* TrailMatesUITests */,
 				73D868C42CED5F7000AF0CAD /* Frameworks */,
 				73266DAA2CAEDBF60087B7A1 /* Products */,
+				B528289D0890C7CB5AFD4911 /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -134,8 +148,24 @@
 		73D868C42CED5F7000AF0CAD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D82C2401057F16999D6F15F4 /* Pods_TrailMatesATX.framework */,
+				BBE303B5867650D316F6A973 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework */,
+				15AB30E49C6964094EED86E0 /* Pods_TrailMatesATXTests.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		B528289D0890C7CB5AFD4911 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				5FEF23103267851868BD6CAC /* Pods-TrailMatesATX.debug.xcconfig */,
+				030191C7FF78D364E9FABC7E /* Pods-TrailMatesATX.release.xcconfig */,
+				8F851F652CAAF28BDBA9B96C /* Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig */,
+				F52DA2B3EF539E2F343D2E87 /* Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig */,
+				648088AB38921F8F79E12232 /* Pods-TrailMatesATXTests.debug.xcconfig */,
+				B6A6A13BB3B93BE667A9C14D /* Pods-TrailMatesATXTests.release.xcconfig */,
+			);
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -145,9 +175,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 73266DCF2CAEDBF80087B7A1 /* Build configuration list for PBXNativeTarget "TrailMatesATX" */;
 			buildPhases = (
+				0FC45D0A8BC73A81585B2C9A /* [CP] Check Pods Manifest.lock */,
 				73266DA52CAEDBF60087B7A1 /* Sources */,
 				73266DA62CAEDBF60087B7A1 /* Frameworks */,
 				73D868B72CE6A29700AF0CAD /* Resources */,
+				3F68D2F68530ABB54E275282 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -163,10 +195,9 @@
 				73D868C72CED5F7000AF0CAD /* FirebaseCore */,
 				73D868C92CED5F7000AF0CAD /* FirebaseDatabase */,
 				73D868CB2CED5F7000AF0CAD /* FirebaseFirestore */,
-				73D869722CEF8D6C00AF0CAD /* FacebookCore */,
-				73D869742CEF8D6C00AF0CAD /* FacebookLogin */,
 				73D869952CF02DA000AF0CAD /* FirebaseStorage */,
 				73611DDB2D01FD8F00868529 /* FirebaseFunctions */,
+				736EC68B2D3C475E00664BA1 /* PhoneNumberKit */,
 			);
 			productName = TrailMates;
 			productReference = 73266DA92CAEDBF60087B7A1 /* TrailMatesATX.app */;
@@ -176,6 +207,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 73266DD22CAEDBF80087B7A1 /* Build configuration list for PBXNativeTarget "TrailMatesATXTests" */;
 			buildPhases = (
+				20CC861DC50441FFCE7ABAC2 /* [CP] Check Pods Manifest.lock */,
 				73266DB72CAEDBF80087B7A1 /* Sources */,
 				73266DB82CAEDBF80087B7A1 /* Frameworks */,
 				73266DB92CAEDBF80087B7A1 /* Resources */,
@@ -189,8 +221,6 @@
 				73266DBE2CAEDBF80087B7A1 /* TrailMatesTests */,
 			);
 			name = TrailMatesATXTests;
-			packageProductDependencies = (
-			);
 			productName = TrailMatesTests;
 			productReference = 73266DBB2CAEDBF80087B7A1 /* TrailMatesATXTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -199,9 +229,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 73266DD52CAEDBF80087B7A1 /* Build configuration list for PBXNativeTarget "TrailMatesATXUITests" */;
 			buildPhases = (
+				E5BDA9BCF31D7775047B1506 /* [CP] Check Pods Manifest.lock */,
 				73266DC12CAEDBF80087B7A1 /* Sources */,
 				73266DC22CAEDBF80087B7A1 /* Frameworks */,
 				73266DC32CAEDBF80087B7A1 /* Resources */,
+				A6D0384C9EA08CCD121029D0 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -212,8 +244,6 @@
 				73266DC82CAEDBF80087B7A1 /* TrailMatesUITests */,
 			);
 			name = TrailMatesATXUITests;
-			packageProductDependencies = (
-			);
 			productName = TrailMatesUITests;
 			productReference = 73266DC52CAEDBF80087B7A1 /* TrailMatesATXUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -252,7 +282,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-				73D869712CEF8D6C00AF0CAD /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
+				736EC68A2D3C475E00664BA1 /* XCRemoteSwiftPackageReference "PhoneNumberKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 73266DAA2CAEDBF60087B7A1 /* Products */;
@@ -289,6 +319,109 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		0FC45D0A8BC73A81585B2C9A /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-TrailMatesATX-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		20CC861DC50441FFCE7ABAC2 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-TrailMatesATXTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		3F68D2F68530ABB54E275282 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		A6D0384C9EA08CCD121029D0 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		E5BDA9BCF31D7775047B1506 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-TrailMatesATX-TrailMatesATXUITests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		73266DA52CAEDBF60087B7A1 /* Sources */ = {
@@ -449,6 +582,7 @@
 		};
 		73266DD02CAEDBF80087B7A1 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5FEF23103267851868BD6CAC /* Pods-TrailMatesATX.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -458,6 +592,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"TrailMates/Preview Content\"";
 				DEVELOPMENT_TEAM = BN58T9KR6C;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FACEBOOK_APP_ID = 453349974453925;
 				FACEBOOK_CLIENT_TOKEN = b430c6ab2b0651f6b8409e09dcf57579;
 				FIREBASE_AUTH_URL_SCHEME = "app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78";
@@ -492,6 +627,7 @@
 		};
 		73266DD12CAEDBF80087B7A1 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 030191C7FF78D364E9FABC7E /* Pods-TrailMatesATX.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -501,6 +637,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"TrailMates/Preview Content\"";
 				DEVELOPMENT_TEAM = BN58T9KR6C;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FACEBOOK_APP_ID = 453349974453925;
 				FACEBOOK_CLIENT_TOKEN = b430c6ab2b0651f6b8409e09dcf57579;
 				FIREBASE_AUTH_URL_SCHEME = "app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78";
@@ -535,6 +672,7 @@
 		};
 		73266DD32CAEDBF80087B7A1 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 648088AB38921F8F79E12232 /* Pods-TrailMatesATXTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -554,6 +692,7 @@
 		};
 		73266DD42CAEDBF80087B7A1 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B6A6A13BB3B93BE667A9C14D /* Pods-TrailMatesATXTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -573,6 +712,7 @@
 		};
 		73266DD62CAEDBF80087B7A1 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F851F652CAAF28BDBA9B96C /* Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -590,6 +730,7 @@
 		};
 		73266DD72CAEDBF80087B7A1 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F52DA2B3EF539E2F343D2E87 /* Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -647,20 +788,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		736EC68A2D3C475E00664BA1 /* XCRemoteSwiftPackageReference "PhoneNumberKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/marmelroy/PhoneNumberKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.7.0;
+			};
+		};
 		73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 11.3.0;
-			};
-		};
-		73D869712CEF8D6C00AF0CAD /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/facebook/facebook-ios-sdk";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 14.1.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -670,6 +811,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFunctions;
+		};
+		736EC68B2D3C475E00664BA1 /* PhoneNumberKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 736EC68A2D3C475E00664BA1 /* XCRemoteSwiftPackageReference "PhoneNumberKit" */;
+			productName = PhoneNumberKit;
 		};
 		73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -695,16 +841,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
-		};
-		73D869722CEF8D6C00AF0CAD /* FacebookCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 73D869712CEF8D6C00AF0CAD /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
-			productName = FacebookCore;
-		};
-		73D869742CEF8D6C00AF0CAD /* FacebookLogin */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 73D869712CEF8D6C00AF0CAD /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
-			productName = FacebookLogin;
 		};
 		73D869952CF02DA000AF0CAD /* FirebaseStorage */ = {
 			isa = XCSwiftPackageProductDependency;

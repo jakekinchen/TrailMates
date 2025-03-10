@@ -8,6 +8,7 @@ struct ContactsListView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userManager: UserManager
     @FocusState private var focusedField: Field?
+    @State private var showContactsPermissionAlert = false
 
     private enum Field {
         case search
@@ -31,29 +32,59 @@ struct ContactsListView: View {
                             .onSubmit {
                                 focusedField = nil
                             }
+                    }
+                    .padding()
+                    .background(Color("altBeige"))
 
-                        if !viewModel.searchText.isEmpty {
-                            Button(action: {
-                                viewModel.searchText = ""
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(Color("pine"))
+                    // Request Contacts Access Button (only shown if not full access)
+                    if !viewModel.hasFullContactsAccess {
+                        Button(action: {
+                            viewModel.requestContactsAccess { granted in
+                                if !granted {
+                                    showContactsPermissionAlert = true
+                                }
                             }
+                        }) {
+                            HStack {
+                                Image(systemName: "person.crop.circle.badge.plus")
+                                Text("Add More Contacts")
+                            }
+                            .foregroundColor(Color("pine"))
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color("altBeige"))
+                            .cornerRadius(10)
+                            .padding()
                         }
                     }
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color("pine").opacity(0.1))
-                    )
-                    .padding()
 
-                    // Contacts List
-                    ContactsContentView(
-                        matchedUsers: $viewModel.matchedUsers,
-                        unmatchedContacts: viewModel.filteredUnmatchedContacts,
-                        filteredMatchedUsers: viewModel.filteredMatchedUsers
-                    )
+                    // Matched Users List
+                    if viewModel.filteredMatchedUsers.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "person.crop.circle")
+                                .resizable()
+                                .frame(width: 60, height: 60)
+                                .foregroundColor(.gray)
+
+                            Text("No matches found")
+                                .font(.title2)
+                                .fontWeight(.medium)
+
+                            Text("None of your contacts are on TrailMates yet")
+                                .foregroundColor(.gray)
+                        }
+                        .frame(maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
+                                MatchedUsersSection(
+                                    matchedUsers: $viewModel.matchedUsers,
+                                    filteredMatchedUsers: viewModel.filteredMatchedUsers
+                                )
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
                 }
             }
         }
@@ -86,15 +117,16 @@ struct ContactsListView: View {
             Task {
                 await viewModel.loadAndMatchContacts(userManager: userManager)
             }
-
-            let appearance = UINavigationBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = UIColor(Color("beige"))
-            appearance.titleTextAttributes = [.foregroundColor: UIColor(Color("pine"))]
-
-            UINavigationBar.appearance().standardAppearance = appearance
-            UINavigationBar.appearance().scrollEdgeAppearance = appearance
-            UINavigationBar.appearance().tintColor = UIColor(Color("pine"))
+        }
+        .alert("Contacts Access Required", isPresented: $showContactsPermissionAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Please enable contacts access in Settings to find more friends on TrailMates.")
         }
     }
 }
@@ -119,35 +151,6 @@ private struct EmptyContactsView: View {
 }
 
 // Main content view
-private struct ContactsContentView: View {
-    @Binding var matchedUsers: [ContactsListViewModel.MatchedContact]
-    let unmatchedContacts: [CNContact]
-    @EnvironmentObject var userManager: UserManager
-    let filteredMatchedUsers: [ContactsListViewModel.MatchedContact]
-
-    var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
-                // Matched Users Section
-                if !filteredMatchedUsers.isEmpty {
-                    MatchedUsersSection(
-                        matchedUsers: $matchedUsers,
-                        filteredMatchedUsers: filteredMatchedUsers
-                    )
-                }
-
-                // Unmatched Contacts Section
-                if !unmatchedContacts.isEmpty {
-                    UnmatchedContactsSection(
-                        contacts: unmatchedContacts
-                    )
-                }
-            }
-            .padding(.horizontal)
-        }
-    }
-}
-
 private struct MatchedUsersSection: View {
     @Binding var matchedUsers: [ContactsListViewModel.MatchedContact]
     @EnvironmentObject var userManager: UserManager
@@ -155,14 +158,13 @@ private struct MatchedUsersSection: View {
 
     var body: some View {
         Section {
-            ForEach(Array(filteredMatchedUsers.enumerated()), id: \.element.id) { index, matchedContact in
+            ForEach(filteredMatchedUsers) { matchedContact in
                 VStack(spacing: 0) {
                     MatchedUserRow(
                         matchedContact: matchedContact,
                         matchedUsers: $matchedUsers
                     )
-
-                    if index < filteredMatchedUsers.count - 1 {
+                    if matchedContact.id != filteredMatchedUsers.last?.id {
                         Divider()
                             .background(Color("pine").opacity(0.2))
                             .padding(.horizontal)
@@ -170,29 +172,7 @@ private struct MatchedUsersSection: View {
                 }
             }
         } header: {
-            SectionHeader(title: "On TrailMates")
-        }
-    }
-}
-
-private struct UnmatchedContactsSection: View {
-    let contacts: [CNContact]
-
-    var body: some View {
-        Section {
-            ForEach(Array(contacts.enumerated()), id: \.element.identifier) { index, contact in
-                VStack(spacing: 0) {
-                    UnmatchedContactRow(contact: contact)
-
-                    if index < contacts.count - 1 {
-                        Divider()
-                            .background(Color("pine").opacity(0.2))
-                            .padding(.horizontal)
-                    }
-                }
-            }
-        } header: {
-            SectionHeader(title: "Invite to TrailMates")
+            SectionHeader(title: "Add your friends on TrailMates")
         }
     }
 }
@@ -213,40 +193,120 @@ private struct SectionHeader: View {
     }
 }
 
+// MARK: - Matched User Row
 private struct MatchedUserRow: View {
     let matchedContact: ContactsListViewModel.MatchedContact
     @Binding var matchedUsers: [ContactsListViewModel.MatchedContact]
     @EnvironmentObject var userManager: UserManager
 
+    @State private var profileImage: UIImage?
+    @State private var isLoadingImage = false
+    @State private var isProcessing = false
+    @State private var error: Error?
+
     var body: some View {
-        HStack {
-            Text("\(matchedContact.contact.givenName) \(matchedContact.contact.familyName)")
-                .foregroundColor(Color("pine"))
-            Spacer()
-            Button("Add") {
-                Task {
-                    do {
-                        try await userManager.sendFriendRequest(to: matchedContact.user.id)
-                        if let index = matchedUsers.firstIndex(where: { $0.id == matchedContact.id }) {
-                            matchedUsers.remove(at: index)
+        // If we have a matched user, show a NavigationLink to their profile
+        NavigationLink(destination: FriendProfileView(user: matchedContact.user)) {
+            HStack(spacing: 12) {
+                // Profile Image
+                profileImageView
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(matchedContact.contact.givenName) \(matchedContact.contact.familyName)")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color("pine"))
+                    
+                    Text("@\(matchedContact.user.username)")
+                        .font(.system(size: 14))
+                        .foregroundColor(Color("pine").opacity(0.7))
+                }
+
+                Spacer()
+
+                // Check if already a friend
+                if userManager.isFriend(matchedContact.user.id) {
+                    Label("Added", systemImage: "checkmark.circle.fill")
+                        .foregroundColor(.gray)
+                } else {
+                    if isProcessing {
+                        ProgressView()
+                    } else {
+                        Button("Add") {
+                            Task {
+                                await sendFriendRequest()
+                            }
                         }
-                    } catch {
-                        print("Error sending friend request: \(error)")
+                        .foregroundColor(Color("beige"))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color("pine"))
+                        .cornerRadius(8)
                     }
                 }
             }
-            .foregroundColor(Color("beige"))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color("pine"))
-            .cornerRadius(8)
+            .padding(.vertical, 12)
+            .padding(.horizontal)
+            .background(Color("beige").opacity(0.1))
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal)
-        .background(Color("beige").opacity(0.1))
+        .task {
+            await loadProfileImageIfNeeded()
+        }
+        .alert("Error", isPresented: .constant(error != nil), presenting: error) { _ in
+            Button("OK") { error = nil }
+        } message: { error in
+            Text(error.localizedDescription)
+        }
+    }
+
+    @ViewBuilder
+    private var profileImageView: some View {
+        
+        Group{
+            if let image = profileImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else if isLoadingImage {
+                ProgressView()
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .foregroundColor(.gray)
+            }
+        }
+        .frame(width: 50, height: 50)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(userManager.isFriend(matchedContact.user.id) ? Color.green : Color.gray, lineWidth: 2))
+    }
+
+    private func sendFriendRequest() async {
+        isProcessing = true
+        defer { isProcessing = false }
+
+        do {
+            try await userManager.sendFriendRequest(to: matchedContact.user.id)
+            // Once added, remove from matchedUsers if needed
+            if let index = matchedUsers.firstIndex(where: { $0.id == matchedContact.id }) {
+                matchedUsers[index] = matchedContact // Update state if necessary
+            }
+        } catch {
+            self.error = error
+        }
+    }
+
+    private func loadProfileImageIfNeeded() async {
+        isLoadingImage = true
+        defer { isLoadingImage = false }
+
+        do {
+            profileImage = try await userManager.fetchProfileImage(for: matchedContact.user, preferredSize: .thumbnail)
+        } catch {
+            print("Error loading profile image: \(error)")
+        }
     }
 }
 
+// MARK: - Unmatched Contact Row
 private struct UnmatchedContactRow: View {
     let contact: CNContact
     @State private var showingMessageComposer = false
@@ -266,7 +326,7 @@ private struct UnmatchedContactRow: View {
             Text("\(contact.givenName) \(contact.familyName)")
                 .foregroundColor(Color("pine"))
             Spacer()
-            Button("Invite") {
+            Button("Add") {
                 if MessageComposerView.canSendText() {
                     showingMessageComposer = true
                 } else {

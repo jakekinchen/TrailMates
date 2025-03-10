@@ -140,8 +140,8 @@ struct SettingsView: View {
                     // Logout
                     Section {
                         Button(action: {
-                            Task { @MainActor in
-                                authViewModel.signOut()
+                            Task {
+                                await authViewModel.signOut()
                             }
                         }) {
                             HStack {
@@ -366,7 +366,7 @@ struct PrivacySettingsView: View {
                 try await action()
             } catch {
                 if pendingUpdates.contains(key) {
-                    if let boolVal = oldValue as? Bool, var binding = self.binding(forKey: key) {
+                    if let boolVal = oldValue as? Bool, let binding = self.binding(forKey: key) {
                         binding.wrappedValue = boolVal
                     }
                 }

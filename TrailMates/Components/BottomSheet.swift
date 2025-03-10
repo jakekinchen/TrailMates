@@ -27,7 +27,7 @@ struct BottomSheet<Content: View>: View {
         case .partial:
             return maxHeight * 0.45 // Shows 45% of sheet
         case .collapsed:
-            return maxHeight - 100 // Just above tab bar
+            return maxHeight - 80 // Just above tab bar
         }
     }
     

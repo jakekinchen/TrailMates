@@ -1,23 +1,19 @@
 {
   "rules": {
+    // Global defaults (deny unless in sub-rules we allow)
     ".read": false,
     ".write": false,
     
     "locations": {
-      // Allow reading all locations for authenticated users
+      // Anyone authenticated can read all locations (optional)
       ".read": "auth != null",
       
+      // Write rules for each child location identified by the user’s UID
       "$uid": {
-        // Allow users to read/write their own location
-        ".read": "auth != null",
-        ".write": "auth != null && auth.uid === $uid && (
-          auth.uid != null && 
-          $uid != null && 
-          auth.uid.length > 0 && 
-          $uid.length > 0
-        )",
+        // Only the matching user can write
+        ".write": "auth != null && auth.uid === $uid",
         
-        // Validate required fields
+        // Validate fields on the location object
         ".validate": "newData.hasChildren(['latitude', 'longitude', 'timestamp', 'lastUpdated'])",
         
         "latitude": {

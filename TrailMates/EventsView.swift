@@ -70,7 +70,7 @@ struct EventsView: View {
                 if let userId = userManager.currentUser?.id {
                     Task {
                         try await eventViewModel.attendEvent(userId: userId, eventId: event.id)
-                        userManager.attendEvent(eventId: event.id)
+                        try await userManager.attendEvent(event.id)
                     }
                 }
             },
@@ -78,7 +78,7 @@ struct EventsView: View {
                 if let userId = userManager.currentUser?.id {
                     Task {
                         try await eventViewModel.leaveEvent(userId: userId, eventId: event.id)
-                        userManager.leaveEvent(eventId: event.id)
+                        try await userManager.leaveEvent(event.id)
                     }
                 }
             }

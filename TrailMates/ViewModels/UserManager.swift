@@ -29,6 +29,7 @@ class UserManager: ObservableObject {
     
     // MARK: - Private Properties
     private let dataProvider = FirebaseDataProvider.shared
+    private var locationManager: LocationManager?
     private var cancellables = Set<AnyCancellable>()
     private var hasInitialized = false
     
@@ -37,7 +38,14 @@ class UserManager: ObservableObject {
     @Published var isFacebookLinked: Bool = false
     
     private init() {
+        // Configure Firebase debug logging level
+        FirebaseConfiguration.shared.setLoggerLevel(.error)
+        
         setupObservers()
+        Task { @MainActor in
+            LocationManager.setupShared()
+            self.locationManager = LocationManager.shared
+        }
     }
     
     @Published private(set) var isRefreshing = false
@@ -88,11 +96,38 @@ class UserManager: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // Setup automatic saving
+        // Setup automatic saving with location change filtering
         $currentUser
             .dropFirst()
-            .debounce(for: .seconds(1), scheduler: RunLoop.main)
+            .debounce(for: .seconds(5), scheduler: RunLoop.main)
             .compactMap { $0 }
+            .removeDuplicates { [weak self] oldUser, newUser in
+                guard let self = self else { return true }
+                // Only trigger save if non-location properties changed
+                let locationChanged = !self.areCoordinatesEqual(oldUser.location, newUser.location)
+                let onlyLocationChanged = locationChanged && 
+                    oldUser.firstName == newUser.firstName &&
+                    oldUser.lastName == newUser.lastName &&
+                    oldUser.username == newUser.username &&
+                    oldUser.profileImageUrl == newUser.profileImageUrl &&
+                    oldUser.profileThumbnailUrl == newUser.profileThumbnailUrl &&
+                    oldUser.friends == newUser.friends &&
+                    oldUser.createdEventIds == newUser.createdEventIds &&
+                    oldUser.attendingEventIds == newUser.attendingEventIds &&
+                    oldUser.visitedLandmarkIds == newUser.visitedLandmarkIds &&
+                    oldUser.isActive == newUser.isActive &&
+                    oldUser.doNotDisturb == newUser.doNotDisturb &&
+                    oldUser.receiveFriendRequests == newUser.receiveFriendRequests &&
+                    oldUser.receiveFriendEvents == newUser.receiveFriendEvents &&
+                    oldUser.receiveEventUpdates == newUser.receiveEventUpdates &&
+                    oldUser.shareLocationWithFriends == newUser.shareLocationWithFriends &&
+                    oldUser.shareLocationWithEventHost == newUser.shareLocationWithEventHost &&
+                    oldUser.shareLocationWithEventGroup == newUser.shareLocationWithEventGroup &&
+                    oldUser.allowFriendsToInviteOthers == newUser.allowFriendsToInviteOthers
+                
+                // Return true if only location changed (to remove this duplicate)
+                return onlyLocationChanged
+            }
             .sink { [weak self] user in
                 Task { [weak self] in
                     try await self?.saveProfile(updatedUser: user)
@@ -108,6 +143,21 @@ class UserManager: ObservableObject {
                 self?.persistUserSession()
             }
             .store(in: &cancellables)
+    }
+    
+    /// Helper function to compare optional CLLocationCoordinate2D values
+    private func areCoordinatesEqual(_ lhs: CLLocationCoordinate2D?, _ rhs: CLLocationCoordinate2D?) -> Bool {
+        switch (lhs, rhs) {
+        case (.none, .none):
+            return true
+        case (.some(let coord1), .some(let coord2)):
+            // Use a small epsilon for floating point comparison
+            let latEqual = abs(coord1.latitude - coord2.latitude) < 0.000001
+            let lonEqual = abs(coord1.longitude - coord2.longitude) < 0.000001
+            return latEqual && lonEqual
+        default:
+            return false
+        }
     }
     
     @MainActor
@@ -185,8 +235,7 @@ class UserManager: ObservableObject {
     }
     
     func isUsernameTaken(_ username: String) async -> Bool {
-        let excludeId = currentUser?.id // Exclude current user when checking (for edit mode)
-        return await dataProvider.isUsernameTaken(username, excludingUserId: excludeId)
+        return await dataProvider.isUsernameTakenCloudFunction(username)
     }
     
     // MARK: Facebook Integration
@@ -302,19 +351,47 @@ class UserManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "isFacebookLinked")
     }
 
-    func signOut() {
-        // Clear all state
-        currentUser = nil
-        currentUserId = nil  // Clear the ID
-        isLoggedIn = false
-        isOnboardingComplete = false
-        isWelcomeComplete = false
-        isPermissionsGranted = false
-        hasAddedFriends = false
-        isFacebookLinked = false
+    // MARK: - Logout
+    func signOut() async {
+        print("🔄 Starting comprehensive sign out process")
         
-        // Clear persisted data
+        // 1. Sign out from Firebase Auth
+        do {
+            try Auth.auth().signOut()
+            print("✅ Firebase Auth sign out successful")
+        } catch {
+            print("⚠️ Firebase Auth sign out error: \(error)")
+            // Continue with cleanup even if Firebase sign out fails
+        }
+        
+        // 2. Clean up Firebase listeners
+        if let userId = currentUser?.id {
+            dataProvider.stopObservingUser(id: userId)
+            print("✅ Stopped Firebase user observers")
+        }
+        
+        // 3. Stop location updates
+        locationManager?.manager.stopUpdatingLocation()
+        print("✅ Stopped location updates")
+        
+        // 4. Clear all local state
+        await MainActor.run {
+            currentUser = nil
+            currentUserId = nil
+            isLoggedIn = false
+            isOnboardingComplete = false
+            isWelcomeComplete = false
+            isPermissionsGranted = false
+            hasAddedFriends = false
+            isFacebookLinked = false
+            print("✅ Cleared local state")
+        }
+        
+        // 5. Clear persisted data
         clearPersistedUserSession()
+        print("✅ Cleared persisted session data")
+        
+        print("✅ Sign out process completed")
     }
 
     func refreshUserData() async {
@@ -390,16 +467,21 @@ class UserManager: ObservableObject {
     }
     
     func findUserByPhoneNumber(_ phoneNumber: String) async -> User? {
-        print("📱 UserManager - Finding user by phone: \(phoneNumber)")
-        let result = await dataProvider.fetchUser(byPhoneNumber: phoneNumber)
-        if let user = result {
-            print("✅ UserManager - Found user: \(user.firstName) \(user.lastName)")
-        } else {
-            print("❌ UserManager - No user found for phone number")
-        }
-        return result
+        return await dataProvider.fetchUser(byPhoneNumber: phoneNumber)
     }
-
+    
+    func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User] {
+        do {
+            return try await dataProvider.findUsersByPhoneNumbers(phoneNumbers)
+        } catch {
+            print("Error finding users by phone numbers: \(error)")
+            throw error
+        }
+    }
+    
+    func normalizePhoneNumber(_ phoneNumber: String) -> String {
+        return phoneNumber.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
+    }
     
     func createNewUser(phoneNumber: String, id: String) async throws {
         print("Starting signup process for phone: \(phoneNumber)")
@@ -502,20 +584,6 @@ class UserManager: ObservableObject {
         return await dataProvider.fetchUser(by: userId)
     }
 
-    // MARK: - Logout
-    func logout() {
-        do {
-            try Auth.auth().signOut()
-            currentUser = nil
-            isLoggedIn = false
-            clearPersistedUserSession()
-        } catch {
-            print("Error signing out: \(error)")
-        }
-    }
-
-    
-
     func toggleDoNotDisturb() async throws {
         guard let user = currentUser else { return }
         user.doNotDisturb.toggle()
@@ -524,32 +592,36 @@ class UserManager: ObservableObject {
 
     // MARK: - User Actions
 
-    func attendEvent(eventId: String) {
+    func attendEvent(_ eventId: String) async throws {
         guard let user = currentUser else { return }
         guard !user.attendingEventIds.contains(eventId) else { return }
 
-        // Update user's attending events
+        // Update user's attending events locally
         user.attendingEventIds.append(eventId)
-        self.currentUser = user
-        self.persistUserSession()
+        
+        // Sync with Firestore
+        try await saveProfile(updatedUser: user)
+        print("✅ Event attendance synced with Firestore: \(eventId)")
     }
 
-    func leaveEvent(eventId: String) {
+    func leaveEvent(_ eventId: String) async throws {
         guard let user = currentUser else { return }
         guard user.attendingEventIds.contains(eventId) else { return }
 
-        // Remove from user's attending events
+        // Remove from user's attending events locally
         if let index = user.attendingEventIds.firstIndex(of: eventId) {
             user.attendingEventIds.remove(at: index)
-            self.currentUser = user
-            self.persistUserSession()
+            
+            // Sync with Firestore
+            try await saveProfile(updatedUser: user)
+            print("✅ Event departure synced with Firestore: \(eventId)")
         }
     }
 
     // MARK: - Friend Management
     public func sendFriendRequest(to userId: String) async throws {
         guard let currentUserId = currentUser?.id else { return }
-        try await dataProvider.sendFriendRequest(from: currentUserId, to: userId)
+        try await dataProvider.sendFriendRequest(fromUserId: currentUserId, to: userId)
     }
     
     public func acceptFriendRequest(requestId: String, fromUserId: String) async throws {
@@ -638,12 +710,21 @@ class UserManager: ObservableObject {
         }
         
         do {
-            print("UserManager: Attempting to update location for user \(userId)")
+            // Only log location updates every 5 minutes or if there's an error
+            let shouldLog = lastLocationLogTime?.timeIntervalSinceNow ?? -300 <= -300
+            if shouldLog {
+                print("UserManager: Updating location for user \(userId)")
+                lastLocationLogTime = Date()
+            }
+            
             try await dataProvider.updateUserLocation(userId: userId, location: location)
             if let updatedUser = currentUser {
                 updatedUser.location = location
                 self.currentUser = updatedUser
-                print("UserManager: Successfully updated user location")
+                
+                if shouldLog {
+                    print("UserManager: Location updated successfully")
+                }
             }
         } catch {
             print("UserManager: Error updating location: \(error)")
@@ -749,23 +830,23 @@ class UserManager: ObservableObject {
 
     func checkUserExists(phoneNumber: String) async -> Bool {
         print("Checking if user exists with phone number: \(phoneNumber)")
-        let existingUser = await dataProvider.fetchUser(byPhoneNumber: phoneNumber)
-        return existingUser != nil
+        return await dataProvider.checkUserExists(phoneNumber: phoneNumber)
     }
     
     func login(phoneNumber: String, id: String) async throws {
         print("Starting login process for phone: \(phoneNumber)")
-        
-        // Fetch existing user
-        guard let existingUser = await dataProvider.fetchUser(byPhoneNumber: phoneNumber) else {
-            throw ValidationError.invalidData("No account found with this phone number")
+
+        // Instead of fetching the user by phone number, fetch directly by UID:
+        guard let existingUser = await dataProvider.fetchUser(by: id) else {
+            throw ValidationError.invalidData("No account found with this UID")
         }
-        
-        // Verify Firebase UID matches
-        if existingUser.id != id {
-            throw ValidationError.invalidData("Account credentials mismatch")
-        }
-        
+
+        // (Optional) If you want to double-check that this user has the same phone number:
+//        let normalizedPhone = normalizePhoneNumber(phoneNumber)
+//        guard existingUser.phoneNumber == normalizedPhone else {
+//            throw ValidationError.invalidData("No account found with this phone number")
+//        }
+
         print("User found, logging in")
         await MainActor.run {
             self.currentUser = existingUser
@@ -813,6 +894,9 @@ class UserManager: ObservableObject {
             throw error
         }
     }
+
+    // Add property to track last location log time
+    private var lastLocationLogTime: Date?
 }
 
 // MARK: - Profile Image Types
