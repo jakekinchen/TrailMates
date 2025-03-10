@@ -16,6 +16,10 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var authorizationCallback: ((CLAuthorizationStatus) -> Void)?
     private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
     
+    // Add properties for logging throttling
+    private var lastLocationLogTime: Date?
+    private let logThreshold: TimeInterval = 300 // 5 minutes
+    
     // MARK: - Singleton
     private static var _shared: LocationManager?
     
@@ -102,13 +106,19 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        print("LocationManager received update - lat: \(location.coordinate.latitude), lon: \(location.coordinate.longitude)")
         
         Task { @MainActor in
             self.location = location
-            print("LocationManager attempting to update user location...")
+            
+            // Check if we should log this update
+            let shouldLog = lastLocationLogTime?.timeIntervalSinceNow ?? -logThreshold <= -logThreshold
+            if shouldLog {
+                print("LocationManager received update - lat: \(location.coordinate.latitude), lon: \(location.coordinate.longitude)")
+                lastLocationLogTime = Date()
+            }
+            
+            // Update user location without logging
             await userManager.updateLocation(location.coordinate)
-            print("LocationManager finished update attempt")
         }
     }
     

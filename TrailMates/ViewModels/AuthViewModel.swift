@@ -74,10 +74,12 @@ class AuthViewModel: ObservableObject {
             )
             
             // First authenticate with Firebase
+            print("Firebase UID after sign-in:", Auth.auth().currentUser?.uid ?? "No user")
             let authResult = try await auth.signIn(with: credential)
+            print("Firebase UID after sign-in:", Auth.auth().currentUser?.uid ?? "No user")
             print("🔐 Successfully signed in with phone auth")
             
-            do {
+            do { 
                 // Check if user exists in our database
                 let userExists = await userManager.checkUserExists(phoneNumber: phoneNumber)
                 
@@ -158,11 +160,11 @@ class AuthViewModel: ObservableObject {
         )
     }
     
-    func signOut() {
+    func signOut() async {
         do {
             try Auth.auth().signOut()
             isAuthenticated = false
-            userManager.signOut()
+            await userManager.signOut()
         } catch {
             showError = true
             errorMessage = error.localizedDescription

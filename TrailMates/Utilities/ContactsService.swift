@@ -6,7 +6,7 @@
 //
 
 
-import Contacts
+@preconcurrency import Contacts
 
 struct ContactsService {
     static func fetchContacts() async throws -> [CNContact] {

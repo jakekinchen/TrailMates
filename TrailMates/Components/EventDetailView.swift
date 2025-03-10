@@ -98,11 +98,11 @@ struct EventDetailView: View {
                                         Task {
                                             if isUserAttending {
                                                 try await eventViewModel.leaveEvent(userId: currentUser.id, eventId: event.id)
-                                                userManager.leaveEvent(eventId: event.id)
+                                                try await userManager.leaveEvent(event.id)
                                                 localAttendeeIds.remove(currentUser.id) // Update local state
                                             } else {
                                                 try await eventViewModel.attendEvent(userId: currentUser.id, eventId: event.id)
-                                                userManager.attendEvent(eventId: event.id)
+                                                try await userManager.attendEvent(event.id)
                                                 localAttendeeIds.insert(currentUser.id) // Update local state
                                             }
                                         }

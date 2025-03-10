@@ -1,29 +1,49 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Deny all reads and writes by default
-    match /{document=**} {
-      allow read, write: if false;
+    
+    ///////////////////////
+    // USERS COLLECTION //
+    ///////////////////////
+    match /users/{userId} {
+      // Helper functions
+      function isAuthenticated() {
+        return request.auth != null;
+      }
+
+      // Allow reading your own user doc
+      allow get: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow querying by phone number
+      allow list: if isAuthenticated() 
+                  && request.query.limit <= 1
+                  && request.query.filters.size() == 1
+                  && request.query.filters[0].op == "=="
+                  && request.query.filters[0].field == "phoneNumber";
+      
+      // Allow updating your own user doc
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow creating new user doc only if Auth UID matches
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.id;
     }
 
-    // Users collection rules
-    match /users/{userId} {
-      // Allow authenticated users to read their own profile
-      allow get: if request.auth != null && request.auth.uid == userId;
+    ///////////////////////
+    // EVENTS COLLECTION //
+    ///////////////////////
+    match /events/{eventId} {
+      // Allow any authenticated user to read events
+      allow get, list: if request.auth != null;
       
-      // Allow authenticated users to update their own profile
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // Allow any authenticated user to create an event
+      allow create: if request.auth != null;
       
-      // Allow creating new user documents
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.id;
+      // Allow updates if the user is authenticated
+      allow update: if request.auth != null;
       
-      // Allow the Cloud Function to read user profiles
-      allow get: if request.auth.token.admin == true;
-      
-      // Allow querying by phone number during authentication
-      allow list: if request.auth != null 
-        && ('phoneNumber' in request.query.filters[0])
-        && request.query.filters.size() == 1;
+      // Allow delete only if the user is the host
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.hostId;
     }
   }
 }

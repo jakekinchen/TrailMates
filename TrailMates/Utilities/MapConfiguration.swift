@@ -35,7 +35,7 @@ struct MapConfiguration {
     // MARK: - Map Constants
     static let defaultRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 30.26074, longitude: -97.74550),
-        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+        span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
     )
     
     static let boundaryRegion = MKCoordinateRegion(
@@ -45,7 +45,7 @@ struct MapConfiguration {
     
     static let zoomRange = MKMapView.CameraZoomRange(
         minCenterCoordinateDistance: 100,
-        maxCenterCoordinateDistance: 12500
+        maxCenterCoordinateDistance: 27500
     )
     
     // MARK: - Initializer

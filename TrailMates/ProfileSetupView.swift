@@ -489,73 +489,72 @@ struct ProfileSetupView: View {
     // Create or Update User
     private func updateUserProfile() async throws {
         print("\n🔄 Updating User Profile")
-        if let currentUser = userManager.currentUser {
-            print("Current User Before Update:")
-            print("   ID: \(currentUser.id)")
-            print("   First Name: '\(currentUser.firstName)'")
-            print("   Last Name: '\(currentUser.lastName)'")
-            print("   Username: '\(currentUser.username)'")
-            
-            // Detect if this is initial setup
-            let isInitialSetup = currentUser.firstName.isEmpty || 
-                                currentUser.lastName.isEmpty || 
-                                currentUser.username.isEmpty
-            
-            if isInitialSetup {
-                print("📝 Initial profile setup detected - will force save")
-            }
-            
-            // Handle profile image first if it exists
-            if let image = profileImage {
-                print("📸 Uploading profile image...")
-                try await userManager.setProfileImage(image)
-                print("✅ Profile image uploaded")
-            }
-            
-            // Update user info
-            print("\nUpdating user fields...")
-            currentUser.firstName = firstName
-            currentUser.lastName = lastName
-            currentUser.username = username
-            
-            print("Updated User State:")
-            print("   First Name: '\(currentUser.firstName)'")
-            print("   Last Name: '\(currentUser.lastName)'")
-            print("   Username: '\(currentUser.username)'")
-            
-            // Save updated user info - force save for initial setup
-            print("\n💾 Saving updated user...")
-            if isInitialSetup {
-                // Use a special save method that forces the update
-                try await userManager.saveInitialProfile(updatedUser: currentUser)
-            } else {
-                try await userManager.saveProfile(updatedUser: currentUser)
-            }
-            print("✅ User saved successfully")
-            
-            // Update the local state with the latest user data
-            if let updatedUser = userManager.currentUser {
-                print("\nUpdating local state with saved user:")
-                print("   First Name: '\(updatedUser.firstName)'")
-                print("   Last Name: '\(updatedUser.lastName)'")
-                print("   Username: '\(updatedUser.username)'")
-                
-                firstName = updatedUser.firstName
-                lastName = updatedUser.lastName
-                username = updatedUser.username
-                
-                // Fetch the latest profile image
-                if let image = try? await userManager.fetchProfileImage(for: updatedUser, forceRefresh: true) {
-                    profileImage = image
-                    print("✅ Profile image refreshed")
-                }
-            }
-        } else {
+        guard let oldUser = userManager.currentUser else {
             print("❌ Error: No current user available")
-            // Show error if no current user
             alertMessage = "Error: No user found. Please try logging in again."
             showAlert = true
             throw ProfileValidationError.noCurrentUser
+        }
+        
+        print("Current User Before Update:")
+        print("   ID: \(oldUser.id)")
+        print("   First Name: '\(oldUser.firstName)'")
+        print("   Last Name: '\(oldUser.lastName)'")
+        print("   Username: '\(oldUser.username)'")
+        
+        // Create a new user object with updated fields
+        let newUser = oldUser
+        newUser.firstName = firstName
+        newUser.lastName = lastName
+        newUser.username = username
+        
+        // Detect if this is initial setup
+        let isInitialSetup = oldUser.firstName.isEmpty || 
+                            oldUser.lastName.isEmpty || 
+                            oldUser.username.isEmpty
+        
+        if isInitialSetup {
+            print("📝 Initial profile setup detected - will force save")
+        }
+        
+        // Handle profile image first if it exists
+        if let image = profileImage {
+            print("📸 Uploading profile image...")
+            try await userManager.setProfileImage(image)
+            print("✅ Profile image uploaded")
+        }
+        
+        print("Updated User State:")
+        print("   First Name: '\(newUser.firstName)'")
+        print("   Last Name: '\(newUser.lastName)'")
+        print("   Username: '\(newUser.username)'")
+        
+        // Save updated user info - force save for initial setup
+        print("\n💾 Saving updated user...")
+        if isInitialSetup {
+            // Use a special save method that forces the update
+            try await userManager.saveInitialProfile(updatedUser: newUser)
+        } else {
+            try await userManager.saveProfile(updatedUser: newUser)
+        }
+        print("✅ User saved successfully")
+        
+        // Update the local state with the latest user data
+        if let updatedUser = userManager.currentUser {
+            print("\nUpdating local state with saved user:")
+            print("   First Name: '\(updatedUser.firstName)'")
+            print("   Last Name: '\(updatedUser.lastName)'")
+            print("   Username: '\(updatedUser.username)'")
+            
+            firstName = updatedUser.firstName
+            lastName = updatedUser.lastName
+            username = updatedUser.username
+            
+            // Fetch the latest profile image
+            if let image = try? await userManager.fetchProfileImage(for: updatedUser, forceRefresh: true) {
+                profileImage = image
+                print("✅ Profile image refreshed")
+            }
         }
     }
 }

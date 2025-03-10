@@ -14,8 +14,15 @@ class FirebaseDataProvider {
     
     // Lazy initialize Firebase services
     private lazy var db = Firestore.firestore()
-    private lazy var functions = Functions.functions(region: "us-central1")
-    let functionURL = URL(string: "https://us-central1-trailmates-atx.cloudfunctions.net/getUserByPhoneNumber")!
+    private lazy var functions: Functions = {
+        let functions = Functions.functions(region: "us-central1")
+        #if DEBUG
+        print("🔥 Initializing Firebase Functions in DEBUG mode")
+        functions.useEmulator(withHost: "127.0.0.1", port: 5001)
+        #endif
+        return functions
+    }()
+    let functionURL = URL(string: "https://us-central1-trailmates-atx.cloudfunctions.net/checkUserExists")!
     private lazy var rtdb = Database.database().reference()
     private lazy var storage = Storage.storage().reference()
     private lazy var auth = Auth.auth()
@@ -84,17 +91,32 @@ class FirebaseDataProvider {
             return nil
         }
         
-        // Find user by Firebase UID in Firestore
-        let snapshot = try? await db.collection("users")
-            .whereField("id", isEqualTo: currentUser.uid)
-            .getDocuments()
-        
-        guard let document = snapshot?.documents.first else {
-            print("🔥 No user document found for Firebase UID")
+        // Get user document directly by Auth UID
+        do {
+            let document = try await db.collection("users").document(currentUser.uid).getDocument()
+            guard document.exists else {
+                print("🔥 No user document found for Firebase UID")
+                return nil
+            }
+            
+            let user = try document.data(as: User.self)
+            
+            // Validate that stored ID matches document ID
+            guard user.id == document.documentID else {
+                print("⚠️ Warning: Stored ID mismatch with document ID")
+                // Update the stored ID to match document ID
+                try await db.collection("users").document(document.documentID).updateData([
+                    "id": document.documentID
+                ])
+                user.id = document.documentID
+                return user
+            }
+            
+            return user
+        } catch {
+            print("🔥 Error fetching user: \(error)")
             return nil
         }
-        
-        return try? document.data(as: User.self)
     }
     
     // Add a method to check auth state without initializing Firebase
@@ -117,45 +139,132 @@ class FirebaseDataProvider {
         return normalized
     }
     
-    func fetchUser(byPhoneNumber phoneNumber: String) async -> User? {
-        guard !phoneNumber.isEmpty else {
-            print("❌ Empty phone number provided")
-            return nil
-        }
-        
-        // Normalize the phone number
-        let normalizedPhone = normalizePhoneNumber(phoneNumber)
-        guard !normalizedPhone.isEmpty else {
-            print("❌ Normalization resulted in empty phone number")
-            return nil
-        }
-        
-        let function = functions.httpsCallable("getUserByPhoneNumber")
-        
+    func isUsernameTakenCloudFunction(_ username: String) async -> Bool {
         do {
-            let result = try await function.call(["phoneNumber": normalizedPhone, "region": "US"])
+            let result = try await functions.httpsCallable("checkUsernameTaken")
+                .call(["username": username])
             
             if let data = result.data as? [String: Any],
-               let userExists = data["userExists"] as? Bool,
-               let userId = data["userId"] as? String {
-                
-                if userExists {
-                    return await fetchUser(by: userId)
+               let usernameTaken = data["usernameTaken"] as? Bool {
+                return usernameTaken
+            }
+        } catch {
+            print("Error calling checkUsernameTaken:", error)
+        }
+        return false
+    }
+    
+    func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User] {
+        // 1. Ensure authentication with fresh token
+        guard let currentUser = auth.currentUser else {
+            print("❌ Error: No authenticated user")
+            throw ValidationError.userNotAuthenticated("Must be authenticated to find users")
+        }
+        
+        do {
+            // 2. Get fresh ID token to ensure auth is valid
+            let token = try await currentUser.getIDToken(forcingRefresh: true)
+            print("🔑 Got fresh auth token: \(String(token.prefix(10)))...")
+            
+            print("🔍 Finding users for \(phoneNumbers.count) phone numbers")
+            print("   Current Auth State:")
+            print("   - User ID: \(currentUser.uid)")
+            print("   - Is Anonymous: \(currentUser.isAnonymous)")
+            print("   - Provider ID: \(currentUser.providerID)")
+            print("   - Token Length: \(token.count)")
+            
+            // 3. Only send the phone numbers in the request
+            let data = ["phoneNumbers": phoneNumbers]
+            
+            // 4. Create the callable with authorization header
+            let callable = functions.httpsCallable("findUsersByPhoneNumbers")
+            let result = try await callable.call(data)
+            
+            guard let response = result.data as? [String: Any],
+                  let usersData = response["users"] as? [[String: Any]] else {
+                throw ValidationError.invalidData("Invalid response format")
+            }
+            
+            let matchedUsers = try usersData.map { userData in
+                let jsonData = try JSONSerialization.data(withJSONObject: userData)
+                return try JSONDecoder().decode(User.self, from: jsonData)
+            }
+            
+            print("✅ Successfully matched \(matchedUsers.count) users")
+            return matchedUsers
+            
+        } catch let error as NSError {
+            print("❌ Error calling findUsersByPhoneNumbers:")
+            print("   - Domain: \(error.domain)")
+            print("   - Code: \(error.code)")
+            print("   - Description: \(error.localizedDescription)")
+            if let details = error.userInfo["FIRFunctionsErrorDetailsKey"] as? [String: Any] {
+                print("   - Details: \(details)")
+            }
+            
+            // Check for specific error conditions
+            if error.domain == "com.firebase.functions" {
+                switch error.code {
+                case 16: // Unauthenticated
+                    print("   ⚠️ Authentication error - attempting to refresh token...")
+                    // Force token refresh and throw specific error
+                    _ = try? await currentUser.getIDToken(forcingRefresh: true)
+                    throw ValidationError.userNotAuthenticated("Authentication failed - please try again")
+                default:
+                    throw error
                 }
             }
-            return nil
-        } catch let error as NSError {
-            if error.domain == FunctionsErrorDomain {
-                let code = FunctionsErrorCode(rawValue: error.code)
-                let message = error.localizedDescription
-                let details = error.userInfo[FunctionsErrorDetailsKey]
-                print("❌ Cloud Function error:")
-                print("   Code: \(String(describing: code))")
-                print("   Message: \(message)")
-                print("   Details: \(String(describing: details))")
+            throw error
+        }
+    }
+
+    func fetchUser(byPhoneNumber phoneNumber: String) async -> User? {
+        print("🔍 FirebaseDataProvider - Fetching user by phone number")
+        print("   Input number: '\(phoneNumber)'")
+        let normalizedPhone = normalizePhoneNumber(phoneNumber)
+        print("   Normalized number: '\(normalizedPhone)'")
+        guard !normalizedPhone.isEmpty else { 
+            print("❌ Normalized phone number is empty")
+            return nil 
+        }
+
+        do {
+            print("📱 Querying Firestore for phone: '\(normalizedPhone)'")
+            let snapshot = try await db.collection("users")
+                                    .whereField("phoneNumber", isEqualTo: normalizedPhone)
+                                    .limit(to: 1)
+                                    .getDocuments()
+            
+            if let doc = snapshot.documents.first {
+                print("✅ Found user document: \(doc.documentID)")
+                let user = try doc.data(as: User.self)
+                print("   User details: \(user.firstName) \(user.lastName) (\(user.phoneNumber))")
+                return user
+            } else {
+                print("❌ No user document found for phone: '\(normalizedPhone)'")
+                return nil
             }
+        } catch {
+            print("❌ Error fetching user by phone: \(error)")
             return nil
         }
+    }
+    
+    func checkUserExists(phoneNumber: String) async -> Bool {
+        let normalized = normalizePhoneNumber(phoneNumber)
+        guard !normalized.isEmpty else { return false }
+
+        let function = functions.httpsCallable("checkUserExists")
+        do {
+            let result = try await function.call(["phoneNumber": normalized, "region": "US"])
+            if let data = result.data as? [String: Any],
+            let userExists = data["userExists"] as? Bool {
+                return userExists
+            }
+        } catch {
+            print("❌ Error calling checkUserExists function: \(error)")
+        }
+        return false
     }
     
     func fetchUser(by id: String) async -> User? {
@@ -170,26 +279,26 @@ class FirebaseDataProvider {
             
             let user = try document.data(as: User.self)
             
-            // Validate required IDs according to rules
-            guard !user.id.isEmpty else {
-                print("❌ User document missing Firebase UID")
-                return nil
+            // Validate and fix ID if needed
+            if user.id != document.documentID {
+                print("⚠️ Warning: Stored ID mismatch with document ID")
+                user.id = document.documentID
+                // Update the stored ID to match document ID
+                try? await db.collection("users").document(id).updateData([
+                    "id": document.documentID
+                ])
             }
             
             // Handle profile image according to hierarchy rules
             if let imageUrl = user.profileImageUrl {
                 do {
-                    // Try remote URL first
                     user.profileImage = try await downloadProfileImage(from: imageUrl)
-                    print(" Loaded profile image from remote URL")
+                    print("✅ Loaded profile image from remote URL")
                 } catch {
                     print("⚠️ Failed to load remote image: \(error.localizedDescription)")
-                    
-                    // Clear invalid URLs
                     user.profileImageUrl = nil
                     user.profileThumbnailUrl = nil
                     
-                    // Update document to clear invalid URLs
                     try? await db.collection("users").document(id).updateData([
                         "profileImageUrl": FieldValue.delete(),
                         "profileThumbnailUrl": FieldValue.delete()
@@ -197,12 +306,7 @@ class FirebaseDataProvider {
                 }
             }
             
-            print("✅ Successfully fetched user: \(user.firstName) \(user.lastName)")
             return user
-            
-        } catch let decodingError as DecodingError {
-            print("❌ Error decoding user data: \(decodingError)")
-            return nil
         } catch {
             print("❌ Error fetching user: \(error)")
             return nil
@@ -231,17 +335,16 @@ class FirebaseDataProvider {
     
     func saveInitialUser(_ user: User) async throws {
         print("Starting initial user save")
-        // Validate phone number and id
         guard !user.phoneNumber.isEmpty else {
-            print("Error: Empty phone number")
             throw ValidationError.emptyField("Phone number cannot be empty")
         }
         
-        // Normalize the phone number before saving
-        let normalizedPhone = normalizePhoneNumber(user.phoneNumber)
-        print("Using normalized phone number: \(normalizedPhone)")
+        // Ensure user.id matches Auth UID
+        guard let currentUser = auth.currentUser,
+              user.id == currentUser.uid else {
+            throw ValidationError.invalidData("User ID must match Firebase Auth UID")
+        }
         
-        print("Using document ID: \(user.id)")
         let userRef = db.collection("users").document(user.id)
         
         // First check if document already exists
@@ -251,8 +354,8 @@ class FirebaseDataProvider {
         }
         
         let initialData: [String: Any] = [
-            "id": user.id,
-            "phoneNumber": normalizedPhone,  // Save normalized phone number
+            "id": user.id,  // Store ID for backwards compatibility
+            "phoneNumber": normalizePhoneNumber(user.phoneNumber),
             "joinDate": user.joinDate,
             "isActive": true,
             "firstName": "",
@@ -272,31 +375,30 @@ class FirebaseDataProvider {
             "allowFriendsToInviteOthers": true
         ]
         
-        do {
-            try await userRef.setData(initialData)
-            
-            // Verify the document was created
-            let verifySnapshot = try await userRef.getDocument()
-            guard verifySnapshot.exists else {
-                throw ValidationError.invalidData("Failed to verify user creation")
-            }
-            
-            print("Initial user data saved and verified successfully")
-        } catch {
-            print("Error saving initial user data: \(error)")
-            throw error
+        try await userRef.setData(initialData)
+        
+        // Verify the document was created with matching IDs
+        let verifySnapshot = try await userRef.getDocument()
+        guard verifySnapshot.exists,
+              let storedId = verifySnapshot.get("id") as? String,
+              storedId == user.id else {
+            throw ValidationError.invalidData("Failed to verify user creation or ID mismatch")
         }
     }
     
     func saveUser(_ user: User) async throws {
         print("Starting full user save")
-        // Validate required fields for full profile update
-        guard !user.firstName.isEmpty,
-              !user.lastName.isEmpty,
-              !user.username.isEmpty else {
-            print("Error: Missing required fields")
-            print("User: \(user)")
-            throw ValidationError.missingRequiredFields("All required fields must be non-empty")
+        
+        // Only validate required fields if this is not initial setup
+        // (i.e., if any of the fields are already populated)
+        if !user.firstName.isEmpty || !user.lastName.isEmpty || !user.username.isEmpty {
+            guard !user.firstName.isEmpty,
+                  !user.lastName.isEmpty,
+                  !user.username.isEmpty else {
+                print("Error: Missing required fields")
+                print("User: \(user)")
+                throw ValidationError.missingRequiredFields("All required fields must be non-empty")
+            }
         }
         
         let userData = user
@@ -570,9 +672,9 @@ class FirebaseDataProvider {
     }
     
     // MARK: - Friend Request Operations
-    func sendFriendRequest(from userId: String, to targetUserId: String) async throws {
+    func sendFriendRequest(fromUserId: String, to targetUserId: String) async throws {
         // Get Firebase UIDs for both users
-        let userDoc = try await db.collection("users").document(userId).getDocument()
+        let userDoc = try await db.collection("users").document(fromUserId).getDocument()
         let targetDoc = try await db.collection("users").document(targetUserId).getDocument()
         
         guard let userId = userDoc.get("id") as? String,
@@ -592,7 +694,7 @@ class FirebaseDataProvider {
             .child(requestId)
         
         let requestData: [String: Any] = [
-            "fromid": userId,  // Use Firebase UID for RTDB
+            "fromUserId": fromUserId,  // Use Firebase UID for RTDB
             "timestamp": ServerValue.timestamp(),
             "status": "pending"
         ]
@@ -611,7 +713,7 @@ class FirebaseDataProvider {
     func acceptFriendRequest(requestId: String, userId: String, friendId: String) async throws {
         // Get Firebase UID for the accepting user (for RTDB operations)
         let userDoc = try await db.collection("users").document(userId).getDocument()
-        guard let userid = userDoc.get("id") as? String else {
+        guard let firebaseUid = userDoc.get("id") as? String else {
             throw ValidationError.invalidData("Could not find Firebase UID for user")
         }
         
@@ -621,8 +723,8 @@ class FirebaseDataProvider {
         
         // Clean up friend request and notification in RTDB using Firebase UID
         let updates: [String: Any?] = [
-            "friend_requests/\(userid)/\(requestId)": nil,
-            "notifications/\(userid)/\(requestId)": nil
+            "friend_requests/\(firebaseUid)/\(requestId)": nil,
+            "notifications/\(firebaseUid)/\(requestId)": nil
         ]
         
         return try await withCheckedThrowingContinuation { continuation in
@@ -762,70 +864,67 @@ class FirebaseDataProvider {
     // MARK: - Real-time Database Operations
     
     // MARK: - Location Operations
-    func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async throws {
-        // First get the user's Firebase UID
-        guard let userDoc = try? await db.collection("users").document(userId).getDocument(),
-              let id = userDoc.get("id") as? String else {
-            throw ValidationError.invalidData("Could not find user's Firebase UID")
+    // MARK: - Location Operations
+func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async throws {
+    // 1. Verify the current user is updating their own location
+    guard let currentUser = Auth.auth().currentUser else {
+        throw ValidationError.userNotAuthenticated("No authenticated user")
+    }
+    
+    // 2. Ensure the userId matches the currentUser’s UID
+    guard userId == currentUser.uid else {
+        throw ValidationError.invalidData("Cannot update location for another user")
+    }
+    
+    // 3. Get fresh ID token to ensure auth is valid
+    let token = try await currentUser.getIDToken()
+    
+    print("\nFirebase Location Debug:")
+    print("1. Auth Check:")
+    print("   - UID: \(currentUser.uid)")
+    print("   - Token valid: \(token.prefix(10))...")
+    print("   - Provider: \(currentUser.providerID)")
+    print("   - Anonymous: \(currentUser.isAnonymous)")
+    
+    // 4. Reference the user’s location node in RTDB
+    let locationRef = rtdb.child("locations").child(currentUser.uid)
+    print("   - Path: \(locationRef.url)")
+    
+    // 5. Verify database connection
+    let connectedRef = rtdb.child(".info/connected")
+    let isConnected = try await withCheckedThrowingContinuation { continuation in
+        connectedRef.observeSingleEvent(of: .value) { snapshot in
+            continuation.resume(returning: snapshot.value as? Bool ?? false)
         }
+    }
+    print("2. Connection Check:")
+    print("   - Connected: \(isConnected)")
+    
+    // 6. Write location data to RTDB
+    return try await withCheckedThrowingContinuation { continuation in
+        let locationData: [String: Any] = [
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "timestamp": ServerValue.timestamp(),
+            "lastUpdated": ServerValue.timestamp()
+        ]
         
-        guard let currentUser = Auth.auth().currentUser else {
-            print("Firebase: No authenticated user")
-            throw NSError(domain: "com.firebase", code: 1, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])
-        }
+        print("3. Data Validation:")
+        print("   - Fields: \(locationData.keys.sorted().joined(separator: ", "))")
+        print("   - Location: (\(location.latitude), \(location.longitude))")
         
-        // Verify the current user is updating their own location
-        guard currentUser.uid == id else {
-            throw ValidationError.invalidData("Cannot update location for another user")
-        }
-        
-        // Get fresh ID token to ensure auth is valid
-        let token = try await currentUser.getIDToken()
-        
-        print("\nFirebase Location Debug:")
-        print("1. Auth Check:")
-        print("   - UID: \(currentUser.uid)")
-        print("   - Token valid: \(token.prefix(10))...")
-        print("   - Provider: \(currentUser.providerID)")
-        print("   - Anonymous: \(currentUser.isAnonymous)")
-        
-        let locationRef = rtdb.child("locations").child(id)
-        print("   - Path: \(locationRef.url)")
-        
-        // Verify database connection
-        let connectedRef = rtdb.child(".info/connected")
-        let isConnected = try await withCheckedThrowingContinuation { continuation in
-            connectedRef.observeSingleEvent(of: .value) { snapshot in
-                continuation.resume(returning: snapshot.value as? Bool ?? false)
-            }
-        }
-        print("2. Connection Check:")
-        print("   - Connected: \(isConnected)")
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            let locationData: [String: Any] = [
-                "latitude": location.latitude,
-                "longitude": location.longitude,
-                "timestamp": ServerValue.timestamp(),
-                "lastUpdated": ServerValue.timestamp()
-            ]
-            
-            print("3. Data Validation:")
-            print("   - Fields: \(locationData.keys.sorted().joined(separator: ", "))")
-            print("   - Location: (\(location.latitude), \(location.longitude))")
-            
-            locationRef.setValue(locationData) { error, ref in
-                if let error = error {
-                    print("4. Write Result: Failed")
-                    print("   - Error: \(error.localizedDescription)")
-                    continuation.resume(throwing: error)
-                } else {
-                    print("4. Write Result: Success")
-                    continuation.resume()
-                }
+        locationRef.setValue(locationData) { error, _ in
+            if let error = error {
+                print("4. Write Result: Failed")
+                print("   - Error: \(error.localizedDescription)")
+                continuation.resume(throwing: error)
+            } else {
+                print("4. Write Result: Success")
+                continuation.resume()
             }
         }
     }
+}
     
     func observeUserLocation(userId: String, completion: @escaping (CLLocationCoordinate2D?) -> Void) {
         // First get the Firebase UID for the target user

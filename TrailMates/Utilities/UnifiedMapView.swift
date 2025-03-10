@@ -14,6 +14,18 @@ struct UnifiedMapView: UIViewRepresentable {
     // MARK: - Properties
     @Binding var mapView: MKMapView?
     var configuration: MapConfiguration
+    var initialRegion: MKCoordinateRegion?
+    var interactionModes: [MapInteractionMode]
+    
+    init(mapView: Binding<MKMapView?>, 
+         configuration: MapConfiguration,
+         initialRegion: MKCoordinateRegion? = nil,
+         interactionModes: [MapInteractionMode] = [.all]) {
+        self._mapView = mapView
+        self.configuration = configuration
+        self.initialRegion = initialRegion
+        self.interactionModes = interactionModes
+    }
     
     // MARK: - UIViewRepresentable Implementation
     func makeUIView(context: Context) -> MKMapView {
@@ -25,16 +37,12 @@ struct UnifiedMapView: UIViewRepresentable {
         
             mapView.delegate = context.coordinator
             
-            // Set initial region
-            mapView.setRegion(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(
-                    latitude: 30.26074, longitude: -97.74550
-                ),
-                span: MKCoordinateSpan(
-                    latitudeDelta: 0.025,
-                    longitudeDelta: 0.025
-                )
-            ), animated: false)
+            // Configure interaction modes
+            mapView.isScrollEnabled = interactionModes.contains(.pan)
+            mapView.isZoomEnabled = interactionModes.contains(.zoom)
+            mapView.isRotateEnabled = interactionModes.contains(.rotate)
+            mapView.isPitchEnabled = interactionModes.contains(.pitch)
+            mapView.isUserInteractionEnabled = !interactionModes.isEmpty
             
             mapView.register(FriendAnnotationView.self, forAnnotationViewWithReuseIdentifier: "FriendAnnotation")
             mapView.register(EventAnnotationView.self, forAnnotationViewWithReuseIdentifier: "EventAnnotation")
@@ -58,6 +66,9 @@ struct UnifiedMapView: UIViewRepresentable {
     
     // MARK: - Private Helper Methods
     private func configureMapView(_ mapView: MKMapView) {
+            // Set initial region
+            mapView.setRegion(initialRegion ?? MapConfiguration.defaultRegion, animated: false)
+            
             // Configure boundary
             let cameraBoundary = MKMapView.CameraBoundary(coordinateRegion: MapConfiguration.boundaryRegion)
             mapView.setCameraBoundary(cameraBoundary, animated: true)
@@ -242,5 +253,28 @@ extension MKMapView {
         if let delegate = self.delegate as? UnifiedMapView.MapCoordinator {
             delegate.setRegionProgrammatically(region, mapView: self)
         }
+    }
+}
+
+// MARK: - Map Interaction Modes
+enum MapInteractionMode {
+    case pan
+    case zoom
+    case rotate
+    case pitch
+    case all
+    
+    static let allModes: Set<MapInteractionMode> = [.pan, .zoom, .rotate, .pitch]
+}
+
+extension Array where Element == MapInteractionMode {
+    func contains(_ mode: MapInteractionMode) -> Bool {
+        if mode == .all {
+            return self.contains(.all)
+        }
+        if self.contains(where: { $0 == .all }) {
+            return true
+        }
+        return self.contains(where: { $0 == mode })
     }
 }
