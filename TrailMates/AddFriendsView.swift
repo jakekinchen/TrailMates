@@ -79,7 +79,10 @@ struct AddFriendsView: View {
                                 .foregroundColor(Color("pine"))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             
+                            // Facebook button (temporarily disabled)
+                            /*
                             facebookButton
+                            */
                             contactsButton
                             inviteButton
                             
@@ -146,6 +149,8 @@ struct AddFriendsView: View {
     }
     
     // MARK: - Components
+    // Facebook button (temporarily disabled)
+    /*
     private var facebookButton: some View {
         Button(action: handleFacebookAction) {
             HStack {
@@ -167,6 +172,7 @@ struct AddFriendsView: View {
             .disabled(viewState == .loading)
         }
     }
+    */
     
     private var contactsButton: some View {
         Button(action: handleContactsAction) {
@@ -272,20 +278,20 @@ struct AddFriendsView: View {
     }
     
     // MARK: - Actions
-    private func handleFacebookAction() {
-        Task {
-            viewState = .loading
-            do {
-                if !userManager.isFacebookLinked {
-                    try await userManager.linkFacebook()
-                }
-                let friends = try await userManager.fetchFacebookFriendsWithStatus()
-                viewState = .loaded(friends)
-            } catch {
-                viewState = .error(error)
-            }
-        }
-    }
+//    private func handleFacebookAction() {
+//        Task {
+//            viewState = .loading
+//            do {
+//                if !userManager.isFacebookLinked {
+//                    try await userManager.linkFacebook()
+//                }
+//                let friends = try await userManager.fetchFacebookFriendsWithStatus()
+//                viewState = .loaded(friends)
+//            } catch {
+//                viewState = .error(error)
+//            }
+//        }
+//    }
     
     private func handleContactsAction() {
         let store = CNContactStore()

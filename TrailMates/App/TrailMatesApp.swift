@@ -87,13 +87,15 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             print("❌ Firebase is not configured in AppDelegate")
         }
         
-        // Configure Facebook SDK
+        // Configure Facebook SDK (temporarily disabled)
+        /*
         print("Configuring Facebook SDK...")
         ApplicationDelegate.shared.application(
             application,
             didFinishLaunchingWithOptions: launchOptions
         )
         print("Facebook SDK configured successfully.")
+        */
         
         // Configure notifications
         configureNotifications(application)

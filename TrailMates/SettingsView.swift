@@ -43,6 +43,8 @@ struct SettingsView: View {
                                         showChevron: false)
                         }
                         
+                        // Facebook integration (temporarily disabled)
+                        /*
                         Button(action: {
                             if userManager.isFacebookLinked {
                                 showUnlinkFacebookAlert = true
@@ -57,6 +59,7 @@ struct SettingsView: View {
                                         subtitle: "Connect with Facebook friends",
                                         showChevron: false)
                         }
+                        */
                     }
                     .listRowBackground(Color("altBeige").opacity(0.9))
                     .foregroundColor(Color("pine"))

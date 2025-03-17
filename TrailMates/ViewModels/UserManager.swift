@@ -33,8 +33,8 @@ class UserManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var hasInitialized = false
     
-    // Facebook-related properties
-    private let facebookService = FacebookService.shared
+    // Facebook-related properties (temporarily disabled)
+    // private let facebookService = FacebookService.shared
     @Published var isFacebookLinked: Bool = false
     
     private init() {
@@ -89,12 +89,14 @@ class UserManager: ObservableObject {
     }
     
     private func setupObservers() {
-        // Setup Facebook link status observation
+        // Facebook link status observation (temporarily disabled)
+        /*
         facebookService.$isLinked
             .sink { [weak self] isLinked in
                 self?.isFacebookLinked = isLinked
             }
             .store(in: &cancellables)
+        */
         
         // Setup automatic saving with location change filtering
         $currentUser
@@ -235,20 +237,18 @@ class UserManager: ObservableObject {
     }
     
     func isUsernameTaken(_ username: String) async -> Bool {
-        return await dataProvider.isUsernameTakenCloudFunction(username)
+        return await dataProvider.isUsernameTaken(username, excludingUserId: currentUser?.id)
     }
     
-    // MARK: Facebook Integration
-    
+    // MARK: Facebook Integration (temporarily disabled)
+    /*
     func toggleFacebookLink() async throws {
         isFacebookLinked.toggle()
         if let updatedUser = currentUser {
-            // Update any Facebook-related user properties here
             try await saveProfile(updatedUser: updatedUser)
         }
     }
     
-    // Facebook-related methods
     func linkFacebook() async throws {
         do {
             let fbUser = try await facebookService.linkAccount()
@@ -282,22 +282,17 @@ class UserManager: ObservableObject {
                          userInfo: [NSLocalizedDescriptionKey: "Facebook not linked"])
         }
         
-        // 1. Get Facebook friends
         let facebookFriends = try await facebookService.fetchFriends()
-        
-        // 2. Get all Facebook IDs
         let facebookIds = facebookFriends.map { $0.id }
-        
-        // 3. Fetch TrailMates users with these Facebook IDs
         let matchedUsers = await dataProvider.fetchUsersByFacebookIds(facebookIds)
         
-        // 4. Create result array with all necessary information
         return facebookFriends.map { friend -> (friend: FacebookFriend, user: User?, isFriend: Bool) in
             let matchedUser = matchedUsers.first { $0.facebookId == friend.id }
             let isFriend = matchedUser.map { self.isFriend($0.id) } ?? false
             return (friend: friend, user: matchedUser, isFriend: isFriend)
         }
     }
+    */
     
     // MARK: - Persist User Session
     func persistUserSession() {
@@ -414,7 +409,7 @@ class UserManager: ObservableObject {
     
     func updatePhoneNumber(_ newPhone: String) async throws {
         if let updatedUser = currentUser {
-            updatedUser.phoneNumber = newPhone
+            updatedUser.updatePhoneNumber(newPhone)
             try await saveProfile(updatedUser: updatedUser)
         }
     }

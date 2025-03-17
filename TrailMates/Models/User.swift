@@ -13,8 +13,12 @@ final class User: Codable, Identifiable, Equatable {
     var lastName: String
     var username: String
     private(set) var phoneNumber: String
-    var hashedPhoneNumber: String
     var joinDate: Date
+    
+    // Computed property for hashed phone number
+    var hashedPhoneNumber: String {
+        PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
+    }
     
     // Profile Image properties
     @Attribute(.externalStorage) var profileImageData: Data?
@@ -89,7 +93,6 @@ final class User: Codable, Identifiable, Equatable {
         self.lastName = lastName
         self.username = username
         self.phoneNumber = phoneNumber
-        self.hashedPhoneNumber = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
         self.joinDate = joinDate
         self.isActive = true
         self.friends = []
@@ -106,9 +109,14 @@ final class User: Codable, Identifiable, Equatable {
         self.allowFriendsToInviteOthers = true
     }
     
+    // MARK: - Methods
+    func updatePhoneNumber(_ newPhoneNumber: String) {
+        self.phoneNumber = newPhoneNumber
+    }
+    
     // MARK: - Codable
     enum CodingKeys: String, CodingKey {
-        case id, firstName, lastName, username, phoneNumber, hashedPhoneNumber, joinDate
+        case id, firstName, lastName, username, phoneNumber, joinDate
         case profileImageUrl, profileThumbnailUrl, isActive, friends, doNotDisturb
         case createdEventIds, attendingEventIds, visitedLandmarkIds
         case receiveFriendRequests, receiveFriendEvents, receiveEventUpdates
@@ -123,7 +131,6 @@ final class User: Codable, Identifiable, Equatable {
         lastName = try container.decode(String.self, forKey: .lastName)
         username = try container.decode(String.self, forKey: .username)
         phoneNumber = try container.decode(String.self, forKey: .phoneNumber)
-        hashedPhoneNumber = try container.decodeIfPresent(String.self, forKey: .hashedPhoneNumber) ?? PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
         joinDate = try container.decode(Date.self, forKey: .joinDate)
         profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
         profileThumbnailUrl = try container.decodeIfPresent(String.self, forKey: .profileThumbnailUrl)
@@ -150,7 +157,6 @@ final class User: Codable, Identifiable, Equatable {
         try container.encode(lastName, forKey: .lastName)
         try container.encode(username, forKey: .username)
         try container.encode(phoneNumber, forKey: .phoneNumber)
-        try container.encode(hashedPhoneNumber, forKey: .hashedPhoneNumber)
         try container.encode(joinDate, forKey: .joinDate)
         try container.encodeIfPresent(profileImageUrl, forKey: .profileImageUrl)
         try container.encodeIfPresent(profileThumbnailUrl, forKey: .profileThumbnailUrl)
@@ -177,7 +183,6 @@ final class User: Codable, Identifiable, Equatable {
         lhs.lastName == rhs.lastName &&
         lhs.username == rhs.username &&
         lhs.phoneNumber == rhs.phoneNumber &&
-        lhs.hashedPhoneNumber == rhs.hashedPhoneNumber &&
         lhs.joinDate == rhs.joinDate &&
         lhs.profileImageUrl == rhs.profileImageUrl &&
         lhs.profileThumbnailUrl == rhs.profileThumbnailUrl &&
