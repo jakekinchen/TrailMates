@@ -155,30 +155,11 @@ class FirebaseDataProvider {
     }
     
     func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User] {
-        // 1. Ensure authentication with fresh token
-        guard let currentUser = auth.currentUser else {
-            print("❌ Error: No authenticated user")
-            throw ValidationError.userNotAuthenticated("Must be authenticated to find users")
-        }
+        let hashedNumbers = phoneNumbers.map { PhoneNumberHasher.shared.hashPhoneNumber($0) }
         
         do {
-            // 2. Get fresh ID token to ensure auth is valid
-            let token = try await currentUser.getIDToken(forcingRefresh: true)
-            print("🔑 Got fresh auth token: \(String(token.prefix(10)))...")
-            
-            print("🔍 Finding users for \(phoneNumbers.count) phone numbers")
-            print("   Current Auth State:")
-            print("   - User ID: \(currentUser.uid)")
-            print("   - Is Anonymous: \(currentUser.isAnonymous)")
-            print("   - Provider ID: \(currentUser.providerID)")
-            print("   - Token Length: \(token.count)")
-            
-            // 3. Only send the phone numbers in the request
-            let data = ["phoneNumbers": phoneNumbers]
-            
-            // 4. Create the callable with authorization header
             let callable = functions.httpsCallable("findUsersByPhoneNumbers")
-            let result = try await callable.call(data)
+            let result = try await callable.call(["hashedPhoneNumbers": hashedNumbers])
             
             guard let response = result.data as? [String: Any],
                   let usersData = response["users"] as? [[String: Any]] else {
@@ -193,55 +174,31 @@ class FirebaseDataProvider {
             print("✅ Successfully matched \(matchedUsers.count) users")
             return matchedUsers
             
-        } catch let error as NSError {
-            print("❌ Error calling findUsersByPhoneNumbers:")
-            print("   - Domain: \(error.domain)")
-            print("   - Code: \(error.code)")
-            print("   - Description: \(error.localizedDescription)")
-            if let details = error.userInfo["FIRFunctionsErrorDetailsKey"] as? [String: Any] {
-                print("   - Details: \(details)")
-            }
-            
-            // Check for specific error conditions
-            if error.domain == "com.firebase.functions" {
-                switch error.code {
-                case 16: // Unauthenticated
-                    print("   ⚠️ Authentication error - attempting to refresh token...")
-                    // Force token refresh and throw specific error
-                    _ = try? await currentUser.getIDToken(forcingRefresh: true)
-                    throw ValidationError.userNotAuthenticated("Authentication failed - please try again")
-                default:
-                    throw error
-                }
-            }
+        } catch {
+            print("❌ Error finding users by phone numbers: \(error)")
             throw error
         }
     }
 
     func fetchUser(byPhoneNumber phoneNumber: String) async -> User? {
         print("🔍 FirebaseDataProvider - Fetching user by phone number")
-        print("   Input number: '\(phoneNumber)'")
-        let normalizedPhone = normalizePhoneNumber(phoneNumber)
-        print("   Normalized number: '\(normalizedPhone)'")
-        guard !normalizedPhone.isEmpty else { 
-            print("❌ Normalized phone number is empty")
-            return nil 
-        }
+        let hashedNumber = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
+        print("   Hashed number: '\(hashedNumber)'")
 
         do {
-            print("📱 Querying Firestore for phone: '\(normalizedPhone)'")
+            print("📱 Querying Firestore for hashed phone: '\(hashedNumber)'")
             let snapshot = try await db.collection("users")
-                                    .whereField("phoneNumber", isEqualTo: normalizedPhone)
+                                    .whereField("hashedPhoneNumber", isEqualTo: hashedNumber)
                                     .limit(to: 1)
                                     .getDocuments()
             
             if let doc = snapshot.documents.first {
                 print("✅ Found user document: \(doc.documentID)")
                 let user = try doc.data(as: User.self)
-                print("   User details: \(user.firstName) \(user.lastName) (\(user.phoneNumber))")
+                print("   User details: \(user.firstName) \(user.lastName)")
                 return user
             } else {
-                print("❌ No user document found for phone: '\(normalizedPhone)'")
+                print("❌ No user document found for hashed phone: '\(hashedNumber)'")
                 return nil
             }
         } catch {
@@ -251,14 +208,13 @@ class FirebaseDataProvider {
     }
     
     func checkUserExists(phoneNumber: String) async -> Bool {
-        let normalized = normalizePhoneNumber(phoneNumber)
-        guard !normalized.isEmpty else { return false }
-
+        let hashedNumber = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
+        
         let function = functions.httpsCallable("checkUserExists")
         do {
-            let result = try await function.call(["phoneNumber": normalized, "region": "US"])
+            let result = try await function.call(["hashedPhoneNumber": hashedNumber])
             if let data = result.data as? [String: Any],
-            let userExists = data["userExists"] as? Bool {
+               let userExists = data["userExists"] as? Bool {
                 return userExists
             }
         } catch {
@@ -354,8 +310,9 @@ class FirebaseDataProvider {
         }
         
         let initialData: [String: Any] = [
-            "id": user.id,  // Store ID for backwards compatibility
-            "phoneNumber": normalizePhoneNumber(user.phoneNumber),
+            "id": user.id,
+            "phoneNumber": user.phoneNumber,
+            "hashedPhoneNumber": user.hashedPhoneNumber,
             "joinDate": user.joinDate,
             "isActive": true,
             "firstName": "",
@@ -871,7 +828,7 @@ func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async 
         throw ValidationError.userNotAuthenticated("No authenticated user")
     }
     
-    // 2. Ensure the userId matches the currentUser’s UID
+    // 2. Ensure the userId matches the currentUser's UID
     guard userId == currentUser.uid else {
         throw ValidationError.invalidData("Cannot update location for another user")
     }
@@ -886,7 +843,7 @@ func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async 
     print("   - Provider: \(currentUser.providerID)")
     print("   - Anonymous: \(currentUser.isAnonymous)")
     
-    // 4. Reference the user’s location node in RTDB
+    // 4. Reference the user's location node in RTDB
     let locationRef = rtdb.child("locations").child(currentUser.uid)
     print("   - Path: \(locationRef.url)")
     
