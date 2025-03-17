@@ -4,15 +4,6 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-/**
- * Normalizes a phone number by removing all non-digit characters.
- * @param {string} phoneNumber - The phone number to normalize
- * @return {string} The normalized phone number containing only digits
- */
-function normalizePhoneNumber(phoneNumber) {
-  return phoneNumber.replace(/\D/g, "");
-}
-
 // Cloud Function: findUsersByPhoneNumbers
 exports.findUsersByPhoneNumbers =
 functions.https.onCall(async (data, context) => {
@@ -26,17 +17,17 @@ functions.https.onCall(async (data, context) => {
   console.log(`🔐 Authenticated user: ${context.auth.uid}`);
 
   // 2. Validate input
-  const {phoneNumbers} = data;
-  if (!phoneNumbers || !Array.isArray(phoneNumbers)) {
+  const {hashedPhoneNumbers} = data;
+  if (!hashedPhoneNumbers || !Array.isArray(hashedPhoneNumbers)) {
     throw new functions.https.HttpsError(
         "invalid-argument",
-        "The function must be called with an array of phone numbers.",
+        "The function must be called with an array of hashed phone numbers.",
     );
   }
 
-  console.log("\n📱 Input phone numbers (already in E.164 format):");
-  phoneNumbers.forEach((number, index) => {
-    console.log(`   ${index + 1}. ${number}`);
+  console.log("\n🔒 Input hashed phone numbers:");
+  hashedPhoneNumbers.forEach((hash, index) => {
+    console.log(`   ${index + 1}. ${hash}`);
   });
 
   try {
@@ -44,20 +35,20 @@ functions.https.onCall(async (data, context) => {
     console.log("\n📚 Querying Firestore...");
     const usersRef = admin.firestore().collection("users");
 
-    // First, let's log all users and their phone numbers for debugging
+    // First, let's log all users and their hashed numbers for debugging
     const allUsers = await usersRef.get();
     console.log("\n👥 All users in database:");
     allUsers.forEach((doc) => {
       const userData = doc.data();
       console.log(`   User: ${userData.firstName} ${userData.lastName}`);
-      console.log(`   Phone: '${userData.phoneNumber}'`);
+      console.log(`   Hashed Phone: '${userData.hashedPhoneNumber}'`);
       console.log(`   ID: ${doc.id}\n`);
     });
 
     // Now perform the actual query
-    console.log("\n🔎 Performing phone number query...");
+    console.log("\n🔎 Performing hashed phone number query...");
     const snapshot = await usersRef
-        .where("phoneNumber", "in", phoneNumbers)
+        .where("hashedPhoneNumber", "in", hashedPhoneNumbers)
         .get();
 
     // 4. Process and return results
@@ -71,7 +62,7 @@ functions.https.onCall(async (data, context) => {
       const userData = doc.data();
       console.log(`   Match found:`);
       console.log(`   - Name: ${userData.firstName} ${userData.lastName}`);
-      console.log(`   - Phone: '${userData.phoneNumber}'`);
+      console.log(`   - Hashed Phone: '${userData.hashedPhoneNumber}'`);
       console.log(`   - ID: ${doc.id}`);
 
       // Only return necessary user data for privacy
@@ -81,23 +72,20 @@ functions.https.onCall(async (data, context) => {
         lastName: userData.lastName,
         username: userData.username,
         phoneNumber: userData.phoneNumber,
+        hashedPhoneNumber: userData.hashedPhoneNumber,
         profileImageUrl: userData.profileImageUrl,
         profileThumbnailUrl: userData.profileThumbnailUrl,
       });
     });
 
     console.log(`\n📊 Results Summary:`);
-    console.log(`   Input numbers: ${phoneNumbers.length}`);
+    console.log(`   Input hashes: ${hashedPhoneNumbers.length}`);
     console.log(`   Matches found: ${matchedUsers.length}`);
 
     return {users: matchedUsers};
   } catch (error) {
-    console.error("\n❌ Error finding users:", error);
-    console.error("   Stack trace:", error.stack);
-    throw new functions.https.HttpsError(
-        "internal",
-        "Error processing phone numbers",
-    );
+    console.error("Error in findUsersByPhoneNumbers:", error);
+    throw new functions.https.HttpsError("internal", error.message);
   }
 });
 
@@ -138,42 +126,70 @@ exports.checkUsernameTaken = functions.https.onCall(async (data, context) => {
 
 // Cloud Function: checkUserExists
 exports.checkUserExists = functions.https.onCall(async (data, context) => {
-  console.log("Printing data:", data.data);
-  // Firebase automatically wraps parameters in a data object
-  const {phoneNumber, region = "US"} = data.data;
-  console.log(`🔎 Searching user: ${phoneNumber}, Region: ${region}`);
-
-  if (!phoneNumber || typeof phoneNumber !== "string") {
+  const {hashedPhoneNumber} = data;
+  if (!hashedPhoneNumber) {
     throw new functions.https.HttpsError(
         "invalid-argument",
-        "Invalid phone number",
+        "The function must be called with a hashed phone number.",
     );
   }
 
-  const normalized = normalizePhoneNumber(phoneNumber);
-  if (!normalized) {
-    throw new functions.https.HttpsError(
-        "invalid-argument",
-        "Phone number normalization failed",
-    );
-  }
-
-  console.log(`🔍 Searching for phone number: ${normalized}`);
-
-  const [userDoc] = (
-    await admin
-        .firestore()
+  try {
+    const snapshot = await admin.firestore()
         .collection("users")
-        .where("phoneNumber", "==", normalized)
+        .where("hashedPhoneNumber", "==", hashedPhoneNumber)
         .limit(1)
-        .get()
-  ).docs;
+        .get();
 
-  if (userDoc) {
-    console.log(`User found: ID=${userDoc.id}`);
-    return {userExists: true};
-  } else {
-    console.log(`No user found for phone number: ${normalized}`);
-    return {userExists: false};
+    return {userExists: !snapshot.empty};
+  } catch (error) {
+    console.error("Error checking user existence:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+// Cloud Function: migratePhoneNumbers
+exports.migratePhoneNumbers = functions.https.onCall(async (data, context) => {
+  // Only allow admin users to run this migration
+  if (!context.auth || !context.auth.token || !context.auth.token.admin) {
+    throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only admin users can run this migration.",
+    );
+  }
+
+  try {
+    const batch = admin.firestore().batch();
+    const usersRef = admin.firestore().collection("users");
+    const snapshot = await usersRef.get();
+    let updatedCount = 0;
+
+    console.log("Starting phone number migration...");
+
+    snapshot.forEach((doc) => {
+      const userData = doc.data();
+      if (userData.phoneNumber && !userData.hashedPhoneNumber) {
+        // Hash the phone number using the same algorithm as the client
+        const hashedPhoneNumber = require("crypto")
+            .createHash("sha256")
+            .update(userData.phoneNumber)
+            .digest("hex");
+
+        batch.update(doc.ref, {hashedPhoneNumber});
+        updatedCount++;
+      }
+    });
+
+    if (updatedCount > 0) {
+      await batch.commit();
+      console.log(`Successfully migrated ${updatedCount} users`);
+    } else {
+      console.log("No users needed migration");
+    }
+
+    return {migratedCount: updatedCount};
+  } catch (error) {
+    console.error("Error during migration:", error);
+    throw new functions.https.HttpsError("internal", error.message);
   }
 });
