@@ -76,11 +76,15 @@
 		};
 		73266DBE2CAEDBF80087B7A1 /* TrailMatesTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = TrailMatesTests;
 			sourceTree = "<group>";
 		};
 		73266DC82CAEDBF80087B7A1 /* TrailMatesUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = TrailMatesUITests;
 			sourceTree = "<group>";
 		};
@@ -179,7 +183,6 @@
 				73266DA52CAEDBF60087B7A1 /* Sources */,
 				73266DA62CAEDBF60087B7A1 /* Frameworks */,
 				73D868B72CE6A29700AF0CAD /* Resources */,
-				3F68D2F68530ABB54E275282 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -233,7 +236,6 @@
 				73266DC12CAEDBF80087B7A1 /* Sources */,
 				73266DC22CAEDBF80087B7A1 /* Frameworks */,
 				73266DC32CAEDBF80087B7A1 /* Resources */,
-				A6D0384C9EA08CCD121029D0 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -363,48 +365,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		3F68D2F68530ABB54E275282 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		A6D0384C9EA08CCD121029D0 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		E5BDA9BCF31D7775047B1506 /* [CP] Check Pods Manifest.lock */ = {

@@ -2,7 +2,7 @@
 title: Test Coverage Expansion
 created: 2025-01-25
 priority: backlog
-status: pending
+status: in-progress
 tags: [testing, quality, automation]
 skill: ios-debugger-agent
 ---
@@ -13,38 +13,38 @@ skill: ios-debugger-agent
 Expand test coverage from current minimal state to comprehensive unit and integration tests.
 
 ## Current State
-- 4 test files exist
+- 4 test files exist (now 8 with new additions)
 - User model tests (115 lines) - good coverage
 - FirebaseDataProvider tests (112 lines) - basic mocking
-- No ViewModel tests
+- NEW: ViewModel tests added
 - No UI integration tests
 - No async operation tests
 
 ## Tasks
 
 ### Phase 1: ViewModel Unit Tests
-- [ ] Create `UserManagerTests.swift`
-  - [ ] Test user state management
-  - [ ] Test profile update logic
-  - [ ] Test friend operations
-- [ ] Create `AuthViewModelTests.swift`
-  - [ ] Test phone auth flow
-  - [ ] Test OTP verification
-  - [ ] Test error handling
-- [ ] Create `EventViewModelTests.swift`
-  - [ ] Test event creation
-  - [ ] Test event fetching
-  - [ ] Test attendance tracking
+- [x] Create `UserManagerTests.swift`
+  - [x] Test user state management
+  - [x] Test profile update logic
+  - [ ] Test friend operations (partial - requires Firebase integration)
+- [x] Create `AuthViewModelTests.swift`
+  - [x] Test phone auth flow
+  - [x] Test OTP verification
+  - [x] Test error handling
+- [x] Create `EventViewModelTests.swift`
+  - [x] Test event creation
+  - [x] Test event fetching
+  - [x] Test attendance tracking
 - [ ] Create `FriendsViewModelTests.swift`
   - [ ] Test friend list management
   - [ ] Test friend requests
   - [ ] Test contact sync
 
 ### Phase 2: Mock Infrastructure
-- [ ] Create `MockFirebaseDataProvider`
+- [x] Create `MockFirebaseDataProvider`
 - [ ] Create `MockLocationManager`
 - [ ] Create `MockUserManager`
-- [ ] Create test fixtures for models
+- [x] Create test fixtures for models
 
 ### Phase 3: Async/Network Tests
 - [ ] Test Firebase listener callbacks
