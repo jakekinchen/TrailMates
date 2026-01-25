@@ -194,12 +194,13 @@ exports.syncFriendsToRTDB = functions.firestore
       const beforeData = change.before.exists ? change.before.data() : null;
       const afterData = change.after.exists ? change.after.data() : null;
 
-      const beforeFriends = new Set(
-          Array.isArray(beforeData?.friends) ? beforeData.friends : [],
-      );
-      const afterFriends = new Set(
-          Array.isArray(afterData?.friends) ? afterData.friends : [],
-      );
+      const beforeFriendsList =
+          beforeData && Array.isArray(beforeData.friends) ? beforeData.friends : [];
+      const afterFriendsList =
+          afterData && Array.isArray(afterData.friends) ? afterData.friends : [];
+
+      const beforeFriends = new Set(beforeFriendsList);
+      const afterFriends = new Set(afterFriendsList);
 
       const updates = {};
 

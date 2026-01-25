@@ -76,15 +76,11 @@
 		};
 		73266DBE2CAEDBF80087B7A1 /* TrailMatesTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = TrailMatesTests;
 			sourceTree = "<group>";
 		};
 		73266DC82CAEDBF80087B7A1 /* TrailMatesUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = TrailMatesUITests;
 			sourceTree = "<group>";
 		};
@@ -567,8 +563,8 @@
 				INFOPLIST_FILE = TrailMates/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to your camera to allow you to take profile pictures and use augmented reality features.";
-				INFOPLIST_KEY_NSContactsUsageDescription = "TrailMates would like access to your contacts to help you connect with friends.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "TrailMates needs camera access to take your profile photo.";
+				INFOPLIST_KEY_NSContactsUsageDescription = "TrailMates uses your contacts to help you find friends who already use the app.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "TrailMates uses your location in the background to share your live position with friends while you're on the trail.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "TrailMates uses your location to show nearby friends and trail events.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -609,8 +605,8 @@
 				INFOPLIST_FILE = TrailMates/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to your camera to allow you to take profile pictures and use augmented reality features.";
-				INFOPLIST_KEY_NSContactsUsageDescription = "TrailMates would like access to your contacts to help you connect with friends.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "TrailMates needs camera access to take your profile photo.";
+				INFOPLIST_KEY_NSContactsUsageDescription = "TrailMates uses your contacts to help you find friends who already use the app.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "TrailMates uses your location in the background to share your live position with friends while you're on the trail.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "TrailMates uses your location to show nearby friends and trail events.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

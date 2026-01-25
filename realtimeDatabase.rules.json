@@ -3,19 +3,26 @@
     // Global defaults (deny unless in sub-rules we allow)
     ".read": false,
     ".write": false,
-    
-    "locations": {
-      // Anyone authenticated can read all locations (optional)
-      ".read": "auth != null",
-      
-      // Write rules for each child location identified by the user’s UID
+
+    // Friend graph maintained by Cloud Functions
+    "friends": {
       "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+
+    "locations": {
+      "$uid": {
+        // Only the owner or their friends can read a user's live location
+        ".read": "auth != null && (auth.uid === $uid || root.child('friends').child($uid).child(auth.uid).val() === true)",
+
         // Only the matching user can write
         ".write": "auth != null && auth.uid === $uid",
-        
+
         // Validate fields on the location object
         ".validate": "newData.hasChildren(['latitude', 'longitude', 'timestamp', 'lastUpdated'])",
-        
+
         "latitude": {
           ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
         },
@@ -27,6 +34,29 @@
         },
         "lastUpdated": {
           ".validate": "newData.isNumber()"
+        }
+      }
+    },
+
+    "friend_requests": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$requestId": {
+          // Anyone authenticated can create a request to another user.
+          // Only the recipient can update or delete it.
+          ".write": "auth != null && ((!data.exists() && newData.child('fromUserId').val() === auth.uid) || (data.exists() && auth.uid === $uid))",
+          ".validate": "!newData.exists() || (newData.hasChildren(['fromUserId', 'timestamp', 'status']) && newData.child('fromUserId').isString() && newData.child('timestamp').isNumber() && newData.child('status').isString() && (!data.exists() || (newData.child('fromUserId').val() === data.child('fromUserId').val() && newData.child('timestamp').val() === data.child('timestamp').val())))"
+        }
+      }
+    },
+
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$notificationId": {
+          // Friends can create event invites; only the owner can update (mark read).
+          ".write": "auth != null && ((data.exists() && auth.uid === $uid) || (!data.exists() && newData.child('type').val() === 'eventInvite' && newData.child('fromUserId').val() === auth.uid && root.child('friends').child($uid).child(auth.uid).val() === true))",
+          ".validate": "!newData.exists() || (newData.hasChildren(['type', 'fromUserId', 'content', 'timestamp', 'read']) && newData.child('type').isString() && newData.child('fromUserId').isString() && newData.child('content').isString() && newData.child('timestamp').isNumber() && newData.child('read').isBoolean() && (!newData.child('relatedEventId').exists() || newData.child('relatedEventId').isString()) && (!data.exists() || (newData.child('type').val() === data.child('type').val() && newData.child('fromUserId').val() === data.child('fromUserId').val() && newData.child('content').val() === data.child('content').val() && newData.child('timestamp').val() === data.child('timestamp').val() && newData.child('relatedEventId').val() === data.child('relatedEventId').val())))"
         }
       }
     }
