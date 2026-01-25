@@ -30,9 +30,10 @@ struct ProfileView: View {
                         .frame(width: 120, height: 120)
                 }
                 
-                // Stats Section
+                // Stats Section - uses .equatable() to prevent unnecessary re-renders
                 if let stats = userStats {
                     StatsSection(stats: stats)
+                        .equatable()
                 } else {
                     // Show placeholder stats while loading
                     StatsSection(stats: UserStats(
@@ -42,6 +43,7 @@ struct ProfileView: View {
                         hostedEventCount: 0,
                         attendedEventCount: 0
                     ))
+                    .equatable()
                     .redacted(reason: .placeholder)
                     .shimmering()
                 }
@@ -112,24 +114,29 @@ struct ProfileView: View {
     }
 }
 // Keeping the existing supporting views and models
-struct StatCard: View {
+struct StatCard: View, Equatable {
     let icon: String
     let title: String
     let value: String
-    
+
+    // Equatable conformance - ignores colorScheme since it's from environment
+    static func == (lhs: StatCard, rhs: StatCard) -> Bool {
+        lhs.icon == rhs.icon && lhs.title == rhs.title && lhs.value == rhs.value
+    }
+
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 24))
                 .foregroundColor(Color("pine"))
-            
+
             VStack(spacing: 4) {
                 Text(title)
                     .font(.subheadline)
                     .foregroundColor(Color("pine").opacity(0.8))
-                
+
                 Text(value)
                     .font(.title3)
                     .fontWeight(.semibold)
@@ -145,13 +152,13 @@ struct StatCard: View {
     }
 }
 
-struct UserStats: Codable {
+struct UserStats: Codable, Equatable {
     let joinDate: String
     let landmarkCompletion: Int
     let friendCount: Int
     let hostedEventCount: Int
     let attendedEventCount: Int
-    
+
     enum CodingKeys: String, CodingKey {
         case joinDate
         case landmarkCompletion
@@ -161,9 +168,13 @@ struct UserStats: Codable {
     }
 }
 
-struct StatsSection: View {
+struct StatsSection: View, Equatable {
     let stats: UserStats
-    
+
+    static func == (lhs: StatsSection, rhs: StatsSection) -> Bool {
+        lhs.stats == rhs.stats
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             HStack(spacing: 16) {
@@ -172,28 +183,28 @@ struct StatsSection: View {
                     title: "Joined",
                     value: stats.joinDate
                 )
-                
+
                 StatCard(
                     icon: "flag.fill",
                     title: "Landmarks Visited",
                     value: "\(stats.landmarkCompletion)%"
                 )
             }
-            
+
             HStack(spacing: 16) {
                 StatCard(
                     icon: "person.2.fill",
                     title: "Friends",
                     value: "\(stats.friendCount)"
                 )
-                
+
                 StatCard(
                     icon: "star.fill",
                     title: "Events Hosted",
                     value: "\(stats.hostedEventCount)"
                 )
             }
-            
+
             StatCard(
                 icon: "figure.hiking",
                 title: "Events Attended",

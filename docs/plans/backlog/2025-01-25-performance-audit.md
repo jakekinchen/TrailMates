@@ -40,12 +40,12 @@ Identify and fix performance bottlenecks in TrailMates, focusing on rendering, m
 - [x] Review image loading in FriendsViewModel
 - [x] Check UserManager publisher chain efficiency
 - [x] Audit Firebase listener lifecycle
-- [ ] Review `body` computations for heavy work
+- [x] Review `body` computations for heavy work
 
 ### Phase 2: Location Optimization
 - [x] Replace Timer with AsyncSequence for location updates
-- [ ] Implement location update batching/throttling
-- [ ] Add distance-based update filtering
+- [x] Implement location update batching/throttling
+- [x] Add distance-based update filtering
 - [ ] Review background location necessity
 
 ### Phase 3: Image Performance
@@ -55,10 +55,10 @@ Identify and fix performance bottlenecks in TrailMates, focusing on rendering, m
 - [x] Lazy load full images only when needed (already implemented)
 
 ### Phase 4: State Management
-- [ ] Narrow UserManager `@Published` scope
+- [x] Narrow UserManager `@Published` scope (reviewed - already well-scoped)
 - [ ] Split large observable into focused observables
 - [x] Review removeDuplicates efficiency
-- [ ] Add `.equatable()` where beneficial
+- [x] Add `.equatable()` where beneficial
 
 ### Phase 5: Instruments Profiling
 - [ ] Run SwiftUI template in Instruments
@@ -70,7 +70,7 @@ Identify and fix performance bottlenecks in TrailMates, focusing on rendering, m
 - [x] Add memory pressure observer
 - [x] Implement cache eviction policies
 - [ ] Profile memory growth during use
-- [ ] Fix any retain cycles
+- [x] Fix any retain cycles (audited - already using [weak self] appropriately)
 
 ## Files to Focus On
 - `TrailMates/MapView.swift` - Timer management
@@ -113,6 +113,46 @@ Identify and fix performance bottlenecks in TrailMates, focusing on rendering, m
   - Simplified UserManager's observer to use the new method
   - Removed unused `areCoordinatesEqual` helper
 - **Benefit**: Cleaner code, centralized comparison logic, easier to maintain
+
+## Completed Changes (2025-01-25 - Phase 2)
+
+### 5. Location Update Throttling
+- **File**: `/Users/jakekinchen/Documents/TrailMates/TrailMates/ViewModels/LocationManager.swift`
+- **Issue**: Location updates were sent to Firebase on every GPS update, causing excessive network calls and battery drain
+- **Fix**:
+  - Added `minimumDistanceThreshold` (10 meters) - won't send update if user moved less than this
+  - Added `minimumUpdateInterval` (5 seconds) - won't send updates faster than this interval
+  - Added `shouldSendLocationUpdate()` method that checks both thresholds before sending to Firebase
+  - Local `@Published var location` still updates immediately for UI responsiveness
+- **Benefit**: Significantly reduced Firebase writes and battery consumption from GPS tracking
+
+### 6. View Performance with Equatable
+- **Files**:
+  - `/Users/jakekinchen/Documents/TrailMates/TrailMates/ProfileView.swift`
+- **Issue**: StatCard and StatsSection views were re-rendering even when their data hadn't changed
+- **Fix**:
+  - Made `UserStats` conform to `Equatable`
+  - Made `StatCard` and `StatsSection` conform to `Equatable` with proper `==` implementations
+  - Added `.equatable()` modifier to `StatsSection` in ProfileView
+- **Benefit**: Prevents unnecessary view re-renders when parent state changes but stats data is unchanged
+
+### 7. Body Computation Review
+- **Files Reviewed**:
+  - `/Users/jakekinchen/Documents/TrailMates/TrailMates/MapView.swift`
+  - `/Users/jakekinchen/Documents/TrailMates/TrailMates/EventsView.swift`
+- **Finding**: Event filtering (`getUserEvents`, `getFilteredEvents`) and grouping (`getEventGroups`, `groupEvents`) happen during body evaluation. However, these operations are:
+  - Lightweight array filtering operations (O(n) with small n)
+  - Only evaluated when the events tab is active
+  - Already using efficient algorithms
+- **Conclusion**: No changes needed - current implementation is performant for expected data sizes
+
+### 8. Retain Cycle Audit
+- **Files Audited**:
+  - `/Users/jakekinchen/Documents/TrailMates/TrailMates/ViewModels/UserManager.swift`
+  - `/Users/jakekinchen/Documents/TrailMates/TrailMates/MapView.swift`
+  - `/Users/jakekinchen/Documents/TrailMates/TrailMates/Utilities/FirebaseDataProvider.swift`
+- **Finding**: All closures properly use `[weak self]` or `[weak userManager]` where needed
+- **Conclusion**: No retain cycle issues found
 
 ## Notes
 - Use `swiftui-performance-audit` skill for detailed guidance
