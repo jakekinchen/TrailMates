@@ -1,13 +1,9 @@
-platform :ios, '18.0'
+platform :ios, '17.0'
 
 target 'TrailMatesATX' do
   use_frameworks!
 
-  # Add the Facebook SDK pods
-  pod 'FBSDKCoreKit', '~> 17.4'
-  pod 'FBSDKLoginKit', '~> 17.4'
-
-  # Add any other pods you need here
+  # Add your pods here
 
   target 'TrailMatesATXTests' do
     inherit! :search_paths

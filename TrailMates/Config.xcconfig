@@ -1,12 +1,7 @@
 // Configuration settings for TrailMates
-// Suppress deprecation warnings for Facebook SDK
 OTHER_SWIFT_FLAGS = $(inherited) -suppress-warnings
 GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO
 
-// Additional build settings
+// Build settings
 SWIFT_TREAT_WARNINGS_AS_ERRORS = NO
 SWIFT_SUPPRESS_WARNINGS = YES
-
-// Specifically for Facebook SDK frameworks
-FBSDK_WARNINGS_AS_ERRORS = NO
-FBSDK_SUPPRESS_WARNINGS = YES 

@@ -11,15 +11,11 @@ let package = Package(
             name: "TrailMates",
             targets: ["TrailMates"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/facebook/facebook-ios-sdk", from: "16.3.1")
-    ],
+    dependencies: [],
     targets: [
         .target(
             name: "TrailMates",
-            dependencies: [
-                .product(name: "FacebookCore", package: "facebook-ios-sdk")
-            ],
+            dependencies: [],
             swiftSettings: [
                 .unsafeFlags(["-suppress-warnings"])
             ]

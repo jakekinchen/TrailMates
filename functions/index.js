@@ -25,58 +25,44 @@ functions.https.onCall(async (data, context) => {
     );
   }
 
-  console.log("\n🔒 Input hashed phone numbers:");
-  hashedPhoneNumbers.forEach((hash, index) => {
-    console.log(`   ${index + 1}. ${hash}`);
-  });
+  if (hashedPhoneNumbers.length === 0) {
+    return {users: []};
+  }
 
   try {
-    // 3. Query Firestore for all matching users
-    console.log("\n📚 Querying Firestore...");
+    // 3. Query Firestore for all matching users in chunks (Firestore "in" limit = 10)
     const usersRef = admin.firestore().collection("users");
-
-    // First, let's log all users and their hashed numbers for debugging
-    const allUsers = await usersRef.get();
-    console.log("\n👥 All users in database:");
-    allUsers.forEach((doc) => {
-      const userData = doc.data();
-      console.log(`   User: ${userData.firstName} ${userData.lastName}`);
-      console.log(`   Hashed Phone: '${userData.hashedPhoneNumber}'`);
-      console.log(`   ID: ${doc.id}\n`);
-    });
-
-    // Now perform the actual query
-    console.log("\n🔎 Performing hashed phone number query...");
-    const snapshot = await usersRef
-        .where("hashedPhoneNumber", "in", hashedPhoneNumbers)
-        .get();
-
-    // 4. Process and return results
+    const uniqueHashes = [...new Set(hashedPhoneNumbers)];
+    const chunkSize = 10;
     const matchedUsers = [];
-    console.log("\n✅ Query results:");
-    if (snapshot.empty) {
-      console.log("   No matches found!");
-    }
+    const matchedUserIds = new Set();
 
-    snapshot.forEach((doc) => {
-      const userData = doc.data();
-      console.log(`   Match found:`);
-      console.log(`   - Name: ${userData.firstName} ${userData.lastName}`);
-      console.log(`   - Hashed Phone: '${userData.hashedPhoneNumber}'`);
-      console.log(`   - ID: ${doc.id}`);
+    for (let i = 0; i < uniqueHashes.length; i += chunkSize) {
+      const batch = uniqueHashes.slice(i, i + chunkSize);
+      const snapshot = await usersRef
+          .where("hashedPhoneNumber", "in", batch)
+          .get();
 
-      // Only return necessary user data for privacy
-      matchedUsers.push({
-        id: doc.id,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        username: userData.username,
-        phoneNumber: userData.phoneNumber,
-        hashedPhoneNumber: userData.hashedPhoneNumber,
-        profileImageUrl: userData.profileImageUrl,
-        profileThumbnailUrl: userData.profileThumbnailUrl,
+      snapshot.forEach((doc) => {
+        if (matchedUserIds.has(doc.id)) {
+          return;
+        }
+
+        const userData = doc.data();
+        matchedUserIds.add(doc.id);
+
+        // Only return necessary user data for matching
+        matchedUsers.push({
+          id: doc.id,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          username: userData.username,
+          phoneNumber: userData.phoneNumber,
+          profileImageUrl: userData.profileImageUrl,
+          profileThumbnailUrl: userData.profileThumbnailUrl,
+        });
       });
-    });
+    }
 
     console.log(`\n📊 Results Summary:`);
     console.log(`   Input hashes: ${hashedPhoneNumbers.length}`);
@@ -91,8 +77,15 @@ functions.https.onCall(async (data, context) => {
 
 // Cloud Function: checkUsernameTaken
 exports.checkUsernameTaken = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated.",
+    );
+  }
+
   // 1. Validate input
-  const {username} = data.data || {};
+  const {username, excludeUserId} = data || {};
   if (!username || typeof username !== "string") {
     throw new functions.https.HttpsError(
         "invalid-argument",
@@ -108,11 +101,10 @@ exports.checkUsernameTaken = functions.https.onCall(async (data, context) => {
         .firestore()
         .collection("users")
         .where("username", "==", username)
-        .limit(1)
         .get();
 
     // 3. Return true/false
-    const usernameTaken = !snapshot.empty;
+    const usernameTaken = snapshot.docs.some((doc) => doc.id !== excludeUserId);
     console.log(`Username: '${username}' isTaken: ${usernameTaken}`);
     return {usernameTaken};
   } catch (error) {
@@ -193,3 +185,40 @@ exports.migratePhoneNumbers = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("internal", error.message);
   }
 });
+
+// Firestore trigger: sync friends list to RTDB for privacy checks
+exports.syncFriendsToRTDB = functions.firestore
+    .document("users/{userId}")
+    .onWrite(async (change, context) => {
+      const userId = context.params.userId;
+      const beforeData = change.before.exists ? change.before.data() : null;
+      const afterData = change.after.exists ? change.after.data() : null;
+
+      const beforeFriends = new Set(
+          Array.isArray(beforeData?.friends) ? beforeData.friends : [],
+      );
+      const afterFriends = new Set(
+          Array.isArray(afterData?.friends) ? afterData.friends : [],
+      );
+
+      const updates = {};
+
+      for (const friendId of afterFriends) {
+        if (!beforeFriends.has(friendId)) {
+          updates[`friends/${userId}/${friendId}`] = true;
+        }
+      }
+
+      for (const friendId of beforeFriends) {
+        if (!afterFriends.has(friendId)) {
+          updates[`friends/${userId}/${friendId}`] = null;
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return null;
+      }
+
+      await admin.database().ref().update(updates);
+      return null;
+    });
