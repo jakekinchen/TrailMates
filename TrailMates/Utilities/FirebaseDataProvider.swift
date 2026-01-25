@@ -41,12 +41,12 @@ class FirebaseDataProvider {
         rtdb = Database.database().reference()
         db = Firestore.firestore()
         auth = Auth.auth()
-        
+
         // Configure Firestore settings
         let settings = FirestoreSettings()
         settings.cacheSettings = PersistentCacheSettings()
         db.settings = settings
-        
+
         // Store auth listener to prevent it from being deallocated
         authStateListener = auth.addStateDidChangeListener { (auth, user) in
             if let user = user {
@@ -55,8 +55,22 @@ class FirebaseDataProvider {
                 print("🔥 Auth: User signed out")
             }
         }
-        
+
+        // Set up memory warning observer to clear image cache under pressure
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleMemoryWarning()
+        }
+
         print("🔥 FirebaseDataProvider init started - Services will be initialized on first use")
+    }
+
+    private func handleMemoryWarning() {
+        print("⚠️ Memory warning received - clearing image cache")
+        imageCache.removeAllObjects()
     }
     
     deinit {
@@ -64,7 +78,12 @@ class FirebaseDataProvider {
         if let listener = authStateListener {
             auth.removeStateDidChangeListener(listener)
         }
-        
+
+        // Remove memory warning observer
+        if let observer = memoryWarningObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
         // Clean up all active listeners
         removeAllListeners()
     }
@@ -75,12 +94,20 @@ class FirebaseDataProvider {
             rtdb.child(path).removeObserver(withHandle: handle)
         }
         activeListeners.removeAll()
-        
+
         // Clean up Firestore listeners
         firestoreListeners.forEach { _, listener in
             listener.remove()
         }
         firestoreListeners.removeAll()
+
+        // Clean up user-specific Firestore listeners
+        userListeners.forEach { _, listener in
+            listener.remove()
+        }
+        userListeners.removeAll()
+
+        print("FirebaseDataProvider: Removed all listeners (RTDB: \(activeListeners.count), Firestore: \(firestoreListeners.count), Users: \(userListeners.count))")
     }
     
     // MARK: - User Operations
@@ -139,10 +166,13 @@ class FirebaseDataProvider {
         return normalized
     }
     
-    func isUsernameTakenCloudFunction(_ username: String) async -> Bool {
+    func isUsernameTakenCloudFunction(_ username: String, excludingUserId: String?) async -> Bool {
         do {
             let result = try await functions.httpsCallable("checkUsernameTaken")
-                .call(["username": username])
+                .call([
+                    "username": username,
+                    "excludeUserId": excludingUserId ?? ""
+                ])
             
             if let data = result.data as? [String: Any],
                let usernameTaken = data["usernameTaken"] as? Bool {
@@ -565,26 +595,38 @@ class FirebaseDataProvider {
         }
     }
     
-    private let imageCache = NSCache<NSString, UIImage>()
+    private let imageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        // Limit to ~50 images (thumbnails are ~150x150, full images vary)
+        cache.countLimit = 50
+        // Limit to ~50MB of image data
+        cache.totalCostLimit = 50 * 1024 * 1024
+        return cache
+    }()
+
+    // Memory warning observer token
+    private var memoryWarningObserver: NSObjectProtocol?
     
     func downloadProfileImage(from url: String) async throws -> UIImage {
         // Check cache first
         if let cachedImage = imageCache.object(forKey: url as NSString) {
             return cachedImage
         }
-        
+
         // Download if not in cache
         guard let imageUrl = URL(string: url) else {
             throw NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid image URL"])
         }
-        
+
         let (data, _) = try await URLSession.shared.data(from: imageUrl)
         guard let image = UIImage(data: data) else {
             throw NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid image data"])
         }
-        
-        // Cache the downloaded image
-        imageCache.setObject(image, forKey: url as NSString)
+
+        // Cache the downloaded image with cost based on data size
+        // This helps NSCache manage memory more effectively
+        let cost = data.count
+        imageCache.setObject(image, forKey: url as NSString, cost: cost)
         return image
     }
     
@@ -600,34 +642,9 @@ class FirebaseDataProvider {
     
     // MARK: - Utility Operations
     func isUsernameTaken(_ username: String, excludingUserId: String?) async -> Bool {
-        do {
-            var query = db.collection("users").whereField("username", isEqualTo: username)
-            
-            if let excludeId = excludingUserId {
-                query = query.whereField("id", isNotEqualTo: excludeId)
-            }
-            
-            let snapshot = try await query.getDocuments()
-            return !snapshot.isEmpty
-        } catch {
-            print("Error checking username: \(error)")
-            return false
-        }
+        return await isUsernameTakenCloudFunction(username, excludingUserId: excludingUserId)
     }
-    
-    func fetchUsersByFacebookIds(_ facebookIds: [String]) async -> [User] {
-        do {
-            let snapshot = try await db.collection("users")
-                .whereField("facebookId", in: facebookIds)
-                .getDocuments()
-            
-            return snapshot.documents.compactMap { try? $0.data(as: User.self) }
-        } catch {
-            print("Error fetching users by Facebook IDs: \(error)")
-            return []
-        }
-    }
-    
+
     // MARK: - Friend Request Operations
     func sendFriendRequest(fromUserId: String, to targetUserId: String) async throws {
         // Get Firebase UIDs for both users
@@ -1177,12 +1194,24 @@ func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async 
             listener.remove()
         }
         firestoreListeners.removeAll()
-        
+
         // Clean up all RTDB listeners
         activeListeners.forEach { path, handle in
             rtdb.child(path).removeObserver(withHandle: handle)
         }
         activeListeners.removeAll()
     }
-}
 
+    // MARK: - Listener Tracking (for debugging/monitoring)
+
+    /// Returns the count of currently active listeners for monitoring purposes
+    var activeListenerCount: (rtdb: Int, firestore: Int, users: Int) {
+        return (activeListeners.count, firestoreListeners.count, userListeners.count)
+    }
+
+    /// Prints current listener status for debugging
+    func printListenerStatus() {
+        let counts = activeListenerCount
+        print("🔥 Active Listeners - RTDB: \(counts.rtdb), Firestore: \(counts.firestore), Users: \(counts.users)")
+    }
+}
