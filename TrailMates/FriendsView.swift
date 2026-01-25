@@ -15,7 +15,7 @@ struct FriendsView: View {
                     .padding(.horizontal)
                 
                 if viewModel.isLoading {
-                    LoadingView()
+                    FriendsLoadingView()
                         .contentShape(Rectangle())
                         .onTapGesture {
                             isSearchFocused = false
@@ -222,7 +222,7 @@ struct EmptyFriendsView: View {
     }
 }
 
-struct LoadingView: View {
+struct FriendsLoadingView: View {
     var body: some View {
         VStack {
             ProgressView()

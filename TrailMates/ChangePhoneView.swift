@@ -241,9 +241,9 @@ struct InstructionsView: View {
     }
 }
 
-struct ErrorView: View {
+struct PhoneErrorView: View {
     let message: String
-    
+
     var body: some View {
         Text(message)
             .font(.system(size: 14, weight: .medium))
@@ -443,7 +443,7 @@ struct ChangePhoneView: View {
                 }
                 
                 if !authViewModel.errorMessage.isEmpty {
-                    ErrorView(message: authViewModel.errorMessage)
+                    PhoneErrorView(message: authViewModel.errorMessage)
                 }
                 
                 if isVerificationSent {
