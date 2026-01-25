@@ -97,22 +97,20 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         print("Configuring push notifications...")
         UNUserNotificationCenter.current().delegate = self
         
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
-            if let error = error {
-                print("❌ Error requesting notification permissions: \(error)")
-                return
-            }
-            
-            if granted {
-                DispatchQueue.main.async {
+        Task { @MainActor [weak self] in
+            do {
+                let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+                if granted {
                     print("✅ Push notification permissions granted")
                     application.registerForRemoteNotifications()
-                    
+
                     // Check for pending APNS token
                     self?.registerPendingAPNSTokenIfNeeded()
+                } else {
+                    print("❌ Push notification permissions denied")
                 }
-            } else {
-                print("❌ Push notification permissions denied")
+            } catch {
+                print("❌ Error requesting notification permissions: \(error)")
             }
         }
     }

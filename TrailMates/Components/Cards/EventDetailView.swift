@@ -175,16 +175,12 @@ struct EventDetailView: View {
             let urlString = "comgooglemaps://?saddr=&daddr=\(coordinate.latitude),\(coordinate.longitude)&directionsmode=driving"
             if let url = URL(string: urlString) {
                 if UIApplication.shared.canOpenURL(url) {
-                    DispatchQueue.main.async {
-                        UIApplication.shared.open(url)
-                    }
+                    UIApplication.shared.open(url)
                 } else {
                     // If Google Maps is not installed, open in browser
                     let webUrlString = "https://www.google.com/maps/dir/?api=1&destination=\(coordinate.latitude),\(coordinate.longitude)"
                     if let webUrl = URL(string: webUrlString) {
-                        DispatchQueue.main.async {
-                            UIApplication.shared.open(webUrl)
-                        }
+                        UIApplication.shared.open(webUrl)
                     }
                 }
             }
@@ -193,16 +189,14 @@ struct EventDetailView: View {
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
 
         // Find the topmost view controller to present the alert
-        DispatchQueue.main.async {
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootController = windowScene.windows.first?.rootViewController {
-                // Traverse to the topmost presented view controller
-                var topController = rootController
-                while let presented = topController.presentedViewController {
-                    topController = presented
-                }
-                topController.present(alert, animated: true)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootController = windowScene.windows.first?.rootViewController {
+            // Traverse to the topmost presented view controller
+            var topController = rootController
+            while let presented = topController.presentedViewController {
+                topController = presented
             }
+            topController.present(alert, animated: true)
         }
     }
     
@@ -210,61 +204,53 @@ struct EventDetailView: View {
         let alert = UIAlertController(title: "Add to Calendar", message: nil, preferredStyle: .actionSheet)
             
             // Apple Calendar option
-            alert.addAction(UIAlertAction(title: "Apple Calendar", style: .default) { _ in
+            alert.addAction(UIAlertAction(title: "Apple Calendar", style: .default) { [self] _ in
                 let eventStore = EKEventStore()
-                
-                // Handle calendar access based on iOS version
-                if #available(iOS 17.0, *) {
-                    // Use new iOS 17 API
-                    eventStore.requestWriteOnlyAccessToEvents { granted, error in
-                        if granted {
-                            DispatchQueue.main.async {
-                                self.createCalendarEvent(store: eventStore)
-                            }
+
+                Task { @MainActor in
+                    do {
+                        // Handle calendar access based on iOS version
+                        let granted: Bool
+                        if #available(iOS 17.0, *) {
+                            granted = try await eventStore.requestWriteOnlyAccessToEvents()
+                        } else {
+                            granted = try await eventStore.requestAccess(to: .event)
                         }
-                    }
-                } else {
-                    // Use older API for iOS 16 and below
-                    eventStore.requestAccess(to: .event) { granted, error in
                         if granted {
-                            DispatchQueue.main.async {
-                                self.createCalendarEvent(store: eventStore)
-                            }
+                            self.createCalendarEvent(store: eventStore)
                         }
+                    } catch {
+                        print("Calendar access error: \(error)")
                     }
                 }
             })
         
         // Google Calendar option
-        alert.addAction(UIAlertAction(title: "Google Calendar", style: .default) { _ in
+        alert.addAction(UIAlertAction(title: "Google Calendar", style: .default) { [self] _ in
             let title = event.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             let location = event.getLocationName().addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            
+
             let dateFormatter = ISO8601DateFormatter()
             let startDate = dateFormatter.string(from: event.dateTime)
             let endDate = dateFormatter.string(from: Calendar.current.date(byAdding: .hour, value: 1, to: event.dateTime) ?? event.dateTime)
-            
+
             let urlString = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=\(title)&dates=\(startDate)/\(endDate)&location=\(location)"
-            
+
             if let url = URL(string: urlString) {
-                DispatchQueue.main.async {
-                    UIApplication.shared.open(url)
-                }
+                UIApplication.shared.open(url)
             }
         })
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
+
         // Present the alert
-        DispatchQueue.main.async {
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootController = windowScene.windows.first?.rootViewController {
-                var topController = rootController
-                while let presented = topController.presentedViewController {
-                    topController = presented
-                }
-                topController.present(alert, animated: true)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootController = windowScene.windows.first?.rootViewController {
+            var topController = rootController
+            while let presented = topController.presentedViewController {
+                topController = presented
             }
+            topController.present(alert, animated: true)
         }
     }
     

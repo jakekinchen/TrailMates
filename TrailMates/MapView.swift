@@ -120,14 +120,12 @@ struct MapView: View {
     
     private func updateFriendLocations() async {
         await loadData()
-        
-        // Force map to refresh annotations
+
+        // Force map to refresh annotations (already on MainActor via View context)
         if let mapView = mapView {
-            DispatchQueue.main.async {
-                // Trigger the map coordinator to update annotations
-                let coordinator = mapView.delegate as? UnifiedMapView.MapCoordinator
-                coordinator?.updateAnnotations(mapView)
-            }
+            // Trigger the map coordinator to update annotations
+            let coordinator = mapView.delegate as? UnifiedMapView.MapCoordinator
+            coordinator?.updateAnnotations(mapView)
         }
     }
     

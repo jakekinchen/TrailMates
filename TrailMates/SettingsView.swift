@@ -218,24 +218,20 @@ private extension SettingsView {
 private extension SettingsView {
     func openAppSettings() {
         if let appSettings = URL(string: UIApplication.openSettingsURLString) {
-            DispatchQueue.main.async {
-                UIApplication.shared.open(appSettings)
-            }
+            UIApplication.shared.open(appSettings)
         }
     }
 
     func updateAppearance(_ appearance: String) {
-        DispatchQueue.main.async {
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                windowScene.windows.forEach { window in
-                    window.overrideUserInterfaceStyle = {
-                        switch appearance {
-                        case "Light": return .light
-                        case "Dark": return .dark
-                        default: return .unspecified
-                        }
-                    }()
-                }
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            windowScene.windows.forEach { window in
+                window.overrideUserInterfaceStyle = {
+                    switch appearance {
+                    case "Light": return .light
+                    case "Dark": return .dark
+                    default: return .unspecified
+                    }
+                }()
             }
         }
     }

@@ -8,8 +8,8 @@
 import Foundation
 import CoreLocation
 
-// Event Model
-struct Event: Codable, Identifiable {
+// Event Model - Sendable compliant as a struct with Sendable properties
+struct Event: Codable, Identifiable, Sendable {
     // Core properties
     let id: String
     var title: String

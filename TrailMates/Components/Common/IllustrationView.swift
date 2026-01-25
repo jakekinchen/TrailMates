@@ -104,8 +104,10 @@ struct Bird: View {
     }
     
     private func startAnimations() {
-        // Delay the start of animations for each bird
-        DispatchQueue.main.asyncAfter(deadline: .now() + animationDelay) {
+        // Delay the start of animations for each bird using Task
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(animationDelay))
+
             // Flight path animation
             withAnimation(
                 Animation
@@ -115,7 +117,7 @@ struct Bird: View {
                 xOffset = pathAmplitude * 2
                 yOffset = -pathAmplitude
             }
-            
+
             // Independent rotation animation
             withAnimation(
                 Animation
@@ -124,19 +126,20 @@ struct Bird: View {
             ) {
                 rotation = horizontalFlip ? -15 : 15
             }
-            
-            // Add subtle figure-eight movement
-            let timer = Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { _ in
+
+            // Add subtle figure-eight movement using async loop
+            while !Task.isCancelled {
                 let t = Date().timeIntervalSince1970 * pathFrequency
                 let additionalX = sin(t) * Double(pathAmplitude) * 0.3
                 let additionalY = cos(t * 2) * Double(pathAmplitude) * 0.2
-                
+
                 withAnimation(.linear(duration: 0.02)) {
                     xOffset = pathAmplitude + CGFloat(additionalX)
                     yOffset = -pathAmplitude + CGFloat(additionalY)
                 }
+
+                try? await Task.sleep(for: .milliseconds(20))
             }
-            RunLoop.current.add(timer, forMode: .common)
         }
     }
 }

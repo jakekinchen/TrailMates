@@ -30,11 +30,12 @@ struct UnifiedMapView: UIViewRepresentable {
     // MARK: - UIViewRepresentable Implementation
     func makeUIView(context: Context) -> MKMapView {
             let mapView = MKMapView()
-            
-            DispatchQueue.main.async {
+
+            // Capture self.mapView binding update for next runloop to avoid state update during view update
+            Task { @MainActor in
                 self.mapView = mapView
             }
-        
+
             mapView.delegate = context.coordinator
             
             // Configure interaction modes
@@ -191,7 +192,7 @@ extension UnifiedMapView {
             if !shouldIgnoreRegionChanges {
                 print("🎯 User initiated region change")
                 isRegionChangeFromUserInteraction = true
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.configuration.isDragging?.wrappedValue = true
                 }
             }
@@ -207,7 +208,7 @@ extension UnifiedMapView {
             if isRegionChangeFromUserInteraction {
                 isRegionChangeFromUserInteraction = false
                 print("🎯 User region change completed")
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.configuration.isDragging?.wrappedValue = false
                     self.configuration.onRegionChanged?(mapView.region)
                 }
@@ -227,18 +228,19 @@ extension UnifiedMapView {
                             span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
                         )
                         mapView.setRegion(newRegion, animated: true)
-                        
+
                         // Hide custom pin when selecting a recommended location
-                        DispatchQueue.main.async {
+                        Task { @MainActor in
                             self.configuration.showCustomPin?.wrappedValue = false
                             print("🎯 showCustomPin after set: \(self.configuration.showCustomPin?.wrappedValue ?? false)")
                         }
-                        
+
                         // Update selected location
                         configuration.onLocationSelected?(location)
-                        
+
                         // Don't deselect the annotation immediately to allow the visual feedback
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(500))
                             mapView.deselectAnnotation(annotation, animated: true)
                         }
                     }

@@ -9,6 +9,7 @@
 import MapKit
 import SwiftUI
 
+@MainActor
 class WelcomeMapCoordinator: ObservableObject {
     @Published var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 30.25903, longitude: -97.74349),
@@ -17,10 +18,8 @@ class WelcomeMapCoordinator: ObservableObject {
     @Published var isDragging: Bool = false
     @Published var mapView: MKMapView?
 
-    
+
     func updateRegion(_ newRegion: MKCoordinateRegion) {
-        DispatchQueue.main.async {
-            self.mapView?.setRegion(newRegion, animated: true)
-        }
+        mapView?.setRegion(newRegion, animated: true)
     }
 }

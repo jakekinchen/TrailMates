@@ -124,7 +124,8 @@ struct LocationPickerView: View {
                     Button("Select") {
                         if let location = viewModel.showCustomPin ? viewModel.currentCustomLocation : viewModel.selectedLocation {
                             selectedLocation = location
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(100))
                                 dismiss()
                             }
                         }

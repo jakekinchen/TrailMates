@@ -84,9 +84,7 @@ struct PermissionsView: View {
             .alert("Location Access Required", isPresented: $showLocationSettingsAlert) {
                 Button("Open Settings", role: .none) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
-                        DispatchQueue.main.async {
-                            UIApplication.shared.open(url)
-                        }
+                        UIApplication.shared.open(url)
                     }
                 }
                 Button("Cancel", role: .cancel) {}
@@ -96,9 +94,7 @@ struct PermissionsView: View {
             .alert("Notifications Required", isPresented: $showNotificationSettingsAlert) {
                 Button("Open Settings", role: .none) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
-                        DispatchQueue.main.async {
-                            UIApplication.shared.open(url)
-                        }
+                        UIApplication.shared.open(url)
                     }
                 }
                 Button("Cancel", role: .cancel) {}
@@ -141,10 +137,9 @@ struct PermissionsView: View {
     }
     
     private func checkNotificationStatus() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                notificationStatus = settings.authorizationStatus
-            }
+        Task { @MainActor in
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            notificationStatus = settings.authorizationStatus
         }
     }
     

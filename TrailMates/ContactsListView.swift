@@ -361,9 +361,7 @@ private struct UnmatchedContactRow: View {
                 Button {
                     UIPasteboard.general.string = inviteMessage
                     if let url = URL(string: "sms:\(phoneNumber)") {
-                        DispatchQueue.main.async {
-                            UIApplication.shared.open(url)
-                        }
+                        UIApplication.shared.open(url)
                     }
                 } label: {
                     Label("Send SMS", systemImage: "message.fill")
