@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 
+@MainActor
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     // MARK: - Properties
     let manager: CLLocationManager
@@ -40,7 +41,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     // MARK: - Initialization
-    nonisolated init(userManager: UserManager) {
+    init(userManager: UserManager) {
         let manager = CLLocationManager()
         self.manager = manager
         self.authorizationStatus = manager.authorizationStatus
@@ -54,26 +55,26 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     // MARK: - Authorization Methods
-    nonisolated func setAuthorizationCallback(_ callback: @escaping (CLAuthorizationStatus) -> Void) {
+    func setAuthorizationCallback(_ callback: @escaping (CLAuthorizationStatus) -> Void) {
         self.authorizationCallback = callback
         // Immediately call the callback with current status
         callback(authorizationStatus)
     }
-    
-    nonisolated func requestLocationPermission() async -> CLAuthorizationStatus {
+
+    func requestLocationPermission() async -> CLAuthorizationStatus {
         // If we already have a status, return it
         if authorizationStatus != .notDetermined {
             return authorizationStatus
         }
-        
+
         // Request permission and wait for the result
         return await withCheckedContinuation { continuation in
             authorizationContinuation = continuation
             manager.requestWhenInUseAuthorization()
         }
     }
-    
-    nonisolated func requestAlwaysAuthorization() async -> CLAuthorizationStatus {
+
+    func requestAlwaysAuthorization() async -> CLAuthorizationStatus {
         return await withCheckedContinuation { continuation in
             authorizationContinuation = continuation
             manager.requestAlwaysAuthorization()

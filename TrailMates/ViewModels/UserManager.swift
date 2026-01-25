@@ -33,9 +33,6 @@ class UserManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var hasInitialized = false
     
-    // Facebook-related properties (temporarily disabled)
-    // private let facebookService = FacebookService.shared
-    @Published var isFacebookLinked: Bool = false
     
     private init() {
         // Configure Firebase debug logging level
@@ -89,46 +86,16 @@ class UserManager: ObservableObject {
     }
     
     private func setupObservers() {
-        // Facebook link status observation (temporarily disabled)
-        /*
-        facebookService.$isLinked
-            .sink { [weak self] isLinked in
-                self?.isFacebookLinked = isLinked
-            }
-            .store(in: &cancellables)
-        */
-        
         // Setup automatic saving with location change filtering
+        // Uses User.hasOnlyLocationChanged() to avoid unnecessary saves when only location changes
         $currentUser
             .dropFirst()
             .debounce(for: .seconds(5), scheduler: RunLoop.main)
             .compactMap { $0 }
-            .removeDuplicates { [weak self] oldUser, newUser in
-                guard let self = self else { return true }
-                // Only trigger save if non-location properties changed
-                let locationChanged = !self.areCoordinatesEqual(oldUser.location, newUser.location)
-                let onlyLocationChanged = locationChanged && 
-                    oldUser.firstName == newUser.firstName &&
-                    oldUser.lastName == newUser.lastName &&
-                    oldUser.username == newUser.username &&
-                    oldUser.profileImageUrl == newUser.profileImageUrl &&
-                    oldUser.profileThumbnailUrl == newUser.profileThumbnailUrl &&
-                    oldUser.friends == newUser.friends &&
-                    oldUser.createdEventIds == newUser.createdEventIds &&
-                    oldUser.attendingEventIds == newUser.attendingEventIds &&
-                    oldUser.visitedLandmarkIds == newUser.visitedLandmarkIds &&
-                    oldUser.isActive == newUser.isActive &&
-                    oldUser.doNotDisturb == newUser.doNotDisturb &&
-                    oldUser.receiveFriendRequests == newUser.receiveFriendRequests &&
-                    oldUser.receiveFriendEvents == newUser.receiveFriendEvents &&
-                    oldUser.receiveEventUpdates == newUser.receiveEventUpdates &&
-                    oldUser.shareLocationWithFriends == newUser.shareLocationWithFriends &&
-                    oldUser.shareLocationWithEventHost == newUser.shareLocationWithEventHost &&
-                    oldUser.shareLocationWithEventGroup == newUser.shareLocationWithEventGroup &&
-                    oldUser.allowFriendsToInviteOthers == newUser.allowFriendsToInviteOthers
-                
-                // Return true if only location changed (to remove this duplicate)
-                return onlyLocationChanged
+            .removeDuplicates { oldUser, newUser in
+                // Skip save if only location changed (handled separately by LocationManager)
+                // Return true to mark as "duplicate" and filter out
+                return newUser.hasOnlyLocationChanged(comparedTo: oldUser)
             }
             .sink { [weak self] user in
                 Task { [weak self] in
@@ -146,22 +113,6 @@ class UserManager: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
-    /// Helper function to compare optional CLLocationCoordinate2D values
-    private func areCoordinatesEqual(_ lhs: CLLocationCoordinate2D?, _ rhs: CLLocationCoordinate2D?) -> Bool {
-        switch (lhs, rhs) {
-        case (.none, .none):
-            return true
-        case (.some(let coord1), .some(let coord2)):
-            // Use a small epsilon for floating point comparison
-            let latEqual = abs(coord1.latitude - coord2.latitude) < 0.000001
-            let lonEqual = abs(coord1.longitude - coord2.longitude) < 0.000001
-            return latEqual && lonEqual
-        default:
-            return false
-        }
-    }
-    
     @MainActor
     private func cleanup() async {
         // Stop observing user if we have a current user
@@ -240,60 +191,6 @@ class UserManager: ObservableObject {
         return await dataProvider.isUsernameTaken(username, excludingUserId: currentUser?.id)
     }
     
-    // MARK: Facebook Integration (temporarily disabled)
-    /*
-    func toggleFacebookLink() async throws {
-        isFacebookLinked.toggle()
-        if let updatedUser = currentUser {
-            try await saveProfile(updatedUser: updatedUser)
-        }
-    }
-    
-    func linkFacebook() async throws {
-        do {
-            let fbUser = try await facebookService.linkAccount()
-            isFacebookLinked = true
-            if let updatedUser = currentUser {
-                updatedUser.facebookId = fbUser.id
-                try await saveProfile(updatedUser: updatedUser)
-            }
-            persistUserSession()
-        } catch {
-            isFacebookLinked = false
-            throw error
-        }
-    }
-    
-    func unlinkFacebook() {
-        facebookService.unlinkAccount()
-        isFacebookLinked = false
-        if let updatedUser = currentUser {
-            updatedUser.facebookId = nil
-            Task {
-                try await saveProfile(updatedUser: updatedUser)
-            }
-        }
-        persistUserSession()
-    }
-    
-    func fetchFacebookFriendsWithStatus() async throws -> [(friend: FacebookFriend, user: User?, isFriend: Bool)] {
-        guard isFacebookLinked else {
-            throw NSError(domain: "com.bridges.trailmatesatx", code: -1,
-                         userInfo: [NSLocalizedDescriptionKey: "Facebook not linked"])
-        }
-        
-        let facebookFriends = try await facebookService.fetchFriends()
-        let facebookIds = facebookFriends.map { $0.id }
-        let matchedUsers = await dataProvider.fetchUsersByFacebookIds(facebookIds)
-        
-        return facebookFriends.map { friend -> (friend: FacebookFriend, user: User?, isFriend: Bool) in
-            let matchedUser = matchedUsers.first { $0.facebookId == friend.id }
-            let isFriend = matchedUser.map { self.isFriend($0.id) } ?? false
-            return (friend: friend, user: matchedUser, isFriend: isFriend)
-        }
-    }
-    */
-    
     // MARK: - Persist User Session
     func persistUserSession() {
         print("💾 Persisting user session")
@@ -318,7 +215,6 @@ class UserManager: ObservableObject {
         UserDefaults.standard.set(isPermissionsGranted, forKey: "isPermissionsGranted")
         UserDefaults.standard.set(hasAddedFriends, forKey: "hasAddedFriends")
         UserDefaults.standard.set(isOnboardingComplete, forKey: "isOnboardingComplete")
-        UserDefaults.standard.set(isFacebookLinked, forKey: "isFacebookLinked")
         print("   - Session flags saved")
     }
 
@@ -332,7 +228,6 @@ class UserManager: ObservableObject {
             isPermissionsGranted = UserDefaults.standard.bool(forKey: "isPermissionsGranted")
             hasAddedFriends = UserDefaults.standard.bool(forKey: "hasAddedFriends")
             isOnboardingComplete = UserDefaults.standard.bool(forKey: "isOnboardingComplete")
-            isFacebookLinked = UserDefaults.standard.bool(forKey: "isFacebookLinked")
         }
     }
 
@@ -343,7 +238,6 @@ class UserManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "isPermissionsGranted")
         UserDefaults.standard.removeObject(forKey: "hasAddedFriends")
         UserDefaults.standard.removeObject(forKey: "isOnboardingComplete")
-        UserDefaults.standard.removeObject(forKey: "isFacebookLinked")
     }
 
     // MARK: - Logout
@@ -378,7 +272,6 @@ class UserManager: ObservableObject {
             isWelcomeComplete = false
             isPermissionsGranted = false
             hasAddedFriends = false
-            isFacebookLinked = false
             print("✅ Cleared local state")
         }
         

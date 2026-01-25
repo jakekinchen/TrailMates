@@ -9,6 +9,7 @@
 import SwiftUI
 import Contacts
 
+@MainActor
 class ContactsListViewModel: ObservableObject {
     @Published var contacts: [CNContact] = []
     @Published var matchedUsers: [MatchedContact] = []
@@ -106,15 +107,17 @@ class ContactsListViewModel: ObservableObject {
         }
     }
 
-    func requestContactsAccess(completion: @escaping (Bool) -> Void) {
+    func requestContactsAccess() async -> Bool {
         let store = CNContactStore()
-        store.requestAccess(for: .contacts) { granted, error in
-            DispatchQueue.main.async {
-                if granted {
-                    self.hasFullContactsAccess = true
-                }
-                completion(granted)
+        do {
+            let granted = try await store.requestAccess(for: .contacts)
+            if granted {
+                self.hasFullContactsAccess = true
             }
+            return granted
+        } catch {
+            print("Error requesting contacts access: \(error)")
+            return false
         }
     }
 

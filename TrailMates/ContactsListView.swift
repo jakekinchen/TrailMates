@@ -39,7 +39,8 @@ struct ContactsListView: View {
                     // Request Contacts Access Button (only shown if not full access)
                     if !viewModel.hasFullContactsAccess {
                         Button(action: {
-                            viewModel.requestContactsAccess { granted in
+                            Task {
+                                let granted = await viewModel.requestContactsAccess()
                                 if !granted {
                                     showContactsPermissionAlert = true
                                 }
