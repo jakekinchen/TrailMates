@@ -6,17 +6,17 @@
 //
 //  Usage:
 //  ```swift
-//  ValidationError("Please enter a valid email address")
-//  ValidationError("Password must be at least 8 characters", style: .banner)
+//  ValidationErrorView("Please enter a valid email address")
+//  ValidationErrorView("Password must be at least 8 characters", style: .banner)
 //  if let error = validationError {
-//      ValidationError(error)
+//      ValidationErrorView(error)
 //  }
 //  ```
 
 import SwiftUI
 
 /// A styled validation error message component
-struct ValidationError: View {
+struct ValidationErrorView: View {
     /// Error message to display
     let message: String
     /// Display style
@@ -104,7 +104,7 @@ struct FormValidationModifier: ViewModifier {
             if !errors.isEmpty && style == .banner {
                 VStack(spacing: 8) {
                     ForEach(errors, id: \.self) { error in
-                        ValidationError(error, style: style)
+                        ValidationErrorView(error, style: style)
                     }
                 }
             }
@@ -114,7 +114,7 @@ struct FormValidationModifier: ViewModifier {
             if !errors.isEmpty && style == .toast {
                 VStack(spacing: 8) {
                     ForEach(errors, id: \.self) { error in
-                        ValidationError(error, style: style)
+                        ValidationErrorView(error, style: style)
                     }
                 }
             }
@@ -141,7 +141,7 @@ extension View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.white)
                 .cornerRadius(8)
-            ValidationError("Username must be at least 3 characters")
+            ValidationErrorView("Username must be at least 3 characters")
         }
     }
     .padding()
@@ -150,8 +150,8 @@ extension View {
 
 #Preview("Banner Style") {
     VStack(spacing: 16) {
-        ValidationError("Please fill in all required fields", style: .banner)
-        ValidationError("Your session has expired. Please log in again.", style: .banner)
+        ValidationErrorView("Please fill in all required fields", style: .banner)
+        ValidationErrorView("Your session has expired. Please log in again.", style: .banner)
     }
     .padding()
     .background(Color("beige"))
@@ -160,7 +160,7 @@ extension View {
 #Preview("Toast Style") {
     VStack {
         Spacer()
-        ValidationError("Failed to save changes", style: .toast)
+        ValidationErrorView("Failed to save changes", style: .toast)
             .padding(.horizontal)
             .padding(.bottom, 32)
     }
