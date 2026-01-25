@@ -30,6 +30,7 @@ class FirebaseDataProvider {
     private let imageProvider = ImageStorageProvider.shared
     private let landmarkProvider = LandmarkDataProvider.shared
     private let locationProvider = LocationDataProvider.shared
+    private let notificationProvider = NotificationDataProvider.shared
 
     // MARK: - Legacy Firebase services (used for operations not yet migrated)
     private lazy var db = Firestore.firestore()
@@ -89,7 +90,7 @@ class FirebaseDataProvider {
 
     private func handleMemoryWarning() {
         print("⚠️ Memory warning received - clearing image cache")
-        imageCache.removeAllObjects()
+        imageProvider.clearCache()
     }
     
     deinit {
@@ -274,369 +275,87 @@ class FirebaseDataProvider {
         return await userProvider.isUsernameTaken(username, excludingUserId: excludingUserId)
     }
 
-    // MARK: - Friend Request Operations
+    // MARK: - Friend Request Operations (Deprecated - use FriendDataProvider.shared instead)
+
+    @available(*, deprecated, message: "Use FriendDataProvider.shared.sendFriendRequest() instead")
     func sendFriendRequest(fromUserId: String, to targetUserId: String) async throws {
-        // Verify the current user is sending the request
-        guard let currentUser = Auth.auth().currentUser,
-              currentUser.uid == fromUserId else {
-            throw ValidationError.userNotAuthenticated("Cannot send request on behalf of another user")
-        }
-        
-        let requestId = UUID().uuidString
-        let requestRef = rtdb.child("friend_requests")
-            .child(targetUserId)
-            .child(requestId)
-        
-        let requestData: [String: Any] = [
-            "fromUserId": fromUserId,  // Use Firebase UID for RTDB
-            "timestamp": ServerValue.timestamp(),
-            "status": "pending"
-        ]
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            requestRef.setValue(requestData) { error, _ in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
+        try await friendProvider.sendFriendRequest(fromUserId: fromUserId, to: targetUserId)
     }
-    
+
+    @available(*, deprecated, message: "Use FriendDataProvider.shared.acceptFriendRequest() instead")
     func acceptFriendRequest(requestId: String, userId: String, friendId: String) async throws {
-        let callable = functions.httpsCallable("acceptFriendRequest")
-        _ = try await callable.call(["requestId": requestId])
+        try await friendProvider.acceptFriendRequest(requestId: requestId, userId: userId, friendId: friendId)
     }
-    
+
+    @available(*, deprecated, message: "Use FriendDataProvider.shared.rejectFriendRequest() instead")
     func rejectFriendRequest(requestId: String) async throws {
-        guard let currentUser = Auth.auth().currentUser else {
-            throw ValidationError.userNotAuthenticated("No authenticated user")
-        }
-        
-        // Remove friend request and its notification from RTDB
-        let updates: [String: Any?] = [
-            "friend_requests/\(currentUser.uid)/\(requestId)": nil,
-            "notifications/\(currentUser.uid)/\(requestId)": nil
-        ]
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            rtdb.updateChildValues(updates as [AnyHashable : Any]) { error, _ in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
+        try await friendProvider.rejectFriendRequest(requestId: requestId)
     }
-    
+
+    @available(*, deprecated, message: "Use FriendDataProvider.shared.addFriend() instead")
     internal func addFriend(_ friendId: String, to userId: String) async throws {
-        let userRef = db.collection("users").document(userId)
-        let friendRef = db.collection("users").document(friendId)
-        
-        _ = try await db.runTransaction { transaction, errorPointer in
-            let userDoc: DocumentSnapshot
-            let friendDoc: DocumentSnapshot
-            
-            do {
-                userDoc = try transaction.getDocument(userRef)
-                friendDoc = try transaction.getDocument(friendRef)
-            } catch let fetchError as NSError {
-                errorPointer?.pointee = fetchError
-                return nil
-            }
-            
-            // Get current friend lists
-            var userFriends = userDoc.get("friends") as? [String] ?? []
-            var friendFriends = friendDoc.get("friends") as? [String] ?? []
-            
-            // Add friend IDs if not already present
-            if !userFriends.contains(friendId) {
-                userFriends.append(friendId)
-            }
-            if !friendFriends.contains(userId) {
-                friendFriends.append(userId)
-            }
-            
-            // Update both documents
-            transaction.updateData(["friends": userFriends], forDocument: userRef)
-            transaction.updateData(["friends": friendFriends], forDocument: friendRef)
-            
-            return nil
-        }
+        try await friendProvider.addFriend(friendId, to: userId)
     }
-    
+
+    @available(*, deprecated, message: "Use FriendDataProvider.shared.removeFriend() instead")
     func removeFriend(_ friendId: String, from userId: String) async throws {
-        let callable = functions.httpsCallable("removeFriend")
-        _ = try await callable.call(["friendId": friendId])
+        try await friendProvider.removeFriend(friendId, from: userId)
     }
     
-    // MARK: - Landmark Operations
+    // MARK: - Landmark Operations (Deprecated - use LandmarkDataProvider.shared instead)
+
+    @available(*, deprecated, message: "Use LandmarkDataProvider.shared.fetchTotalLandmarks() instead")
     func fetchTotalLandmarks() async -> Int {
-        do {
-            let snapshot = try await db.collection("landmarks").getDocuments()
-            return snapshot.documents.count
-        } catch {
-            print("Error fetching total landmarks: \(error)")
-            return 0
-        }
+        return await landmarkProvider.fetchTotalLandmarks()
     }
-    
+
+    @available(*, deprecated, message: "Use LandmarkDataProvider.shared.markLandmarkVisited() instead")
     func markLandmarkVisited(userId: String, landmarkId: String) async {
-        do {
-            let userRef = db.collection("users").document(userId)
-            try await userRef.updateData([
-                "visitedLandmarkIds": FieldValue.arrayUnion([landmarkId])
-            ])
-        } catch {
-            print("Error marking landmark as visited: \(error)")
-        }
+        await landmarkProvider.markLandmarkVisited(userId: userId, landmarkId: landmarkId)
     }
-    
+
+    @available(*, deprecated, message: "Use LandmarkDataProvider.shared.unmarkLandmarkVisited() instead")
     func unmarkLandmarkVisited(userId: String, landmarkId: String) async {
-        do {
-            let userRef = db.collection("users").document(userId)
-            try await userRef.updateData([
-                "visitedLandmarkIds": FieldValue.arrayRemove([landmarkId])
-            ])
-        } catch {
-            print("Error unmarking landmark as visited: \(error)")
-        }
+        await landmarkProvider.unmarkLandmarkVisited(userId: userId, landmarkId: landmarkId)
     }
     
-    // MARK: - Real-time Database Operations
-    
-    // MARK: - Location Operations
-    // MARK: - Location Operations
-func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async throws {
-    // 1. Verify the current user is updating their own location
-    guard let currentUser = Auth.auth().currentUser else {
-        throw ValidationError.userNotAuthenticated("No authenticated user")
+    // MARK: - Location Operations (Deprecated - use LocationDataProvider.shared instead)
+
+    @available(*, deprecated, message: "Use LocationDataProvider.shared.updateUserLocation() instead")
+    func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async throws {
+        try await locationProvider.updateUserLocation(userId: userId, location: location)
     }
-    
-    // 2. Ensure the userId matches the currentUser's UID
-    guard userId == currentUser.uid else {
-        throw ValidationError.invalidData("Cannot update location for another user")
-    }
-    
-    // 3. Get fresh ID token to ensure auth is valid
-    let token = try await currentUser.getIDToken()
-    
-    print("\nFirebase Location Debug:")
-    print("1. Auth Check:")
-    print("   - UID: \(currentUser.uid)")
-    print("   - Token valid: \(token.prefix(10))...")
-    print("   - Provider: \(currentUser.providerID)")
-    print("   - Anonymous: \(currentUser.isAnonymous)")
-    
-    // 4. Reference the user's location node in RTDB
-    let locationRef = rtdb.child("locations").child(currentUser.uid)
-    print("   - Path: \(locationRef.url)")
-    
-    // 5. Verify database connection
-    let connectedRef = rtdb.child(".info/connected")
-    let isConnected = try await withCheckedThrowingContinuation { continuation in
-        connectedRef.observeSingleEvent(of: .value) { snapshot in
-            continuation.resume(returning: snapshot.value as? Bool ?? false)
-        }
-    }
-    print("2. Connection Check:")
-    print("   - Connected: \(isConnected)")
-    
-    // 6. Write location data to RTDB
-    return try await withCheckedThrowingContinuation { continuation in
-        let locationData: [String: Any] = [
-            "latitude": location.latitude,
-            "longitude": location.longitude,
-            "timestamp": ServerValue.timestamp(),
-            "lastUpdated": ServerValue.timestamp()
-        ]
-        
-        print("3. Data Validation:")
-        print("   - Fields: \(locationData.keys.sorted().joined(separator: ", "))")
-        print("   - Location: (\(location.latitude), \(location.longitude))")
-        
-        locationRef.setValue(locationData) { error, _ in
-            if let error = error {
-                print("4. Write Result: Failed")
-                print("   - Error: \(error.localizedDescription)")
-                continuation.resume(throwing: error)
-            } else {
-                print("4. Write Result: Success")
-                continuation.resume()
-            }
-        }
-    }
-}
-    
+
+    @available(*, deprecated, message: "Use LocationDataProvider.shared.observeUserLocation() instead")
     func observeUserLocation(userId: String, completion: @escaping (CLLocationCoordinate2D?) -> Void) {
-        // First get the Firebase UID for the target user
-        Task {
-            // Fetch the user document to get their Firebase UID
-            if let userDoc = try? await db.collection("users").document(userId).getDocument(),
-               let id = userDoc.get("id") as? String {
-                let path = "locations/\(id)"
-                
-                // Remove existing listener if any
-                if let existingHandle = activeListeners[path] {
-                    rtdb.child(path).removeObserver(withHandle: existingHandle)
-                    activeListeners.removeValue(forKey: path)
-                }
-                
-                // Add new listener
-                let handle = rtdb.child(path).observe(.value) { snapshot in
-                    guard let locationData = snapshot.value as? [String: Any],
-                          let latitude = locationData["latitude"] as? Double,
-                          let longitude = locationData["longitude"] as? Double else {
-                        completion(nil)
-                        return
-                    }
-                    
-                    let location = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                    completion(location)
-                }
-                
-                activeListeners[path] = handle
-            } else {
-                print("Could not find Firebase UID for user \(userId)")
-                completion(nil)
-            }
-        }
+        locationProvider.observeUserLocation(userId: userId, completion: completion)
     }
     
-    // MARK: - Friend Requests
+    // MARK: - Friend Requests Observation (Deprecated - use FriendDataProvider.shared instead)
+
+    @available(*, deprecated, message: "Use FriendDataProvider.shared.observeFriendRequests() instead")
     func observeFriendRequests(for userId: String, completion: @escaping ([FriendRequest]) -> Void) {
-        guard let currentUser = Auth.auth().currentUser else {
-            print("No authenticated user for friend requests")
-            completion([])
-            return
-        }
-        
-        let requestsRef = rtdb.child("friend_requests").child(currentUser.uid)
-        
-        requestsRef.observe(.value, with: { snapshot in
-            var requests: [FriendRequest] = []
-            
-            for child in snapshot.children {
-                guard let snapshot = child as? DataSnapshot,
-                      let data = snapshot.value as? [String: Any],
-                      let fromUserId = data["fromUserId"] as? String,
-                      let timestamp = data["timestamp"] as? TimeInterval,
-                      let status = data["status"] as? String else {
-                    continue
-                }
-                
-                let request = FriendRequest(
-                    id: snapshot.key,
-                    fromUserId: fromUserId,
-                    timestamp: Date(timeIntervalSince1970: timestamp / 1000),
-                    status: FriendRequestStatus(rawValue: status) ?? .pending
-                )
-                requests.append(request)
-            }
-            
-            completion(requests)
-        })
+        friendProvider.observeFriendRequests(for: userId, completion: completion)
     }
 
-
-    
+    @available(*, deprecated, message: "Use FriendDataProvider.shared.updateFriendRequestStatus() instead")
     func updateFriendRequestStatus(requestId: String, targetUserId: String, status: FriendRequestStatus) async throws {
-        guard let currentUser = Auth.auth().currentUser else {
-            throw ValidationError.userNotAuthenticated("No authenticated user")
-        }
-        
-        let requestRef = rtdb.child("friend_requests")
-            .child(currentUser.uid)
-            .child(requestId)
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            requestRef.updateChildValues(["status": status.rawValue]) { error, _ in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
+        try await friendProvider.updateFriendRequestStatus(requestId: requestId, targetUserId: targetUserId, status: status)
     }
 
     
-    // MARK: - Notification Operations
+    // MARK: - Notification Operations (Deprecated - use NotificationDataProvider.shared instead)
+
+    @available(*, deprecated, message: "Use NotificationDataProvider.shared.sendNotification() instead")
     func sendNotification(to userId: String, type: NotificationType, fromUserId: String, content: String, relatedEventId: String? = nil) async throws {
-        // We already have userId as a string, so no need to fetch a doc for conversion.
-        let notificationRef = rtdb.child("notifications")
-            .child(userId)
-            .child(UUID().uuidString)
-        
-        let notificationData: [String: Any] = [
-            "type": type.rawValue,
-            "fromUserId": fromUserId,
-            "content": content,
-            "timestamp": ServerValue.timestamp(),
-            "read": false,
-            "relatedEventId": relatedEventId
-        ].compactMapValues { $0 }
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            notificationRef.setValue(notificationData) { error, _ in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
+        try await notificationProvider.sendNotification(to: userId, type: type, fromUserId: fromUserId, content: content, relatedEventId: relatedEventId)
     }
 
-    
+    @available(*, deprecated, message: "Use NotificationDataProvider.shared.observeNotifications() instead")
     func observeNotifications(for userId: String, completion: @escaping ([TrailNotification]) -> Void) {
-        guard let currentUser = Auth.auth().currentUser else {
-            print("No authenticated user for notifications")
-            completion([])
-            return
-        }
-        
-        let notificationsRef = rtdb.child("notifications").child(currentUser.uid)
-        
-        notificationsRef.observe(.value) { [weak self] snapshot in
-            guard let self = self else { return }
-            var notifications: [TrailNotification] = []
-            
-            for child in snapshot.children {
-                let childSnapshot = child as! DataSnapshot
-                guard let data = childSnapshot.value as? [String: Any],
-                      let typeStr = data["type"] as? String,
-                      let type = NotificationType(rawValue: typeStr),
-                      let content = data["content"] as? String,
-                      let timestamp = data["timestamp"] as? TimeInterval,
-                      let fromUserId = data["fromUserId"] as? String,
-                      let read = data["read"] as? Bool else {
-                    continue
-                }
-                
-                let relatedEventId = data["relatedEventId"] as? String
-                
-                let notification = TrailNotification(
-                    id: childSnapshot.key,
-                    type: type,
-                    title: self.getTitleForNotificationType(type),
-                    message: content,
-                    timestamp: Date(timeIntervalSince1970: timestamp / 1000),
-                    isRead: read,
-                    userId: userId,
-                    fromUserId: fromUserId,
-                    relatedEventId: relatedEventId
-                )
-                notifications.append(notification)
-            }
-            
-            completion(notifications.sorted { $0.timestamp > $1.timestamp })
-        }
+        notificationProvider.observeNotifications(for: userId, completion: completion)
     }
 
-    
     private func getTitleForNotificationType(_ type: NotificationType) -> String {
         switch type {
         case .friendRequest:
@@ -651,90 +370,20 @@ func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async 
             return "Notification"
         }
     }
-    
+
+    @available(*, deprecated, message: "Use NotificationDataProvider.shared.markNotificationAsRead() instead")
     func markNotificationAsRead(id: String, notificationId: String) async throws {
-        let notificationRef = rtdb.child("notifications")
-            .child(id)
-            .child(notificationId)
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            notificationRef.updateChildValues(["read": true]) { error, _ in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
-    }
-    
-    func fetchNotifications(forid id: String, userID: String) async throws -> [TrailNotification] {
-        return try await withCheckedThrowingContinuation { [weak self] continuation in
-            guard let self = self else {
-                continuation.resume(throwing: ValidationError.invalidData("FirebaseDataProvider instance was deallocated"))
-                return
-            }
-            
-            let notificationsRef = rtdb.child("notifications").child(id)
-            
-            notificationsRef.getData { error, snapshot in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                
-                var notifications: [TrailNotification] = []
-                
-                if let snapshot = snapshot {
-                    for child in snapshot.children {
-                        let childSnapshot = child as! DataSnapshot
-                        guard let data = childSnapshot.value as? [String: Any],
-                              let typeStr = data["type"] as? String,
-                              let type = NotificationType(rawValue: typeStr),
-                              let content = data["content"] as? String,
-                              let timestamp = data["timestamp"] as? TimeInterval,
-                              let fromUserId = data["fromUserId"] as? String,
-                              let read = data["read"] as? Bool else {
-                            continue
-                        }
-                        
-                        let relatedEventId = data["relatedEventId"] as? String
-                        
-                        let notification = TrailNotification(
-                            id: childSnapshot.key,
-                            type: type,
-                            title: self.getTitleForNotificationType(type),
-                            message: content,
-                            timestamp: Date(timeIntervalSince1970: timestamp / 1000),
-                            isRead: read,
-                            userId: userID,
-                            fromUserId: fromUserId,
-                            relatedEventId: relatedEventId
-                        )
-                        notifications.append(notification)
-                    }
-                }
-                
-                continuation.resume(returning: notifications.sorted { $0.timestamp > $1.timestamp })
-            }
-        }
+        try await notificationProvider.markNotificationAsRead(id: id, notificationId: notificationId)
     }
 
-    
+    @available(*, deprecated, message: "Use NotificationDataProvider.shared.fetchNotifications() instead")
+    func fetchNotifications(forid id: String, userID: String) async throws -> [TrailNotification] {
+        return try await notificationProvider.fetchNotifications(forId: id, userID: userID)
+    }
+
+    @available(*, deprecated, message: "Use NotificationDataProvider.shared.deleteNotification() instead")
     func deleteNotification(id: String, notificationId: String) async throws {
-        let notificationRef = rtdb.child("notifications")
-            .child(id)
-            .child(notificationId)
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            notificationRef.removeValue { error, _ in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
+        try await notificationProvider.deleteNotification(id: id, notificationId: notificationId)
     }
     
     enum ValidationError: LocalizedError {

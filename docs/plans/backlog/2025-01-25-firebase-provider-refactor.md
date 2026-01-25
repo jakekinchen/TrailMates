@@ -47,19 +47,19 @@ FirebaseDataProvider (coordinator)
 - [x] Move user CRUD operations
 - [x] Move user query methods
 - [x] Move phone number lookup methods
-- [ ] Update UserManager to use new provider
+- [x] Update UserManager to use new provider
 
 ### Phase 4: Extract EventDataProvider
 - [x] Move event CRUD operations
 - [x] Move event query methods
-- [ ] Move attendance tracking methods
-- [ ] Update EventViewModel to use new provider
+- [x] Move attendance tracking methods
+- [x] Update EventViewModel to use new provider
 
 ### Phase 5: Extract FriendDataProvider
 - [x] Move friend relationship operations
 - [x] Move friend request operations
 - [x] Move friend query methods
-- [ ] Update FriendsViewModel to use new provider
+- [x] Update FriendsViewModel to use new provider (delegates to UserManager)
 
 ### Phase 6: Extract ImageStorageProvider
 - [x] Move profile image upload/download
@@ -81,10 +81,10 @@ FirebaseDataProvider (coordinator)
 - [x] Move notification CRUD methods
 
 ### Phase 8: Update FirebaseDataProvider
-- [ ] Convert to coordinator/facade pattern
-- [ ] Compose individual providers
+- [x] Convert to coordinator/facade pattern
+- [x] Compose individual providers
 - [x] Maintain backward compatibility during transition
-- [ ] Deprecate direct methods in favor of sub-providers
+- [x] Deprecate direct methods in favor of sub-providers
 
 ### Phase 9: Testing
 - [ ] Add unit tests for each provider
@@ -139,15 +139,39 @@ All files created in `TrailMates/Utilities/Firebase/`:
 - FirebaseDataProvider maintains backward compatibility - existing calls still work
 - Sub-providers can be used directly for new code
 
+## Completed Work (2025-01-25 - Phase 2)
+
+### Updated ViewModels to use sub-providers
+
+1. **UserManager.swift** - Updated to use:
+   - `UserDataProvider.shared` for all user operations
+   - `ImageStorageProvider.shared` for profile image upload/download
+   - `LandmarkDataProvider.shared` for landmark operations
+   - `LocationDataProvider.shared` for location updates
+   - `FriendDataProvider.shared` for friend management
+
+2. **EventViewModel.swift** - Updated to use:
+   - `EventDataProvider.shared` for all event operations
+
+3. **FriendsViewModel.swift** - No changes needed (already delegates to UserManager)
+
+### Updated FirebaseDataProvider as Facade
+
+- Added all sub-provider references as private properties
+- All methods now delegate to appropriate sub-providers
+- Added `@available(*, deprecated)` annotations with migration instructions
+- Backward compatibility maintained - existing code continues to work
+- Memory warning handler now uses ImageStorageProvider.clearCache()
+
 ## Next Steps
-1. Update FirebaseDataProvider to delegate to sub-providers (facade pattern)
-2. Update ViewModels to use sub-providers directly
-3. Add protocols for dependency injection
-4. Add unit tests for each provider
-5. Deprecate direct methods on FirebaseDataProvider
+1. Add protocols for dependency injection (FirebaseProviderProtocol)
+2. Add unit tests for each provider
+3. Add mock implementations for testing
+4. Gradually migrate remaining code that uses deprecated methods
 
 ## Notes
 - Maintain singleton access during transition for compatibility
 - Consider protocol-based abstraction for testing
 - Each provider should be independently testable
 - Document migration path for existing code
+- Deprecation warnings guide developers to use new providers

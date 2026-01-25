@@ -13,9 +13,15 @@ class EventViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     
     // MARK: - Private Properties
+    // MARK: Sub-provider (preferred for new code)
+    private let eventProvider = EventDataProvider.shared
+
+    // Legacy provider (deprecated - use eventProvider instead)
+    @available(*, deprecated, message: "Use eventProvider instead")
     let dataProvider: FirebaseDataProvider
+
     private var cancellables = Set<AnyCancellable>()
-    
+
     // MARK: - Initialization
     private init(dataProvider: FirebaseDataProvider = FirebaseDataProvider.shared) {
         self.dataProvider = dataProvider
@@ -33,8 +39,8 @@ class EventViewModel: ObservableObject {
     func loadEvents() async {
         isLoading = true
         defer { isLoading = false }
-        
-        self.events = await dataProvider.fetchAllEvents()
+
+        self.events = await eventProvider.fetchAllEvents()
     }
     
     /// Groups events by their date sections
@@ -90,7 +96,6 @@ class EventViewModel: ObservableObject {
     }
     
     /// Creates a new event
-    /// Creates a new event
     func createEvent(
         for user: User,
         title: String,
@@ -102,8 +107,8 @@ class EventViewModel: ObservableObject {
         tags: [String]? = nil
     ) async throws {
         // 1. Generate a Firestore reference with a new ID
-        let (_, eventId) = dataProvider.generateNewEventReference()
-        
+        let (_, eventId) = eventProvider.generateNewEventReference()
+
         // 2. Create the event using this new ID
         let newEvent = Event(
             id: eventId,
@@ -118,10 +123,10 @@ class EventViewModel: ObservableObject {
             attendeeIds: [],
             status: .upcoming
         )
-        
-        // 3. Save the event to Firestore using dataProvider
-        try await dataProvider.saveEvent(newEvent)
-        
+
+        // 3. Save the event to Firestore using eventProvider
+        try await eventProvider.saveEvent(newEvent)
+
         // 4. Reload events if needed
         await loadEvents()
     }
@@ -129,37 +134,37 @@ class EventViewModel: ObservableObject {
     
     /// Allows a user to attend an event
     func attendEvent(userId: String, eventId: String) async throws {
-        guard var event = await dataProvider.fetchEvent(by: eventId) else {
+        guard var event = await eventProvider.fetchEvent(by: eventId) else {
             throw EventError.eventNotFound
         }
-        
+
         event.attendeeIds.insert(userId)
-        try await dataProvider.saveEvent(event)
+        try await eventProvider.saveEvent(event)
         await loadEvents()
     }
-    
+
     /// Allows a user to leave an event
     func leaveEvent(userId: String, eventId: String) async throws {
-        guard var event = await dataProvider.fetchEvent(by: eventId) else {
+        guard var event = await eventProvider.fetchEvent(by: eventId) else {
             throw EventError.eventNotFound
         }
-        
+
         event.attendeeIds.remove(userId)
-        try await dataProvider.saveEvent(event)
+        try await eventProvider.saveEvent(event)
         await loadEvents()
     }
-    
+
     /// Cancels an event if the requester is the host
     func cancelEvent(eventId: String, hostId: String) async throws -> Bool {
-        guard let event = await dataProvider.fetchEvent(by: eventId) else {
+        guard let event = await eventProvider.fetchEvent(by: eventId) else {
             throw EventError.eventNotFound
         }
-        
+
         guard event.hostId == hostId else {
             throw EventError.unauthorized
         }
-        
-        try await dataProvider.deleteEvent(eventId)
+
+        try await eventProvider.deleteEvent(eventId)
         await loadEvents()
         return true
     }
