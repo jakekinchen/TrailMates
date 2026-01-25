@@ -97,7 +97,7 @@ struct ValidationErrorView: View {
 // MARK: - View Modifier for Form Validation
 struct FormValidationModifier: ViewModifier {
     let errors: [String]
-    var style: ValidationError.Style = .banner
+    var style: ValidationErrorView.Style = .banner
 
     func body(content: Content) -> some View {
         VStack(spacing: 12) {
@@ -124,7 +124,7 @@ struct FormValidationModifier: ViewModifier {
 
 extension View {
     /// Adds validation error display to a form or container
-    func validationErrors(_ errors: [String], style: ValidationError.Style = .banner) -> some View {
+    func validationErrors(_ errors: [String], style: ValidationErrorView.Style = .banner) -> some View {
         modifier(FormValidationModifier(errors: errors, style: style))
     }
 }

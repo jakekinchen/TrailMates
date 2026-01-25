@@ -67,6 +67,22 @@ struct FormField: View {
     @State private var isSecureVisible = false
     @FocusState private var isFocused: Bool
 
+    init(
+        _ label: String,
+        text: Binding<String>,
+        type: FieldType = .text,
+        error: String? = nil,
+        isDisabled: Bool = false,
+        icon: String? = nil
+    ) {
+        self.label = label
+        self._text = text
+        self.type = type
+        self.error = error
+        self.isDisabled = isDisabled
+        self.icon = icon
+    }
+
     private var showFloatingLabel: Bool {
         !text.isEmpty || isFocused
     }

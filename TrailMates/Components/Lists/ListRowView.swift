@@ -334,30 +334,32 @@ extension View {
     VStack(spacing: 8) {
         ListRowView(
             title: "Notifications",
-            leadingIcon: "bell"
-        ) {
-            Toggle("", isOn: .constant(true))
-                .labelsHidden()
-        }
+            leadingIcon: "bell",
+            trailing: {
+                Toggle("", isOn: .constant(true))
+                    .labelsHidden()
+            }
+        )
 
         ListRowView(
             title: "Friend Request",
-            subtitle: "John wants to be friends"
-        ) {
-            HStack(spacing: 8) {
-                Button("Accept") {}
-                    .font(.caption)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color("pumpkin"))
-                    .cornerRadius(8)
+            subtitle: "John wants to be friends",
+            trailing: {
+                HStack(spacing: 8) {
+                    Button("Accept") {}
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color("pumpkin"))
+                        .cornerRadius(8)
 
-                Button("Decline") {}
-                    .font(.caption)
-                    .foregroundColor(Color("pine"))
+                    Button("Decline") {}
+                        .font(.caption)
+                        .foregroundColor(Color("pine"))
+                }
             }
-        }
+        )
     }
     .padding()
     .background(Color("beige"))
