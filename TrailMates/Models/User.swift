@@ -201,6 +201,34 @@ final class User: Codable, Identifiable, Equatable {
         lhs.allowFriendsToInviteOthers == rhs.allowFriendsToInviteOthers &&
         lhs.facebookId == rhs.facebookId
     }
+
+    /// Checks if only the location property differs between two users.
+    /// Used to avoid unnecessary saves when only location changes.
+    func hasOnlyLocationChanged(comparedTo other: User) -> Bool {
+        // If the users are fully equal, nothing changed
+        guard self != other else { return false }
+
+        // Check if all non-location properties are equal
+        return self.id == other.id &&
+            self.firstName == other.firstName &&
+            self.lastName == other.lastName &&
+            self.username == other.username &&
+            self.profileImageUrl == other.profileImageUrl &&
+            self.profileThumbnailUrl == other.profileThumbnailUrl &&
+            self.friends == other.friends &&
+            self.createdEventIds == other.createdEventIds &&
+            self.attendingEventIds == other.attendingEventIds &&
+            self.visitedLandmarkIds == other.visitedLandmarkIds &&
+            self.isActive == other.isActive &&
+            self.doNotDisturb == other.doNotDisturb &&
+            self.receiveFriendRequests == other.receiveFriendRequests &&
+            self.receiveFriendEvents == other.receiveFriendEvents &&
+            self.receiveEventUpdates == other.receiveEventUpdates &&
+            self.shareLocationWithFriends == other.shareLocationWithFriends &&
+            self.shareLocationWithEventHost == other.shareLocationWithEventHost &&
+            self.shareLocationWithEventGroup == other.shareLocationWithEventGroup &&
+            self.allowFriendsToInviteOthers == other.allowFriendsToInviteOthers
+    }
 }
 
 // MARK: - MKPolygon Extension

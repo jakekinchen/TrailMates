@@ -15,7 +15,7 @@ struct MapView: View {
     @State private var mapView: MKMapView?
     @State private var showNotifications = false
     @State private var selectedEvent: Event?
-    @State private var locationUpdateTimer: Timer?
+    @State private var locationUpdateTask: Task<Void, Never>?
     
     var currentUser: User? {
         return userManager.currentUser
@@ -86,22 +86,36 @@ struct MapView: View {
     
     // MARK: - Location Update Methods
     private func startLocationUpdates() {
-        // Initial update of friend locations
-        Task {
+        // Cancel any existing task first
+        locationUpdateTask?.cancel()
+
+        // Create a new task for periodic location updates using structured concurrency
+        locationUpdateTask = Task { [weak userManager] in
+            // Initial update
             await updateFriendLocations()
-        }
-        
-        // Set up timer for periodic updates
-        locationUpdateTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { _ in
-            Task {
-                await updateFriendLocations()
+
+            // Use AsyncTimerSequence pattern for periodic updates
+            // This properly handles cancellation and doesn't retain self strongly
+            while !Task.isCancelled {
+                do {
+                    // Wait for 30 seconds between updates
+                    try await Task.sleep(for: .seconds(30))
+
+                    // Check if task is cancelled before proceeding
+                    guard !Task.isCancelled, userManager != nil else { break }
+
+                    await updateFriendLocations()
+                } catch {
+                    // Task was cancelled (likely view disappeared)
+                    break
+                }
             }
         }
     }
-    
+
     private func stopLocationUpdates() {
-        locationUpdateTimer?.invalidate()
-        locationUpdateTimer = nil
+        locationUpdateTask?.cancel()
+        locationUpdateTask = nil
     }
     
     private func updateFriendLocations() async {
