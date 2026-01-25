@@ -1,3 +1,8 @@
+//
+//  AddFriendsView.swift
+//  TrailMatesATX
+//
+
 import SwiftUI
 import Contacts
 import UserNotifications
@@ -6,9 +11,13 @@ import MessageUI
 
 // MARK: - Onboarding Wrapper
 struct OnboardingAddFriendsView: View {
+    // MARK: - Dependencies
     let onFinish: () -> Void
-    @EnvironmentObject var userManager: UserManager
 
+    // MARK: - Environment
+    @EnvironmentObject private var userManager: UserManager
+
+    // MARK: - Body
     var body: some View {
         AddFriendsView(isOnboarding: true) {
             userManager.hasAddedFriends = true
@@ -19,54 +28,41 @@ struct OnboardingAddFriendsView: View {
     }
 }
 
+// MARK: - Main View
 struct AddFriendsView: View {
+    // MARK: - Navigation Destination
     enum NavigationDestination: Hashable {
         case contacts
     }
 
-    // MARK: - Properties
+    // MARK: - Dependencies
     let isOnboarding: Bool
     let onComplete: () -> Void
 
+    // MARK: - Environment
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userManager: UserManager
 
+    // MARK: - State
     @State private var navigationPath = NavigationPath()
     @State private var contactsAccessGranted = false
     @State private var showContactsPermissionAlert = false
     @State private var showMessageComposer = false
     @State private var selectedPhoneNumber: String?
     @State private var inviteMessage = "Hey! Join me on TrailMates ATX, the best app for going on social walks around Lady Bird Lake! Download here: [App Store Link]"
-    
+
+    // MARK: - Private
     private let messageComposeDelegate = MessageComposeDelegate()
-    
+
     // MARK: - Body
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
                 Color("beige").ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Connection Methods Section
-                        VStack(spacing: 16) {
-                            Text("Connect with Friends")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(Color("pine"))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            contactsButton
-                            inviteButton
-                            
-                            Text("Invite your friends to the community")
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(Color("pine"))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .padding(.horizontal)
-                        
+                        connectionMethodsSection
                     }
                     .padding(.vertical)
                 }
@@ -75,14 +71,7 @@ struct AddFriendsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        if isOnboarding {
-                            onComplete()
-                        } else {
-                            dismiss()
-                        }
-                    }
-                    .foregroundColor(Color("pine"))
+                    doneButton
                 }
             }
             .navigationDestination(for: NavigationDestination.self) { destination in
@@ -92,29 +81,45 @@ struct AddFriendsView: View {
                 }
             }
             .sheet(isPresented: $showMessageComposer) {
-                if MessageComposerView.canSendText() {
-                    MessageComposerView(
-                        recipients: selectedPhoneNumber.map { [$0] } ?? [],
-                        messageBody: inviteMessage,
-                        delegate: messageComposeDelegate
-                    )
-                }
+                messageComposerSheet
             }
         }
         .alert("Find contacts", isPresented: $showContactsPermissionAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
+                openSettings()
             }
         } message: {
             Text("Allow access to your contacts in Settings to find friends on TrailMates.")
         }
     }
-    
-    // MARK: - Components
-    private var contactsButton: some View {
+}
+
+// MARK: - View Builders
+private extension AddFriendsView {
+    @ViewBuilder
+    var connectionMethodsSection: some View {
+        VStack(spacing: 16) {
+            Text("Connect with Friends")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(Color("pine"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            contactsButton
+            inviteButton
+
+            Text("Invite your friends to the community")
+                .font(.headline)
+                .fontWeight(.bold)
+                .foregroundColor(Color("pine"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    var contactsButton: some View {
         Button(action: handleContactsAction) {
             HStack {
                 Image(systemName: "person.crop.circle.badge.plus")
@@ -123,12 +128,12 @@ struct AddFriendsView: View {
                     .frame(width: 24, height: 24)
                     .foregroundColor(Color("beige"))
                     .accessibilityHidden(true)
-                
+
                 Text("Add from Contacts")
                     .fontWeight(.bold)
                     .foregroundColor(Color("beige"))
                     .frame(maxWidth: .infinity)
-                
+
                 if contactsAccessGranted {
                     Image(systemName: "chevron.right")
                         .foregroundColor(Color("beige"))
@@ -140,8 +145,9 @@ struct AddFriendsView: View {
             .cornerRadius(15)
         }
     }
-    
-    private var inviteButton: some View {
+
+    @ViewBuilder
+    var inviteButton: some View {
         Button(action: {
             showMessageComposer = true
         }) {
@@ -152,7 +158,7 @@ struct AddFriendsView: View {
                     .frame(width: 24, height: 24)
                     .foregroundColor(Color("alwaysBeige"))
                     .accessibilityHidden(true)
-                
+
                 Text("Invite Friends")
                     .fontWeight(.bold)
                     .foregroundColor(Color("alwaysBeige"))
@@ -163,23 +169,57 @@ struct AddFriendsView: View {
             .cornerRadius(15)
         }
     }
-    
-    // MARK: - Actions
-    private func handleContactsAction() {
+
+    @ViewBuilder
+    var doneButton: some View {
+        Button("Done") {
+            if isOnboarding {
+                onComplete()
+            } else {
+                dismiss()
+            }
+        }
+        .foregroundColor(Color("pine"))
+    }
+
+    @ViewBuilder
+    var messageComposerSheet: some View {
+        if MessageComposerView.canSendText() {
+            MessageComposerView(
+                recipients: selectedPhoneNumber.map { [$0] } ?? [],
+                messageBody: inviteMessage,
+                delegate: messageComposeDelegate
+            )
+        }
+    }
+}
+
+// MARK: - Helper Methods
+private extension AddFriendsView {
+    func handleContactsAction() {
         let store = CNContactStore()
         if contactsAccessGranted {
             navigationPath.append(NavigationDestination.contacts)
         } else {
-            store.requestAccess(for: .contacts) { granted, _ in
-                DispatchQueue.main.async {
+            Task { @MainActor in
+                do {
+                    let granted = try await store.requestAccess(for: .contacts)
                     if granted {
                         contactsAccessGranted = true
                         navigationPath.append(NavigationDestination.contacts)
                     } else {
                         showContactsPermissionAlert = true
                     }
+                } catch {
+                    showContactsPermissionAlert = true
                 }
             }
+        }
+    }
+
+    func openSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
         }
     }
 }
