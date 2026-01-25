@@ -563,7 +563,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FIREBASE_AUTH_URL_SCHEME = "app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78";
 				GENERATE_INFOPLIST_FILE = YES;
-				GOOGLE_API_KEY = ***REMOVED***;
+				GOOGLE_API_KEY = AIzaSyCh9HAMvbBha5EdxUYthSeZ041tfllrcCI;
 				INFOPLIST_FILE = TrailMates/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
@@ -605,7 +605,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FIREBASE_AUTH_URL_SCHEME = "app-1-1095294471657-ios-db7b33e63e3bd7c4eb8f78";
 				GENERATE_INFOPLIST_FILE = YES;
-				GOOGLE_API_KEY = ***REMOVED***;
+				GOOGLE_API_KEY = AIzaSyCh9HAMvbBha5EdxUYthSeZ041tfllrcCI;
 				INFOPLIST_FILE = TrailMates/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TrailMates;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
