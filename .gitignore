@@ -69,3 +69,5 @@ TrailMates/App/Info.plist
 
 # Instead, you might keep a template version in the repo:
 # TrailMates/App/GoogleService-Info.plist.template
+# External skills repo
+Skills/
