@@ -1,12 +1,15 @@
 //
 //  AnnotationViews.swift
-//  TrailMatesATX
+//  TrailMates
 //
-//  Created by Jake Kinchen on 11/13/24.
+//  Custom MKAnnotationView subclasses for displaying friends, events, and locations on the map.
 //
+//  Components:
+//  - FriendAnnotationView: Shows friend's profile image with radar pulse for active users
+//  - EventAnnotationView: Displays event marker with calendar icon
+//  - RecommendedLocationView: Star marker for recommended trail locations
+//  - RadarPulseView: Animated pulse effect for active friends
 
-
-// MARK: - AnnotationViews.swift
 import UIKit
 import MapKit
 import SwiftUI

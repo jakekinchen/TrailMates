@@ -1,25 +1,40 @@
 //
 //  BottomSheet.swift
-//  TrailMatesATX
+//  TrailMates
 //
-//  Created by Jake Kinchen on 10/24/24.
+//  A draggable bottom sheet component with three snap positions.
 //
+//  Usage:
+//  ```swift
+//  @State private var isSheetOpen = false
+//
+//  ZStack {
+//      // Main content
+//      BottomSheet(isOpen: $isSheetOpen, maxHeight: 600) {
+//          // Sheet content here
+//          Text("Sheet Content")
+//      }
+//  }
+//  ```
 
 import SwiftUI
 
-// MARK: - BottomSheet
+/// A draggable bottom sheet with collapsible, partial, and full positions
 struct BottomSheet<Content: View>: View {
+    /// Binding indicating if sheet is fully expanded
     @Binding var isOpen: Bool
+    /// Maximum height the sheet can expand to
     let maxHeight: CGFloat
+    /// Content to display inside the sheet
     let content: Content
-    
+
     @GestureState private var translation: CGFloat = 0
     @State private var position: SheetPosition = .partial
-    
+
     private enum SheetPosition {
         case full, partial, collapsed
     }
-    
+
     private var offset: CGFloat {
         switch position {
         case .full:
@@ -30,20 +45,20 @@ struct BottomSheet<Content: View>: View {
             return maxHeight - 80 // Just above tab bar
         }
     }
-    
+
     private var indicator: some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(Color.secondary)
             .frame(width: 40, height: 6)
             .padding(8)
     }
-    
+
     init(isOpen: Binding<Bool>, maxHeight: CGFloat, @ViewBuilder content: () -> Content) {
         self._isOpen = isOpen
         self.maxHeight = maxHeight
         self.content = content()
     }
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -122,5 +137,31 @@ struct BottomSheet<Content: View>: View {
         }
         isOpen = position == .full
     }
+}
+
+// MARK: - Previews
+#Preview("Bottom Sheet") {
+    struct PreviewWrapper: View {
+        @State private var isOpen = false
+        var body: some View {
+            ZStack {
+                Color("beige").ignoresSafeArea()
+                Text("Main Content")
+
+                BottomSheet(isOpen: $isOpen, maxHeight: 500) {
+                    VStack(spacing: 16) {
+                        Text("Sheet Content")
+                            .font(.headline)
+                        Text("Drag up or down to change position")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .padding()
+                }
+            }
+        }
+    }
+    return PreviewWrapper()
 }
 

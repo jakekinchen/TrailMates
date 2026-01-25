@@ -1,12 +1,20 @@
 //
 //  FriendsListCard.swift
-//  TrailMatesATX
+//  TrailMates
 //
-//  Created by Jake Kinchen on 11/13/24.
+//  A card component showing active friends with add friends action.
 //
+//  Usage:
+//  ```swift
+//  FriendsListCard(
+//      friends: userManager.friends,
+//      onAddFriends: { /* refresh friends list */ }
+//  )
+//  ```
 
 import SwiftUI
 
+/// A card displaying active friends with option to add more
 struct FriendsListCard: View {
     let friends: [User]
     let onAddFriends: () -> Void

@@ -9,7 +9,6 @@ import SwiftUI
 import UIKit
 import Firebase
 import FirebaseAuth
-import FBSDKCoreKit
 import UserNotifications
 import SwiftData
 
@@ -87,16 +86,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             print("❌ Firebase is not configured in AppDelegate")
         }
         
-        // Configure Facebook SDK (temporarily disabled)
-        /*
-        print("Configuring Facebook SDK...")
-        ApplicationDelegate.shared.application(
-            application,
-            didFinishLaunchingWithOptions: launchOptions
-        )
-        print("Facebook SDK configured successfully.")
-        */
-        
         // Configure notifications
         configureNotifications(application)
         
@@ -134,7 +123,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         
         print("📱 Registering pending APNS token with Firebase")
-        Auth.auth().setAPNSToken(pendingToken, type: .prod)
+        let tokenType: AuthAPNSTokenType = {
+            #if DEBUG
+            return .sandbox
+            #else
+            return .prod
+            #endif
+        }()
+        Auth.auth().setAPNSToken(pendingToken, type: tokenType)
         UserDefaults.standard.removeObject(forKey: "pendingAPNSToken")
         print("✅ Successfully registered pending APNS token")
     }
@@ -144,7 +140,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
         print("📱 Received APNS token from Apple")
-        Auth.auth().setAPNSToken(deviceToken, type: .prod)
+        let tokenType: AuthAPNSTokenType = {
+            #if DEBUG
+            return .sandbox
+            #else
+            return .prod
+            #endif
+        }()
+        Auth.auth().setAPNSToken(deviceToken, type: tokenType)
         print("✅ Successfully registered APNS token with Firebase")
     }
     
@@ -187,12 +190,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey : Any] = [:]
     ) -> Bool {
-        return ApplicationDelegate.shared.application(
-            app,
-            open: url,
-            sourceApplication: options[UIApplication.OpenURLOptionsKey.sourceApplication] as? String,
-            annotation: options[UIApplication.OpenURLOptionsKey.annotation]
-        )
+        return Auth.auth().canHandle(url)
     }
 }
-

@@ -1,12 +1,21 @@
 //
 //  ProfileHeader.swift
-//  TrailMatesATX
+//  TrailMates
 //
-//  Created by Jake Kinchen on 11/20/24.
+//  A header component displaying user profile information with customizable action button.
 //
+//  Usage:
+//  ```swift
+//  ProfileHeader(
+//      user: user,
+//      actionButton: AnyView(Button("Edit Profile") { /* action */ })
+//  )
+//  .environmentObject(userManager)
+//  ```
 
 import SwiftUI
 
+/// A profile header with image, name, username, and action button
 struct ProfileHeader: View {
     let user: User
     let actionButton: AnyView

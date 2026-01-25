@@ -1,12 +1,22 @@
 //
 //  EventRowView.swift
-//  TrailMatesATX
+//  TrailMates
 //
-//  Created by Jake Kinchen on 11/4/24.
+//  A card component for displaying event information in a list.
 //
+//  Usage:
+//  ```swift
+//  EventRowView(
+//      event: event,
+//      currentUser: userManager.currentUser,
+//      onJoinTap: { /* handle join */ },
+//      onLeaveTap: { /* handle leave */ }
+//  )
+//  ```
 
 import SwiftUI
 
+/// A row component displaying event details with join/leave actions
 struct EventRowView: View {
     let event: Event
     let currentUser: User?

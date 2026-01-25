@@ -1,12 +1,14 @@
 //
 //  MapAnnotations.swift
-//  TrailMatesATX
+//  TrailMates
 //
-//  Created by Jake Kinchen on 11/13/24.
+//  Custom MKPointAnnotation subclasses for map data models.
 //
+//  Components:
+//  - FriendAnnotation: Annotation containing friend User data
+//  - EventAnnotation: Annotation containing Event data
+//  - RecommendedLocationAnnotation: Annotation containing LocationItem data
 
-
-// MARK: - MapAnnotations.swift
 import MapKit
 
 // MARK: - Friend Annotation

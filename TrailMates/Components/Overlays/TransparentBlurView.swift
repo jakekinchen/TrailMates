@@ -1,20 +1,34 @@
 //
 //  TransparentBlurView.swift
-//  TrailMatesATX
+//  TrailMates
 //
-//  Created by Jake Kinchen on 10/31/24.
+//  A glass-morphism blur effect view using UIVisualEffectView.
 //
+//  Usage:
+//  ```swift
+//  // Basic usage
+//  TransparentBlurView()
+//
+//  // With tint color
+//  TransparentBlurView(tintColor: .systemBlue)
+//
+//  // Remove all filters (no blur)
+//  TransparentBlurView(removeAllFilters: true)
+//  ```
+
 import SwiftUI
 
-// MARK: - TransparentBlurView
+/// A UIViewRepresentable that provides a glass-morphism blur effect
 struct TransparentBlurView: UIViewRepresentable {
+    /// When true, removes all backdrop filters
     var removeAllFilters: Bool = false
+    /// Optional tint color overlay
     var tintColor: UIColor?
-    
+
     func makeUIView(context: Context) -> TransparentBlurViewHelper {
         return TransparentBlurViewHelper(removeAllFilters: removeAllFilters, tintColor: tintColor)
     }
-    
+
     func updateUIView(_ uiView: TransparentBlurViewHelper, context: Context) {
     }
 }
@@ -50,5 +64,33 @@ class TransparentBlurViewHelper: UIVisualEffectView {
     }
     
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    }
+}
+
+// MARK: - Previews
+#Preview("Default Blur") {
+    ZStack {
+        LinearGradient(
+            colors: [Color("pine"), Color("pumpkin")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+
+        TransparentBlurView()
+            .frame(width: 200, height: 200)
+            .cornerRadius(20)
+    }
+}
+
+#Preview("With Tint") {
+    ZStack {
+        Image(systemName: "map.fill")
+            .font(.system(size: 200))
+            .foregroundColor(Color("pine"))
+
+        TransparentBlurView(tintColor: UIColor(named: "pine"))
+            .frame(width: 150, height: 150)
+            .cornerRadius(16)
     }
 }
