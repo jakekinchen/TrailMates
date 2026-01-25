@@ -326,19 +326,7 @@ class UserDataProvider {
     // MARK: - Username Operations
 
     func isUsernameTaken(_ username: String, excludingUserId: String?) async -> Bool {
-        do {
-            var query = db.collection("users").whereField("username", isEqualTo: username)
-
-            if let excludeId = excludingUserId {
-                query = query.whereField("id", isNotEqualTo: excludeId)
-            }
-
-            let snapshot = try await query.getDocuments()
-            return !snapshot.isEmpty
-        } catch {
-            print("UserDataProvider: Error checking username: \(error)")
-            return false
-        }
+        return await isUsernameTakenCloudFunction(username, excludingUserId: excludingUserId)
     }
 
     func isUsernameTakenCloudFunction(_ username: String, excludingUserId: String?) async -> Bool {

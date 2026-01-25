@@ -27,17 +27,17 @@ Migrate TrailMates to full Swift 6 strict concurrency compliance, eliminating da
 - [ ] Document initial compiler diagnostics count
 
 ### Phase 2: ViewModels (@MainActor)
-- [ ] Add `@MainActor` to `UserManager` class
-- [ ] Add `@MainActor` to `AuthViewModel` class
-- [ ] Add `@MainActor` to `EventViewModel` class
-- [ ] Add `@MainActor` to `FriendsViewModel` class
-- [ ] Add `@MainActor` to `LocationManager` class
-- [ ] Add `@MainActor` to `PermissionsViewModel` class
-- [ ] Add `@MainActor` to `ContactsViewModel` class
-- [ ] Review and fix any resulting isolation errors
+- [x] Add `@MainActor` to `UserManager` class (already present)
+- [x] Add `@MainActor` to `AuthViewModel` class (already present)
+- [x] Add `@MainActor` to `EventViewModel` class (already present)
+- [x] Add `@MainActor` to `FriendsViewModel` class (already present)
+- [x] Add `@MainActor` to `LocationManager` class
+- [x] Add `@MainActor` to `PermissionsViewModel` class (already present)
+- [x] Add `@MainActor` to `ContactsListViewModel` class (note: file is ContactsListViewModel.swift)
+- [x] Review and fix any resulting isolation errors
 
 ### Phase 3: Replace DispatchQueue with async/await
-- [ ] Replace `DispatchQueue.main.async` calls in ViewModels
+- [x] Replace `DispatchQueue.main.async` calls in ViewModels (ContactsListViewModel converted to async/await)
 - [ ] Replace `DispatchQueue.main.asyncAfter` with `Task.sleep`
 - [ ] Convert Timer-based patterns to AsyncSequence
   - [ ] MapView location update timer
@@ -67,7 +67,7 @@ Migrate TrailMates to full Swift 6 strict concurrency compliance, eliminating da
 - `TrailMates/ViewModels/FriendsViewModel.swift`
 - `TrailMates/ViewModels/LocationManager.swift`
 - `TrailMates/ViewModels/PermissionsViewModel.swift`
-- `TrailMates/ViewModels/ContactsViewModel.swift`
+- `TrailMates/ViewModels/ContactsListViewModel.swift`
 - `TrailMates/MapView.swift`
 - `TrailMates/Utilities/FirebaseDataProvider.swift`
 
