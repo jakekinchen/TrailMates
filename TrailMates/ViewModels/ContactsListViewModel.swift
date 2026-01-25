@@ -56,7 +56,7 @@ class ContactsListViewModel: ObservableObject {
             let rawPhoneNumbers = loadedContacts.flatMap { contact in
                 contact.phoneNumbers.map { $0.value.stringValue }
             }
-            let cleansedNumbers = PhoneNumberUtility.cleansePhoneNumbers(rawPhoneNumbers)
+            let cleansedNumbers = PhoneNumberService.shared.cleansePhoneNumbers(rawPhoneNumbers)
             
             print("📱 Processing \(cleansedNumbers.count) cleansed phone numbers")
             if cleansedNumbers.isEmpty {
@@ -79,7 +79,7 @@ class ContactsListViewModel: ObservableObject {
             for contact in loadedContacts {
                 // Get cleansed numbers for this contact
                 let contactNumbers = contact.phoneNumbers.map { $0.value.stringValue }
-                    .compactMap { PhoneNumberUtility.cleanseSingleNumber($0) }
+                    .compactMap { PhoneNumberService.shared.cleanseSingleNumber($0) }
                 
                 // Find first matching user using the lookup dictionary
                 if let matchingNumber = contactNumbers.first(where: { usersByPhone[$0] != nil }),

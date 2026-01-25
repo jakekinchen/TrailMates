@@ -28,7 +28,17 @@ class UserManager: ObservableObject {
     @Published var hasAddedFriends: Bool = false
     
     // MARK: - Private Properties
+    // MARK: Sub-providers (preferred for new code)
+    private let userProvider = UserDataProvider.shared
+    private let imageProvider = ImageStorageProvider.shared
+    private let landmarkProvider = LandmarkDataProvider.shared
+    private let locationProvider = LocationDataProvider.shared
+    private let friendProvider = FriendDataProvider.shared
+
+    // Legacy provider (deprecated - use sub-providers instead)
+    @available(*, deprecated, message: "Use specific sub-providers instead")
     private let dataProvider = FirebaseDataProvider.shared
+
     private var locationManager: LocationManager?
     private var cancellables = Set<AnyCancellable>()
     private var hasInitialized = false
@@ -54,19 +64,19 @@ class UserManager: ObservableObject {
     
     func initializeIfNeeded() async {
         guard !hasInitialized else { return }
-        
+
         print("👤 Starting UserManager initialization")
         setupObservers()
-        
+
         // First try to load from persistence
         if checkPersistedUser() {
             hasInitialized = true
             print("👤 User loaded from persistence")
             return
         }
-        
+
         // If not persisted, fetch from Firebase
-        if let user = await dataProvider.fetchCurrentUser() {
+        if let user = await userProvider.fetchCurrentUser() {
             await MainActor.run {
                 self.currentUser = user
                 self.isLoggedIn = true
@@ -80,7 +90,7 @@ class UserManager: ObservableObject {
                 self.currentUser = nil
             }
         }
-        
+
         hasInitialized = true
         print("👤 UserManager initialization completed")
     }
@@ -117,13 +127,13 @@ class UserManager: ObservableObject {
     private func cleanup() async {
         // Stop observing user if we have a current user
         if let userId = currentUser?.id {
-            dataProvider.stopObservingUser(id: userId)
+            userProvider.stopObservingUser(id: userId)
         }
-        
+
         // Cancel all publishers
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
-        
+
         // Clear current user data
         currentUser = nil
         currentUserId = nil
@@ -132,29 +142,29 @@ class UserManager: ObservableObject {
     deinit {
         // Cancel publishers (this is safe as it's not actor-isolated)
         cancellables.forEach { $0.cancel() }
-        
+
         // Use the tracked ID for cleanup
         if let userId = currentUserId {
-            dataProvider.stopObservingUser(id: userId)
+            userProvider.stopObservingUser(id: userId)
         }
     }
     
     // MARK: - Initialize User
     func initializeUserIfNeeded() async {
         guard !hasInitialized else { return }
-        
+
         print("👤 Starting UserManager initialization")
         setupObservers()
-        
+
         // First try to load from persistence
         if checkPersistedUser() {
             hasInitialized = true
             print("👤 User loaded from persistence")
             return
         }
-        
+
         // If not persisted, fetch from Firebase
-        if let user = await dataProvider.fetchCurrentUser() {
+        if let user = await userProvider.fetchCurrentUser() {
             await MainActor.run {
                 self.currentUser = user
                 self.currentUserId = user.id  // Track the ID
@@ -170,7 +180,7 @@ class UserManager: ObservableObject {
                 self.currentUserId = nil  // Clear the ID
             }
         }
-        
+
         hasInitialized = true
         print("👤 UserManager initialization completed")
     }
@@ -188,7 +198,7 @@ class UserManager: ObservableObject {
     }
     
     func isUsernameTaken(_ username: String) async -> Bool {
-        return await dataProvider.isUsernameTaken(username, excludingUserId: currentUser?.id)
+        return await userProvider.isUsernameTaken(username, excludingUserId: currentUser?.id)
     }
     
     // MARK: - Persist User Session
@@ -243,7 +253,7 @@ class UserManager: ObservableObject {
     // MARK: - Logout
     func signOut() async {
         print("🔄 Starting comprehensive sign out process")
-        
+
         // 1. Sign out from Firebase Auth
         do {
             try Auth.auth().signOut()
@@ -252,17 +262,17 @@ class UserManager: ObservableObject {
             print("⚠️ Firebase Auth sign out error: \(error)")
             // Continue with cleanup even if Firebase sign out fails
         }
-        
+
         // 2. Clean up Firebase listeners
         if let userId = currentUser?.id {
-            dataProvider.stopObservingUser(id: userId)
+            userProvider.stopObservingUser(id: userId)
             print("✅ Stopped Firebase user observers")
         }
-        
+
         // 3. Stop location updates
         locationManager?.manager.stopUpdatingLocation()
         print("✅ Stopped location updates")
-        
+
         // 4. Clear all local state
         await MainActor.run {
             currentUser = nil
@@ -274,18 +284,18 @@ class UserManager: ObservableObject {
             hasAddedFriends = false
             print("✅ Cleared local state")
         }
-        
+
         // 5. Clear persisted data
         clearPersistedUserSession()
         print("✅ Cleared persisted session data")
-        
+
         print("✅ Sign out process completed")
     }
 
     func refreshUserData() async {
         guard let userId = currentUser?.id else { return }
-        
-        dataProvider.observeUser(id: userId) { [weak self] updatedUser in
+
+        userProvider.observeUser(id: userId) { [weak self] updatedUser in
             guard let self = self else { return }
             if let user = updatedUser {
                 self.currentUser = user
@@ -355,30 +365,32 @@ class UserManager: ObservableObject {
     }
     
     func findUserByPhoneNumber(_ phoneNumber: String) async -> User? {
-        return await dataProvider.fetchUser(byPhoneNumber: phoneNumber)
+        return await userProvider.fetchUser(byPhoneNumber: phoneNumber)
     }
-    
+
     func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User] {
         do {
-            return try await dataProvider.findUsersByPhoneNumbers(phoneNumbers)
+            return try await userProvider.findUsersByPhoneNumbers(phoneNumbers)
         } catch {
             print("Error finding users by phone numbers: \(error)")
             throw error
         }
     }
     
+    /// Normalizes a phone number by stripping non-digit characters.
+    /// Delegates to PhoneNumberService for consistent behavior.
     func normalizePhoneNumber(_ phoneNumber: String) -> String {
-        return phoneNumber.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
+        return PhoneNumberService.shared.format(phoneNumber, for: .digitsOnly) ?? ""
     }
     
     func createNewUser(phoneNumber: String, id: String) async throws {
         print("Starting signup process for phone: \(phoneNumber)")
-        
+
         // First check if a user with this phone number already exists
         if await checkUserExists(phoneNumber: phoneNumber) {
             throw ValidationError.invalidData("Phone number already registered")
         }
-        
+
         // Create new user with Firebase UID as the primary identifier
         let initialUser = User(
             id: id,  // Use Firebase UID as primary identifier
@@ -388,14 +400,14 @@ class UserManager: ObservableObject {
             phoneNumber: phoneNumber,
             joinDate: Date()
         )
-        
+
         print("Created initial user object with ID: \(initialUser.id)")
-        
+
         do {
             print("Attempting to save initial user")
-            try await dataProvider.saveInitialUser(initialUser)
+            try await userProvider.saveInitialUser(initialUser)
             print("Initial user saved successfully")
-            
+
             await MainActor.run {
                 self.currentUser = initialUser
                 self.currentUserId = initialUser.id
@@ -412,11 +424,11 @@ class UserManager: ObservableObject {
     // MARK: - Fetch Data
     func fetchFriends() async -> [User] {
         guard let user = currentUser else { return [] }
-        return await dataProvider.fetchFriends(for: user)
+        return await userProvider.fetchFriends(for: user)
     }
 
     func fetchAllUsers() async -> [User] {
-        return await dataProvider.fetchAllUsers()
+        return await userProvider.fetchAllUsers()
     }
 
     // MARK: - Save Profile
@@ -427,25 +439,25 @@ class UserManager: ObservableObject {
         print("   - First Name: '\(updatedUser.firstName)'")
         print("   - Last Name: '\(updatedUser.lastName)'")
         print("   - Username: '\(updatedUser.username)'")
-        
+
         // Check if this is initial profile setup
-        let isInitialSetup = currentUser?.firstName.isEmpty ?? true || 
-                            currentUser?.lastName.isEmpty ?? true || 
+        let isInitialSetup = currentUser?.firstName.isEmpty ?? true ||
+                            currentUser?.lastName.isEmpty ?? true ||
                             currentUser?.username.isEmpty ?? true
-        
+
         // Always save during initial setup or when there are changes
         if isInitialSetup || updatedUser.profileImage != nil || currentUser != updatedUser {
             print("✅ Changes detected or initial setup, proceeding with save")
             do {
                 print("📤 Attempting to save user to Firebase")
-                try await dataProvider.saveUser(updatedUser)
+                try await userProvider.saveUser(updatedUser)
                 print("✅ User saved successfully to Firebase")
-                
+
                 // Force a fresh fetch to get updated URLs
                 print("📥 Fetching updated user from Firebase")
-                let refreshedUser = await dataProvider.fetchUser(by: updatedUser.id)
+                let refreshedUser = await userProvider.fetchUser(by: updatedUser.id)
                 print("   Fetch completed. Got refreshed user: \(refreshedUser != nil)")
-                
+
                 if let refreshedUser = refreshedUser {
                     print("✅ Setting refreshed user:")
                     print("   - First Name: '\(refreshedUser.firstName)'")
@@ -469,7 +481,7 @@ class UserManager: ObservableObject {
     }
 
     func fetchUser(_ userId: String) async -> User? {
-        return await dataProvider.fetchUser(by: userId)
+        return await userProvider.fetchUser(by: userId)
     }
 
     func toggleDoNotDisturb() async throws {
@@ -509,28 +521,28 @@ class UserManager: ObservableObject {
     // MARK: - Friend Management
     public func sendFriendRequest(to userId: String) async throws {
         guard let currentUserId = currentUser?.id else { return }
-        try await dataProvider.sendFriendRequest(fromUserId: currentUserId, to: userId)
+        try await friendProvider.sendFriendRequest(fromUserId: currentUserId, to: userId)
     }
-    
+
     public func acceptFriendRequest(requestId: String, fromUserId: String) async throws {
         guard let currentUserId = currentUser?.id else { return }
-        try await dataProvider.acceptFriendRequest(requestId: requestId, userId: currentUserId, friendId: fromUserId)
+        try await friendProvider.acceptFriendRequest(requestId: requestId, userId: currentUserId, friendId: fromUserId)
         await refreshUserData()
     }
-    
+
     public func rejectFriendRequest(requestId: String) async throws {
-        try await dataProvider.rejectFriendRequest(requestId: requestId)
+        try await friendProvider.rejectFriendRequest(requestId: requestId)
     }
-    
+
     public func addFriend(_ friendId: String) async throws {
         guard let currentUserId = currentUser?.id else { return }
-        try await dataProvider.addFriend(friendId, to: currentUserId)
+        try await friendProvider.addFriend(friendId, to: currentUserId)
         await refreshUserData()
     }
-    
+
     public func removeFriend(_ friendId: String) async throws {
         guard let currentUserId = currentUser?.id else { return }
-        try await dataProvider.removeFriend(friendId, from: currentUserId)
+        try await friendProvider.removeFriend(friendId, from: currentUserId)
         await refreshUserData()
     }
     
@@ -541,16 +553,16 @@ class UserManager: ObservableObject {
     // MARK: - Stats Management
     func getUserStats(for userId: String) async -> UserStats? {
         // First fetch the user
-        guard let user = await dataProvider.fetchUser(by: userId) else { return nil }
-        
-        let totalLandmarks = await dataProvider.fetchTotalLandmarks()
+        guard let user = await userProvider.fetchUser(by: userId) else { return nil }
+
+        let totalLandmarks = await landmarkProvider.fetchTotalLandmarks()
         let landmarkCompletion = totalLandmarks > 0
             ? Int((Double(user.visitedLandmarkIds.count) / Double(totalLandmarks)) * 100)
             : 0
-            
+
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
-        
+
         return UserStats(
             joinDate: formatter.string(from: user.joinDate),
             landmarkCompletion: landmarkCompletion,
@@ -568,13 +580,13 @@ class UserManager: ObservableObject {
     // MARK: - Landmark Management
     func visitLandmark(_ landmarkId: String) async {
         guard let userId = currentUser?.id else { return }
-        await dataProvider.markLandmarkVisited(userId: userId, landmarkId: landmarkId)
+        await landmarkProvider.markLandmarkVisited(userId: userId, landmarkId: landmarkId)
         await refreshUserData() // Refresh to get updated visitedLandmarkIds
     }
-    
+
     func unvisitLandmark(_ landmarkId: String) async {
         guard let userId = currentUser?.id else { return }
-        await dataProvider.unmarkLandmarkVisited(userId: userId, landmarkId: landmarkId)
+        await landmarkProvider.unmarkLandmarkVisited(userId: userId, landmarkId: landmarkId)
         await refreshUserData() // Refresh to get updated visitedLandmarkIds
     }
     
@@ -604,12 +616,12 @@ class UserManager: ObservableObject {
                 print("UserManager: Updating location for user \(userId)")
                 lastLocationLogTime = Date()
             }
-            
-            try await dataProvider.updateUserLocation(userId: userId, location: location)
+
+            try await locationProvider.updateUserLocation(userId: userId, location: location)
             if let updatedUser = currentUser {
                 updatedUser.location = location
                 self.currentUser = updatedUser
-                
+
                 if shouldLog {
                     print("UserManager: Location updated successfully")
                 }
@@ -622,7 +634,7 @@ class UserManager: ObservableObject {
     // MARK: - User Refresh
     func refreshCurrentUser() async throws {
         guard let userId = currentUser?.id else { return }
-        if let refreshedUser = await dataProvider.fetchUser(by: userId) {
+        if let refreshedUser = await userProvider.fetchUser(by: userId) {
             currentUser = refreshedUser
             persistUserSession()
         }
@@ -631,10 +643,10 @@ class UserManager: ObservableObject {
     // Add this new function to verify user initialization
     func verifyUserInitialized() async -> Bool {
         guard let userId = currentUser?.id else { return false }
-        
+
         // Attempt to fetch the user document to verify it exists and is properly initialized
-        guard let user = await dataProvider.fetchUser(by: userId) else { return false }
-        
+        guard let user = await userProvider.fetchUser(by: userId) else { return false }
+
         // Verify essential fields are present
         return !user.phoneNumber.isEmpty
     }
@@ -647,12 +659,12 @@ class UserManager: ObservableObject {
               currentTime > Date() else {
             return
         }
-        
+
         isRefreshing = true
         defer { isRefreshing = false }
-        
+
         if let userId = currentUser?.id,
-           let refreshedUser = await dataProvider.fetchUser(by: userId) {
+           let refreshedUser = await userProvider.fetchUser(by: userId) {
             self.currentUser = refreshedUser
             self.persistUserSession()
             lastRefreshTime = Date()
@@ -670,44 +682,44 @@ class UserManager: ObservableObject {
         guard let currentUser = self.currentUser else {
             throw ValidationError.userNotAuthenticated("No current user found")
         }
-        
+
         // Upload image and get URLs
-        let urls = try await dataProvider.uploadProfileImage(image, for: currentUser.id)
-        
+        let urls = try await imageProvider.uploadProfileImage(image, for: currentUser.id)
+
         // Update user model
         currentUser.profileImageUrl = urls.fullUrl
         currentUser.profileThumbnailUrl = urls.thumbnailUrl
         currentUser.profileImageData = nil // Clear local data since we have URLs now
-        
+
         // Save changes
-        try await dataProvider.saveUser(currentUser)
+        try await userProvider.saveUser(currentUser)
         self.currentUser = currentUser
     }
 
     func fetchProfileImage(for user: User, preferredSize: ImageSize = .full, forceRefresh: Bool = false) async throws -> UIImage? {
         let url = preferredSize == .full ? user.profileImageUrl : (user.profileThumbnailUrl ?? user.profileImageUrl)
-        
+
         // If we have a URL and are online, try to fetch from remote
         if let imageUrl = url {
             do {
-                let image = try await dataProvider.downloadProfileImage(from: imageUrl)
+                let image = try await imageProvider.downloadProfileImage(from: imageUrl)
                 return image
             } catch {
                 print("Failed to fetch remote image: \(error.localizedDescription)")
             }
         }
-        
+
         // Fall back to local data if available
         if let imageData = user.profileImageData {
             return UIImage(data: imageData)
         }
-        
+
         return nil
     }
 
     func prefetchProfileImages(for users: [User], preferredSize: ImageSize = .thumbnail) async {
         let urls = users.compactMap { preferredSize == .full ? $0.profileImageUrl : ($0.profileThumbnailUrl ?? $0.profileImageUrl) }
-        await dataProvider.prefetchProfileImages(urls: urls)
+        await imageProvider.prefetchProfileImages(urls: urls)
     }
 
     // MARK: - Image Types
@@ -718,14 +730,14 @@ class UserManager: ObservableObject {
 
     func checkUserExists(phoneNumber: String) async -> Bool {
         print("Checking if user exists with phone number: \(phoneNumber)")
-        return await dataProvider.checkUserExists(phoneNumber: phoneNumber)
+        return await userProvider.checkUserExists(phoneNumber: phoneNumber)
     }
-    
+
     func login(phoneNumber: String, id: String) async throws {
         print("Starting login process for phone: \(phoneNumber)")
 
         // Instead of fetching the user by phone number, fetch directly by UID:
-        guard let existingUser = await dataProvider.fetchUser(by: id) else {
+        guard let existingUser = await userProvider.fetchUser(by: id) else {
             throw ValidationError.invalidData("No account found with this UID")
         }
 
@@ -753,17 +765,17 @@ class UserManager: ObservableObject {
         print("   - First Name: '\(updatedUser.firstName)'")
         print("   - Last Name: '\(updatedUser.lastName)'")
         print("   - Username: '\(updatedUser.username)'")
-        
+
         do {
             print("📤 Forcing save to Firebase for initial setup")
-            try await dataProvider.saveUser(updatedUser)
+            try await userProvider.saveUser(updatedUser)
             print("✅ User saved successfully to Firebase")
-            
+
             // Force a fresh fetch to get updated URLs
             print("📥 Fetching updated user from Firebase")
-            let refreshedUser = await dataProvider.fetchUser(by: updatedUser.id)
+            let refreshedUser = await userProvider.fetchUser(by: updatedUser.id)
             print("   Fetch completed. Got refreshed user: \(refreshedUser != nil)")
-            
+
             if let refreshedUser = refreshedUser {
                 print("✅ Setting refreshed user:")
                 print("   - First Name: '\(refreshedUser.firstName)'")

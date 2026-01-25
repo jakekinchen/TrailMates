@@ -1,29 +1,34 @@
+//
+//  PhoneNumberHasher.swift
+//  TrailMates
+//
+//  Secure phone number hashing utility using SHA-256.
+//  Uses PhoneNumberService for E.164 normalization before hashing.
+//
+
 import Foundation
 import CryptoKit
-import PhoneNumberKit
 
-/// Utility class for securely hashing phone numbers
-class PhoneNumberHasher {
+/// Utility class for securely hashing phone numbers.
+/// Uses PhoneNumberService for normalization before hashing.
+final class PhoneNumberHasher {
     // Shared instance
     static let shared = PhoneNumberHasher()
-    
-    // Private instance of PhoneNumberKit
-    private let phoneNumberKit = PhoneNumberKit()
-    
+
     private init() {}
-    
+
     /// Hashes a phone number using SHA-256
     /// - Parameters:
     ///   - phoneNumber: The phone number to hash
     ///   - pepper: Optional server-side pepper for additional security
     /// - Returns: A SHA-256 hash of the normalized phone number
     func hashPhoneNumber(_ phoneNumber: String, pepper: String = "") -> String {
-        // First normalize the phone number to E.164 format
-        guard let normalized = PhoneNumberUtility.cleanseSingleNumber(phoneNumber) else {
+        // First normalize the phone number to E.164 format using PhoneNumberService
+        guard let normalized = PhoneNumberService.shared.cleanseSingleNumber(phoneNumber) else {
             // If normalization fails, hash the raw input
             return hashValue(phoneNumber + pepper)
         }
-        
+
         // Hash the normalized number with pepper
         return hashValue(normalized + pepper)
     }

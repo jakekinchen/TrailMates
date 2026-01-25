@@ -2,7 +2,7 @@
 title: Code Cleanup and Consolidation
 created: 2025-01-25
 priority: backlog
-status: in-progress
+status: mostly-complete
 tags: [cleanup, technical-debt, refactoring]
 ---
 
@@ -33,9 +33,9 @@ Remove dead code, consolidate duplicate utilities, and clean up technical debt.
   - `PhoneNumberFormatter`
   - `PhoneNumberUtility`
   - `normalizePhoneNumber` functions
-- [ ] Create single `PhoneNumberService` with clear API
-- [ ] Update all callsites to use consolidated service
-- [ ] Remove redundant implementations
+- [x] Create single `PhoneNumberService` with clear API
+- [x] Update all callsites to use consolidated service
+- [x] Remove redundant implementations
 
 **Audit Completed 2025-01-25:**
 Phone utilities analysis:
@@ -45,35 +45,60 @@ Phone utilities analysis:
 4. **`UserManager.normalizePhoneNumber()`** - Simple regex stripping (duplicate, basic)
 5. **`FirebaseDataProvider.normalizePhoneNumber()`** - Same basic normalization (duplicate)
 
-**Recommendation:** Consolidate into a single `PhoneNumberService` that wraps PhoneNumberUtility and provides:
-- `format(for: .display)` - human-readable format
-- `format(for: .storage)` - E.164 for database
-- `validate()` - validation check
-This is a complex refactoring - defer to separate PR.
+**Completed 2025-01-25:**
+- Created `PhoneNumberService.swift` with unified API:
+  - `format(for: .display)` - human-readable format
+  - `format(for: .storage)` - E.164 for database
+  - `format(for: .digitsOnly)` - strips non-digits
+  - `validate()` - validation check
+  - `cleanseSingleNumber()` / `cleansePhoneNumbers()` - batch processing
+- Updated `ContactsListViewModel` to use `PhoneNumberService`
+- Updated `PhoneNumberHasher` to use `PhoneNumberService`
+- Updated `UserManager.normalizePhoneNumber()` to delegate to `PhoneNumberService`
+- Removed unused `normalizePhoneNumber()` from `FirebaseDataProvider`
+- Marked `PhoneNumberUtility` as deprecated
 
 ### Phase 3: Clean Up Unused Code
 - [x] Run dead code analysis
 - [x] Remove unused imports
 - [x] Remove commented-out code blocks
-- [ ] Remove unused model properties
+- [x] Remove unused model properties
 
 **Completed 2025-01-25:**
 - Removed empty `LandmarkProvider.swift`
 - Removed unused `showUnlinkFacebookAlert` state from SettingsView
 - Removed `viewState`, `friendsSection`, `FacebookFriendsList`, `FacebookFriendRow` from AddFriendsView
 - Removed `isFacebookLinked` property and related code from UserManager
+- Note: `facebookId` in User model kept for database compatibility (existing users may have this field)
 
 ### Phase 4: Standardize Error Handling
-- [ ] Create `AppError` enum for consistent errors
+- [x] Create `AppError` enum for consistent errors
 - [ ] Replace generic error logging with typed errors
-- [ ] Add user-facing error messages
+- [x] Add user-facing error messages
 - [ ] Implement retry logic where appropriate
 
+**Completed 2025-01-25:**
+- Created `AppError.swift` with unified error types:
+  - Authentication errors: `notAuthenticated`, `authenticationFailed`
+  - Network errors: `networkError`, `serverError`
+  - Validation errors: `invalidInput`, `emptyField`, `missingRequiredFields`, `invalidData`
+  - Resource errors: `notFound`, `unauthorized`
+  - Image errors: `invalidImageUrl`, `imageDownloadFailed`, `imageProcessingFailed`
+  - General: `unknown`
+- Added `title` property for alert titles
+- Added `isRetryable` property for retry logic
+- Note: Existing `ValidationError` enums kept for backward compatibility; migrate gradually
+
 ### Phase 5: Documentation
-- [ ] Add file headers where missing
+- [x] Add file headers where missing
 - [ ] Document public APIs
 - [ ] Add inline comments for complex logic
 - [ ] Update CLAUDE.md/AGENTS.md with patterns
+
+**Completed 2025-01-25:**
+- Added file headers to new files: `PhoneNumberService.swift`, `AppError.swift`
+- Added file header and deprecation notice to `PhoneNumberUtility.swift`
+- Updated file header for `PhoneNumberHasher.swift`
 
 ### Phase 6: Dependency Audit
 - [x] Review Package.swift dependencies
@@ -87,11 +112,13 @@ This is a complex refactoring - defer to separate PR.
 ## Files to Review
 - ~~`TrailMates/Utilities/FacebookService.swift`~~ - DELETED
 - `TrailMates/Utilities/PhoneNumberFormatter.swift` - Keep (UI formatting)
-- `TrailMates/Utilities/PhoneNumberUtility.swift` - Keep (authoritative)
+- `TrailMates/Utilities/PhoneNumberUtility.swift` - DEPRECATED (use PhoneNumberService)
+- `TrailMates/Utilities/PhoneNumberService.swift` - NEW (unified phone utility)
+- `TrailMates/Models/AppError.swift` - NEW (unified error handling)
 - ~~Any file with large commented sections~~ - Cleaned
 
 ## Notes
 - Create feature branch for cleanup work
 - Test thoroughly after removing code
 - Keep commits atomic and well-described
-- Phone utility consolidation deferred to separate PR due to complexity
+- Phone utility consolidation completed

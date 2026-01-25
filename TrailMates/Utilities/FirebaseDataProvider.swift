@@ -8,11 +8,30 @@ import CoreLocation
 import SwiftUI
 import FirebaseStorage
 
+/// FirebaseDataProvider serves as a facade/coordinator for all Firebase operations.
+/// For new code, prefer using the focused sub-providers directly:
+/// - UserDataProvider: User CRUD, authentication, username operations
+/// - EventDataProvider: Event CRUD and queries
+/// - FriendDataProvider: Friend requests and relationships
+/// - ImageStorageProvider: Profile image upload/download
+/// - LandmarkDataProvider: Landmark operations
+/// - LocationDataProvider: Real-time location updates
+/// - NotificationDataProvider: Push notifications
+///
+/// Methods in this class are being progressively deprecated in favor of sub-providers.
 class FirebaseDataProvider {
     // MARK: - Singleton
     static let shared = FirebaseDataProvider()
-    
-    // Lazy initialize Firebase services
+
+    // MARK: - Sub-providers (preferred for new code)
+    private let userProvider = UserDataProvider.shared
+    private let eventProvider = EventDataProvider.shared
+    private let friendProvider = FriendDataProvider.shared
+    private let imageProvider = ImageStorageProvider.shared
+    private let landmarkProvider = LandmarkDataProvider.shared
+    private let locationProvider = LocationDataProvider.shared
+
+    // MARK: - Legacy Firebase services (used for operations not yet migrated)
     private lazy var db = Firestore.firestore()
     private lazy var functions: Functions = {
         let functions = Functions.functions(region: "us-central1")
@@ -110,561 +129,162 @@ class FirebaseDataProvider {
         print("FirebaseDataProvider: Removed all listeners (RTDB: \(activeListeners.count), Firestore: \(firestoreListeners.count), Users: \(userListeners.count))")
     }
     
-    // MARK: - User Operations
+    // MARK: - User Operations (Deprecated - use UserDataProvider.shared instead)
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.fetchCurrentUser() instead")
     func fetchCurrentUser() async -> User? {
-        // Safely access auth
-        guard let currentUser = auth.currentUser else {
-            print("🔥 No authenticated user found")
-            return nil
-        }
-        
-        // Get user document directly by Auth UID
-        do {
-            let document = try await db.collection("users").document(currentUser.uid).getDocument()
-            guard document.exists else {
-                print("🔥 No user document found for Firebase UID")
-                return nil
-            }
-            
-            let user = try document.data(as: User.self)
-            
-            // Validate that stored ID matches document ID
-            guard user.id == document.documentID else {
-                print("⚠️ Warning: Stored ID mismatch with document ID")
-                // Update the stored ID to match document ID
-                try await db.collection("users").document(document.documentID).updateData([
-                    "id": document.documentID
-                ])
-                user.id = document.documentID
-                return user
-            }
-            
-            return user
-        } catch {
-            print("🔥 Error fetching user: \(error)")
-            return nil
-        }
+        return await userProvider.fetchCurrentUser()
     }
-    
-    // Add a method to check auth state without initializing Firebase
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.isUserAuthenticated() instead")
     func isUserAuthenticated() -> Bool {
-        auth.currentUser != nil
+        return userProvider.isUserAuthenticated()
     }
-    
-    private func normalizePhoneNumber(_ phoneNumber: String) -> String {
-        print("📞 Normalizing phone number:")
-        print("   Input: '\(phoneNumber)'")
-        print("   Length: \(phoneNumber.count)")
-        print("   Characters: \(phoneNumber.map { String($0) })")
-        
-        let normalized = phoneNumber.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-        
-        print("   Normalized: '\(normalized)'")
-        print("   Normalized Length: \(normalized.count)")
-        print("   Normalized Characters: \(normalized.map { String($0) })")
-        
-        return normalized
-    }
-    
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.isUsernameTakenCloudFunction() instead")
     func isUsernameTakenCloudFunction(_ username: String, excludingUserId: String?) async -> Bool {
-        do {
-            let result = try await functions.httpsCallable("checkUsernameTaken")
-                .call([
-                    "username": username,
-                    "excludeUserId": excludingUserId ?? ""
-                ])
-            
-            if let data = result.data as? [String: Any],
-               let usernameTaken = data["usernameTaken"] as? Bool {
-                return usernameTaken
-            }
-        } catch {
-            print("Error calling checkUsernameTaken:", error)
-        }
-        return false
+        return await userProvider.isUsernameTakenCloudFunction(username, excludingUserId: excludingUserId)
     }
-    
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.findUsersByPhoneNumbers() instead")
     func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User] {
-        let hashedNumbers = phoneNumbers.map { PhoneNumberHasher.shared.hashPhoneNumber($0) }
-        
-        do {
-            let callable = functions.httpsCallable("findUsersByPhoneNumbers")
-            let result = try await callable.call(["hashedPhoneNumbers": hashedNumbers])
-            
-            guard let response = result.data as? [String: Any],
-                  let usersData = response["users"] as? [[String: Any]] else {
-                throw ValidationError.invalidData("Invalid response format")
-            }
-            
-            let matchedUsers = try usersData.map { userData in
-                let jsonData = try JSONSerialization.data(withJSONObject: userData)
-                return try JSONDecoder().decode(User.self, from: jsonData)
-            }
-            
-            print("✅ Successfully matched \(matchedUsers.count) users")
-            return matchedUsers
-            
-        } catch {
-            print("❌ Error finding users by phone numbers: \(error)")
-            throw error
-        }
+        return try await userProvider.findUsersByPhoneNumbers(phoneNumbers)
     }
 
+    @available(*, deprecated, message: "Use UserDataProvider.shared.fetchUser(byPhoneNumber:) instead")
     func fetchUser(byPhoneNumber phoneNumber: String) async -> User? {
-        print("🔍 FirebaseDataProvider - Fetching user by phone number")
-        let hashedNumber = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
-        print("   Hashed number: '\(hashedNumber)'")
+        return await userProvider.fetchUser(byPhoneNumber: phoneNumber)
+    }
 
-        do {
-            print("📱 Querying Firestore for hashed phone: '\(hashedNumber)'")
-            let snapshot = try await db.collection("users")
-                                    .whereField("hashedPhoneNumber", isEqualTo: hashedNumber)
-                                    .limit(to: 1)
-                                    .getDocuments()
-            
-            if let doc = snapshot.documents.first {
-                print("✅ Found user document: \(doc.documentID)")
-                let user = try doc.data(as: User.self)
-                print("   User details: \(user.firstName) \(user.lastName)")
-                return user
-            } else {
-                print("❌ No user document found for hashed phone: '\(hashedNumber)'")
-                return nil
-            }
-        } catch {
-            print("❌ Error fetching user by phone: \(error)")
-            return nil
-        }
-    }
-    
+    @available(*, deprecated, message: "Use UserDataProvider.shared.checkUserExists() instead")
     func checkUserExists(phoneNumber: String) async -> Bool {
-        let hashedNumber = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
-        
-        let function = functions.httpsCallable("checkUserExists")
-        do {
-            let result = try await function.call(["hashedPhoneNumber": hashedNumber])
-            if let data = result.data as? [String: Any],
-               let userExists = data["userExists"] as? Bool {
-                return userExists
-            }
-        } catch {
-            print("❌ Error calling checkUserExists function: \(error)")
-        }
-        return false
+        return await userProvider.checkUserExists(phoneNumber: phoneNumber)
     }
-    
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.fetchUser(by:) instead")
     func fetchUser(by id: String) async -> User? {
-        do {
-            print("🔍 Fetching user with ID: \(id)")
-            let document = try await db.collection("users").document(id).getDocument()
-            
-            guard document.exists else {
-                print("❌ No user document found with ID: \(id)")
-                return nil
-            }
-            
-            let user = try document.data(as: User.self)
-            
-            // Validate and fix ID if needed
-            if user.id != document.documentID {
-                print("⚠️ Warning: Stored ID mismatch with document ID")
-                user.id = document.documentID
-                // Update the stored ID to match document ID
-                try? await db.collection("users").document(id).updateData([
-                    "id": document.documentID
-                ])
-            }
-            
-            // Handle profile image according to hierarchy rules
-            if let imageUrl = user.profileImageUrl {
-                do {
-                    user.profileImage = try await downloadProfileImage(from: imageUrl)
-                    print("✅ Loaded profile image from remote URL")
-                } catch {
-                    print("⚠️ Failed to load remote image: \(error.localizedDescription)")
-                    user.profileImageUrl = nil
-                    user.profileThumbnailUrl = nil
-                    
-                    try? await db.collection("users").document(id).updateData([
-                        "profileImageUrl": FieldValue.delete(),
-                        "profileThumbnailUrl": FieldValue.delete()
-                    ])
-                }
-            }
-            
-            return user
-        } catch {
-            print("❌ Error fetching user: \(error)")
-            return nil
-        }
+        return await userProvider.fetchUser(by: id)
     }
-    
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.fetchFriends() instead")
     func fetchFriends(for user: User) async -> [User] {
-        var friends: [User] = []
-        for friendId in user.friends {
-            if let friend = await fetchUser(by: friendId) {
-                friends.append(friend)
-            }
-        }
-        return friends
+        return await userProvider.fetchFriends(for: user)
     }
-    
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.fetchAllUsers() instead")
     func fetchAllUsers() async -> [User] {
-        do {
-            let snapshot = try await db.collection("users").getDocuments()
-            return snapshot.documents.compactMap { try? $0.data(as: User.self) }
-        } catch {
-            print("Error fetching all users: \(error)")
-            return []
-        }
+        return await userProvider.fetchAllUsers()
     }
     
+    @available(*, deprecated, message: "Use UserDataProvider.shared.saveInitialUser() instead")
     func saveInitialUser(_ user: User) async throws {
-        print("Starting initial user save")
-        guard !user.phoneNumber.isEmpty else {
-            throw ValidationError.emptyField("Phone number cannot be empty")
-        }
-        
-        // Ensure user.id matches Auth UID
-        guard let currentUser = auth.currentUser,
-              user.id == currentUser.uid else {
-            throw ValidationError.invalidData("User ID must match Firebase Auth UID")
-        }
-        
-        let userRef = db.collection("users").document(user.id)
-        
-        // First check if document already exists
-        let docSnapshot = try await userRef.getDocument()
-        guard !docSnapshot.exists else {
-            throw ValidationError.invalidData("User document already exists")
-        }
-        
-        let initialData: [String: Any] = [
-            "id": user.id,
-            "phoneNumber": user.phoneNumber,
-            "hashedPhoneNumber": user.hashedPhoneNumber,
-            "joinDate": user.joinDate,
-            "isActive": true,
-            "firstName": "",
-            "lastName": "",
-            "username": "",
-            "friends": [],
-            "doNotDisturb": false,
-            "createdEventIds": [],
-            "attendingEventIds": [],
-            "visitedLandmarkIds": [],
-            "receiveFriendRequests": true,
-            "receiveFriendEvents": true,
-            "receiveEventUpdates": true,
-            "shareLocationWithFriends": true,
-            "shareLocationWithEventHost": true,
-            "shareLocationWithEventGroup": true,
-            "allowFriendsToInviteOthers": true
-        ]
-        
-        try await userRef.setData(initialData)
-        
-        // Verify the document was created with matching IDs
-        let verifySnapshot = try await userRef.getDocument()
-        guard verifySnapshot.exists,
-              let storedId = verifySnapshot.get("id") as? String,
-              storedId == user.id else {
-            throw ValidationError.invalidData("Failed to verify user creation or ID mismatch")
-        }
+        try await userProvider.saveInitialUser(user)
     }
-    
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.saveUser() instead")
     func saveUser(_ user: User) async throws {
-        print("Starting full user save")
-        
-        // Only validate required fields if this is not initial setup
-        // (i.e., if any of the fields are already populated)
-        if !user.firstName.isEmpty || !user.lastName.isEmpty || !user.username.isEmpty {
-            guard !user.firstName.isEmpty,
-                  !user.lastName.isEmpty,
-                  !user.username.isEmpty else {
-                print("Error: Missing required fields")
-                print("User: \(user)")
-                throw ValidationError.missingRequiredFields("All required fields must be non-empty")
-            }
-        }
-        
-        let userData = user
-        print("Using document ID: \(user.id)")
-        
-        // If there's a profile image, upload it to Storage first
-        if let image = user.profileImage {
-            print("Profile image found, uploading...")
-            // Delete old profile images
-            await deleteOldProfileImage(for: user.id)
-            
-            // Upload new image and get URLs
-            let urls = try await uploadProfileImage(image, for: user.id)
-            print("Profile image uploaded successfully")
-            
-            // Store the URLs and clear the image data
-            userData.profileImage = nil
-            userData.profileImageUrl = urls.fullUrl
-            userData.profileThumbnailUrl = urls.thumbnailUrl
-        }
-        
-        // Save user data to Firestore
-        let userRef = db.collection("users").document(user.id)
-        let data = try Firestore.Encoder().encode(userData)
-        
-        print("Attempting to save full user data")
-        do {
-            try await userRef.setData(data)
-            print("Full user data saved successfully")
-        } catch {
-            print("Error saving full user: \(error.localizedDescription)")
-            print("Error details: \(String(describing: error))")
-            throw error
-        }
+        try await userProvider.saveUser(user)
     }
-    
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.observeUser() instead")
     func observeUser(id: String, onChange: @escaping (User?) -> Void) {
-        // Remove existing listener if any
-        stopObservingUser(id: id)
-        
-        // Create new listener
-        let listener = db.collection("users").document(id)
-            .addSnapshotListener { documentSnapshot, error in
-                guard let document = documentSnapshot else {
-                    print("Error fetching document: \(error?.localizedDescription ?? "Unknown error")")
-                    onChange(nil)
-                    return
-                }
-                
-                guard document.exists else {
-                    print("Document does not exist")
-                    onChange(nil)
-                    return
-                }
-                
-                do {
-                    let user = try document.data(as: User.self)
-                    onChange(user)
-                } catch {
-                    print("Error decoding user: \(error)")
-                    onChange(nil)
-                }
-            }
-        
-        // Store listener for cleanup
-        userListeners[id] = listener
+        userProvider.observeUser(id: id, onChange: onChange)
     }
-    
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.stopObservingUser() instead")
     func stopObservingUser(id: String) {
-        userListeners[id]?.remove()
-        userListeners.removeValue(forKey: id)
+        userProvider.stopObservingUser(id: id)
     }
     
-    // MARK: - Event Operations
+    // MARK: - Event Operations (Deprecated - use EventDataProvider.shared instead)
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.fetchAllEvents() instead")
     func fetchAllEvents() async -> [Event] {
-        do {
-            let snapshot = try await db.collection("events").getDocuments()
-            return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
-        } catch {
-            print("Error fetching all events: \(error)")
-            return []
-        }
+        return await eventProvider.fetchAllEvents()
     }
-    
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.fetchEvent(by:) instead")
     func fetchEvent(by id: String) async -> Event? {
-        do {
-            let document = try await db.collection("events").document(id).getDocument()
-            return try document.data(as: Event.self)
-        } catch {
-            print("Error fetching event: \(error)")
-            return nil
-        }
+        return await eventProvider.fetchEvent(by: id)
     }
-    
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.fetchUserEvents() instead")
     func fetchUserEvents(for userId: String) async -> [Event] {
-        do {
-            let snapshot = try await db.collection("events")
-                .whereField("creatorId", isEqualTo: userId)
-                .getDocuments()
-            return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
-        } catch {
-            print("Error fetching user events: \(error)")
-            return []
-        }
+        return await eventProvider.fetchUserEvents(for: userId)
     }
-    
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.fetchCircleEvents() instead")
     func fetchCircleEvents(for userId: String, friendIds: [String]) async -> [Event] {
-        do {
-            let friendIdsStrings = friendIds.map { $0 }
-            let snapshot = try await db.collection("events")
-                .whereField("creatorId", in: [userId] + friendIdsStrings)
-                .getDocuments()
-            return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
-        } catch {
-            print("Error fetching circle events: \(error)")
-            return []
-        }
+        return await eventProvider.fetchCircleEvents(for: userId, friendIds: friendIds)
     }
-    
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.fetchPublicEvents() instead")
     func fetchPublicEvents() async -> [Event] {
-        do {
-            let snapshot = try await db.collection("events")
-                .whereField("isPublic", isEqualTo: true)
-                .getDocuments()
-            return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
-        } catch {
-            print("Error fetching public events: \(error)")
-            return []
-        }
+        return await eventProvider.fetchPublicEvents()
     }
-    
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.saveEvent() instead")
     func saveEvent(_ event: Event) async throws {
-        let eventRef = db.collection("events").document(event.id)
-        let data = try Firestore.Encoder().encode(event)
-        try await eventRef.setData(data)
+        try await eventProvider.saveEvent(event)
     }
-    
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.deleteEvent() instead")
     func deleteEvent(_ eventId: String) async throws {
-        try await db.collection("events").document(eventId).delete()
+        try await eventProvider.deleteEvent(eventId)
     }
-    
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.updateEventStatus() instead")
     func updateEventStatus(_ event: Event) async -> Event {
-        do {
-            let updatedEvent = event
-            try await saveEvent(updatedEvent)
-            return updatedEvent
-        } catch {
-            print("Error updating event status: \(error)")
-            return event
-        }
+        return await eventProvider.updateEventStatus(event)
     }
-    
+
+    @available(*, deprecated, message: "Use EventDataProvider.shared.generateNewEventReference() instead")
     func generateNewEventReference() -> (reference: DocumentReference, id: String) {
-        let eventRef = db.collection("events").document()
-        return (eventRef, eventRef.documentID)
+        return eventProvider.generateNewEventReference()
     }
     
-    // MARK: - Profile Image Operations
+    // MARK: - Profile Image Operations (Deprecated - use ImageStorageProvider.shared instead)
+
+    @available(*, deprecated, message: "Use ImageStorageProvider.shared.uploadProfileImage() instead")
     func uploadProfileImage(_ image: UIImage, for userId: String) async throws -> (fullUrl: String, thumbnailUrl: String) {
-        // Delete old images first
-        await deleteOldProfileImage(for: userId)
-        
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            throw NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image to data"])
-        }
-        
-        let storage = Storage.storage()
-        let fullSizeRef = storage.reference(withPath: "profile_images/\(userId)/full.jpg")
-        let thumbnailRef = storage.reference(withPath: "profile_images/\(userId)/thumbnail.jpg")
-        
-        // Create metadata
-        let metadata = StorageMetadata()
-        metadata.contentType = "image/jpeg"
-        
-        // Upload full size image
-        _ = try await fullSizeRef.putDataAsync(imageData, metadata: metadata)
-        let fullUrl = try await fullSizeRef.downloadURL().absoluteString
-        
-        // Create and upload thumbnail
-        let thumbnailSize = CGSize(width: 150, height: 150)
-        guard let thumbnailImage = image.preparingThumbnail(of: thumbnailSize),
-              let thumbnailData = thumbnailImage.jpegData(compressionQuality: 0.8) else {
-            throw NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create thumbnail"])
-        }
-        
-        _ = try await thumbnailRef.putDataAsync(thumbnailData, metadata: metadata)
-        let thumbnailUrl = try await thumbnailRef.downloadURL().absoluteString
-        
-        return (fullUrl: fullUrl, thumbnailUrl: thumbnailUrl)
+        return try await imageProvider.uploadProfileImage(image, for: userId)
     }
-    
+
     private func deleteOldProfileImage(for userId: String) async {
-        let storage = Storage.storage()
-        let profileImagesRef = storage.reference(withPath: "profile_images/\(userId)")
-        
-        do {
-            let result = try await profileImagesRef.listAll()
-            
-            // Delete all existing profile images for this user
-            for item in result.items {
-                try? await item.delete()
-            }
-        } catch {
-            print("Error deleting old profile images: \(error.localizedDescription)")
-            // We don't throw here as this is a cleanup operation
-            // and shouldn't prevent the new upload from proceeding
-        }
+        await imageProvider.deleteOldProfileImage(for: userId)
     }
-    
-    private let imageCache: NSCache<NSString, UIImage> = {
-        let cache = NSCache<NSString, UIImage>()
-        // Limit to ~50 images (thumbnails are ~150x150, full images vary)
-        cache.countLimit = 50
-        // Limit to ~50MB of image data
-        cache.totalCostLimit = 50 * 1024 * 1024
-        return cache
-    }()
 
     // Memory warning observer token
     private var memoryWarningObserver: NSObjectProtocol?
-    
+
+    @available(*, deprecated, message: "Use ImageStorageProvider.shared.downloadProfileImage() instead")
     func downloadProfileImage(from url: String) async throws -> UIImage {
-        // Check cache first
-        if let cachedImage = imageCache.object(forKey: url as NSString) {
-            return cachedImage
-        }
-
-        // Download if not in cache
-        guard let imageUrl = URL(string: url) else {
-            throw NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid image URL"])
-        }
-
-        let (data, _) = try await URLSession.shared.data(from: imageUrl)
-        guard let image = UIImage(data: data) else {
-            throw NSError(domain: "com.trailmates", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid image data"])
-        }
-
-        // Cache the downloaded image with cost based on data size
-        // This helps NSCache manage memory more effectively
-        let cost = data.count
-        imageCache.setObject(image, forKey: url as NSString, cost: cost)
-        return image
+        return try await imageProvider.downloadProfileImage(from: url)
     }
-    
+
+    @available(*, deprecated, message: "Use ImageStorageProvider.shared.prefetchProfileImages() instead")
     func prefetchProfileImages(urls: [String]) async {
-        await withTaskGroup(of: Void.self) { group in
-            for url in urls {
-                group.addTask {
-                    _ = try? await self.downloadProfileImage(from: url)
-                }
-            }
-        }
+        await imageProvider.prefetchProfileImages(urls: urls)
     }
-    
-    // MARK: - Utility Operations
+
+    // MARK: - Utility Operations (Deprecated - use UserDataProvider.shared instead)
+
+    @available(*, deprecated, message: "Use UserDataProvider.shared.isUsernameTaken() instead")
     func isUsernameTaken(_ username: String, excludingUserId: String?) async -> Bool {
-        return await isUsernameTakenCloudFunction(username, excludingUserId: excludingUserId)
+        return await userProvider.isUsernameTaken(username, excludingUserId: excludingUserId)
     }
 
     // MARK: - Friend Request Operations
     func sendFriendRequest(fromUserId: String, to targetUserId: String) async throws {
-        // Get Firebase UIDs for both users
-        let userDoc = try await db.collection("users").document(fromUserId).getDocument()
-        let targetDoc = try await db.collection("users").document(targetUserId).getDocument()
-        
-        guard let userId = userDoc.get("id") as? String,
-              let targetId = targetDoc.get("id") as? String else {
-            throw ValidationError.invalidData("Could not find Firebase UIDs for users")
-        }
-        
         // Verify the current user is sending the request
         guard let currentUser = Auth.auth().currentUser,
-              currentUser.uid == userId else {
+              currentUser.uid == fromUserId else {
             throw ValidationError.userNotAuthenticated("Cannot send request on behalf of another user")
         }
         
         let requestId = UUID().uuidString
         let requestRef = rtdb.child("friend_requests")
-            .child(targetId)
+            .child(targetUserId)
             .child(requestId)
         
         let requestData: [String: Any] = [
@@ -685,31 +305,8 @@ class FirebaseDataProvider {
     }
     
     func acceptFriendRequest(requestId: String, userId: String, friendId: String) async throws {
-        // Get Firebase UID for the accepting user (for RTDB operations)
-        let userDoc = try await db.collection("users").document(userId).getDocument()
-        guard let firebaseUid = userDoc.get("id") as? String else {
-            throw ValidationError.invalidData("Could not find Firebase UID for user")
-        }
-        
-        // Add friend relationship in Firestore using SwiftData UUIDs
-        try await addFriend(friendId, to: userId)
-        try await addFriend(userId, to: friendId)
-        
-        // Clean up friend request and notification in RTDB using Firebase UID
-        let updates: [String: Any?] = [
-            "friend_requests/\(firebaseUid)/\(requestId)": nil,
-            "notifications/\(firebaseUid)/\(requestId)": nil
-        ]
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            rtdb.updateChildValues(updates as [AnyHashable : Any]) { error, _ in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
+        let callable = functions.httpsCallable("acceptFriendRequest")
+        _ = try await callable.call(["requestId": requestId])
     }
     
     func rejectFriendRequest(requestId: String) async throws {
@@ -771,35 +368,8 @@ class FirebaseDataProvider {
     }
     
     func removeFriend(_ friendId: String, from userId: String) async throws {
-        let userRef = db.collection("users").document(userId)
-        let friendRef = db.collection("users").document(friendId)
-        
-        _ = try await db.runTransaction { transaction, errorPointer in
-            let userDoc: DocumentSnapshot
-            let friendDoc: DocumentSnapshot
-            
-            do {
-                userDoc = try transaction.getDocument(userRef)
-                friendDoc = try transaction.getDocument(friendRef)
-            } catch let fetchError as NSError {
-                errorPointer?.pointee = fetchError
-                return nil
-            }
-            
-            // Get current friend lists
-            var userFriends = userDoc.get("friends") as? [String] ?? []
-            var friendFriends = friendDoc.get("friends") as? [String] ?? []
-            
-            // Remove friend IDs
-            userFriends.removeAll { $0 == friendId }
-            friendFriends.removeAll { $0 == userId }
-            
-            // Update both documents
-            transaction.updateData(["friends": userFriends], forDocument: userRef)
-            transaction.updateData(["friends": friendFriends], forDocument: friendRef)
-            
-            return nil
-        }
+        let callable = functions.httpsCallable("removeFriend")
+        _ = try await callable.call(["friendId": friendId])
     }
     
     // MARK: - Landmark Operations

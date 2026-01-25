@@ -1,6 +1,17 @@
+//
+//  PhoneNumberUtility.swift
+//  TrailMates
+//
+//  Original phone number utility using PhoneNumberKit.
+//  NOTE: This class is deprecated. Use PhoneNumberService instead.
+//
+
 import Foundation
 import PhoneNumberKit
 
+/// Legacy phone number utility class.
+/// - Note: Deprecated. Use `PhoneNumberService` for all new code.
+@available(*, deprecated, message: "Use PhoneNumberService instead")
 class PhoneNumberUtility {
     // Shared instance for better performance
     static let shared = PhoneNumberUtility()
