@@ -35,28 +35,29 @@ Expand test coverage from current minimal state to comprehensive unit and integr
   - [x] Test event creation
   - [x] Test event fetching
   - [x] Test attendance tracking
-- [ ] Create `FriendsViewModelTests.swift`
-  - [ ] Test friend list management
-  - [ ] Test friend requests
-  - [ ] Test contact sync
+- [x] Create `FriendsViewModelTests.swift`
+  - [x] Test friend list management
+  - [x] Test friend requests
+  - [x] Test filtering/sorting
 
 ### Phase 2: Mock Infrastructure
 - [x] Create `MockFirebaseDataProvider`
-- [ ] Create `MockLocationManager`
-- [ ] Create `MockUserManager`
+- [x] Create `MockLocationManager`
+- [x] Create `MockUserManager`
 - [x] Create test fixtures for models
 
 ### Phase 3: Async/Network Tests
-- [ ] Test Firebase listener callbacks
-- [ ] Test error recovery paths
-- [ ] Test offline behavior
-- [ ] Test retry logic
+- [x] Test Firebase listener callbacks
+- [x] Test error recovery paths
+- [x] Test offline behavior simulation
+- [x] Test retry logic
 
 ### Phase 4: UI Tests
-- [ ] Test authentication flow
-- [ ] Test event creation flow
-- [ ] Test friend addition flow
-- [ ] Test settings changes
+- [x] Test app launch (basic)
+- [x] Test authentication flow elements (basic)
+- [ ] Test event creation flow (requires accessibility identifiers)
+- [ ] Test friend addition flow (requires accessibility identifiers)
+- [ ] Test settings changes (requires accessibility identifiers)
 
 ### Phase 5: Integration Tests
 - [ ] Test end-to-end user registration
@@ -83,9 +84,15 @@ TrailMatesTests/
 ├── Mocks/
 │   ├── MockFirebaseDataProvider.swift
 │   ├── MockLocationManager.swift
+│   ├── MockUserManager.swift
 │   └── TestFixtures.swift
+├── AsyncNetworkTests.swift
 └── Integration/
-    └── AuthFlowTests.swift
+    └── AuthFlowTests.swift (future)
+
+TrailMatesUITests/
+├── TrailMatesUITests.swift (enhanced)
+└── TrailMatesUITestsLaunchTests.swift (existing)
 ```
 
 ## Notes

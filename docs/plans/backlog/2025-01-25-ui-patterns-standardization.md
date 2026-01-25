@@ -48,10 +48,30 @@ Establish consistent UI patterns and create a reusable component library for Tra
 | MapView+AnnotationManagement | Map/ | Map extension helpers | No |
 
 ### Phase 2: Navigation Standardization
-- [ ] Document navigation patterns (NavigationStack, sheets, full-screen covers)
-- [ ] Standardize sheet presentation (prefer `.sheet(item:)`)
-- [ ] Create navigation helper types if needed
+- [x] Document navigation patterns (NavigationStack, sheets, full-screen covers)
+- [x] Standardize sheet presentation (prefer `.sheet(item:)`)
+- [x] Create navigation helper types if needed
 - [ ] Update views to follow standard patterns
+
+**Navigation Patterns Documentation (completed 2025-01-25):**
+
+#### Current Navigation Structure
+- **Root**: `ContentView` uses conditional rendering (no NavigationStack at root)
+- **Tab Navigation**: `HomeView` uses `TabView` with 4 tabs (Map, Events, Friends, Profile)
+- **Custom Nav Bar**: `NavigationBarModifier` provides consistent header with `.withDefaultNavigation()`
+
+#### Sheet Presentation Patterns Found
+| View | Pattern Used | Recommendation |
+|------|--------------|----------------|
+| EventsView | `.sheet(item:)` for details, `.sheet(isPresented:)` for create | Good - already using item pattern |
+| MapView | Both patterns | Good - appropriate usage |
+| FriendsView | `.sheet(isPresented:)` | Consider item pattern |
+| ProfileView | `.sheet(isPresented:)` x2 | Could consolidate |
+| ProfileSetupView | `.sheet(isPresented:)` x2 | Fine for simple cases |
+
+#### NavigationStack vs NavigationView Usage
+- `NavigationStack` (preferred): PermissionsView, AddFriendsView, CreateEventView
+- `NavigationView` (legacy): SettingsView, NotificationsView, LocationPickerView, EventDetailView
 
 ### Phase 3: Component Library
 - [x] Create `Components/` folder structure:
@@ -60,6 +80,8 @@ Establish consistent UI patterns and create a reusable component library for Tra
   ├── Buttons/
   ├── Cards/
   ├── Common/
+  ├── Forms/
+  ├── Lists/
   ├── Map/
   └── Overlays/
   ```
@@ -68,26 +90,42 @@ Establish consistent UI patterns and create a reusable component library for Tra
   - [x] `LoadingView` - standard loading indicator
   - [x] `ErrorView` - standard error display
   - [x] `EmptyStateView` - standard empty state
-  - [ ] `PrimaryButton` - main action button style
-  - [ ] `SecondaryButton` - secondary action style
+  - [x] `PrimaryButton` - main action button style
+  - [x] `SecondaryButton` - secondary action style
+
+**New Components Created (2025-01-25):**
+| Component | Location | Purpose | Has Preview |
+|-----------|----------|---------|-------------|
+| PrimaryButton | Buttons/ | Main action button with loading state | Yes |
+| SecondaryButton | Buttons/ | Secondary/cancel button styles | Yes |
+| FormSection | Forms/ | Groups related form fields | Yes |
+| FormField | Forms/ | Text input with floating label | Yes |
+| ValidationError | Forms/ | Error message display | Yes |
+| ListRowView | Lists/ | Reusable list row with icons | Yes |
 
 ### Phase 4: Form Patterns
-- [ ] Create `FormSection` component
-- [ ] Create `FormField` component (text, phone, email variants)
-- [ ] Standardize validation display
+- [x] Create `FormSection` component
+- [x] Create `FormField` component (text, phone, email variants)
+- [x] Standardize validation display
 - [ ] Create keyboard handling utilities
 
 ### Phase 5: List Patterns
-- [ ] Create `ListRowView` base component
-- [ ] Standardize swipe actions
+- [x] Create `ListRowView` base component
+- [x] Standardize swipe actions (via `listSwipeActions` modifier)
 - [ ] Create section header style
 - [ ] Add pull-to-refresh helper
 
 ### Phase 6: Theming
-- [ ] Create `AppColors` with semantic colors
-- [ ] Create `AppTypography` with text styles
-- [ ] Create `AppSpacing` with consistent spacing
+- [x] Create `AppColors` with semantic colors
+- [x] Create `AppTypography` with text styles
+- [x] Create `AppSpacing` with consistent spacing
 - [ ] Document in design system guide
+
+**Theme System Created (2025-01-25):**
+Located in `/Theme/`:
+- `AppColors.swift` - Semantic color definitions (brand, text, background, status)
+- `AppTypography.swift` - Font scale with text style modifiers
+- `AppSpacing.swift` - Spacing scale with layout helpers
 
 ### Phase 7: Accessibility
 - [ ] Audit existing accessibility labels
@@ -142,6 +180,46 @@ struct ExampleComponent: View {
 - `TransparentBlurView`: Clean UIViewRepresentable implementation
 - `SegmentedControl`: Good animation handling
 - `PermissionCard`: Clear status visualization
+
+## New Component Locations Summary
+```
+TrailMates/
+├── Components/
+│   ├── Buttons/
+│   │   ├── PrimaryButton.swift
+│   │   └── SecondaryButton.swift
+│   ├── Cards/
+│   │   ├── EventDetailView.swift
+│   │   ├── EventRowView.swift
+│   │   ├── FriendsListCard.swift
+│   │   ├── PermissionCard.swift
+│   │   └── ProfileHeader.swift
+│   ├── Common/
+│   │   ├── EmptyStateView.swift
+│   │   ├── ErrorView.swift
+│   │   ├── IllustrationView.swift
+│   │   ├── LoadingView.swift
+│   │   ├── PermissionStatus.swift
+│   │   └── SegmentedControl.swift
+│   ├── Forms/
+│   │   ├── FormField.swift
+│   │   ├── FormSection.swift
+│   │   └── ValidationError.swift
+│   ├── Lists/
+│   │   └── ListRowView.swift
+│   ├── Map/
+│   │   ├── AnnotationViews.swift
+│   │   ├── CustomPin.swift
+│   │   ├── MapAnnotations.swift
+│   │   └── MapView+AnnotationManagement.swift
+│   └── Overlays/
+│       ├── BottomSheet.swift
+│       └── TransparentBlurView.swift
+└── Theme/
+    ├── AppColors.swift
+    ├── AppSpacing.swift
+    └── AppTypography.swift
+```
 
 ## Notes
 - Use `swiftui-ui-patterns` skill for component guidance
