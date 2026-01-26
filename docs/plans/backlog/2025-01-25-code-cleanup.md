@@ -103,11 +103,20 @@ Phone utilities analysis:
 ### Phase 6: Dependency Audit
 - [x] Review Package.swift dependencies
 - [x] Remove unused packages
-- [ ] Update outdated packages
-- [ ] Document why each dependency exists
+- [x] Check for outdated packages (documented, not updated)
+- [x] Document why each dependency exists
 
 **Completed 2025-01-25:**
 - Removed Facebook SDK from Package.swift dependencies
+
+**Completed 2025-01-26:**
+- Documented all dependencies in Package.swift with detailed comments
+- Identified outdated packages:
+  - Firebase iOS SDK: v11.5.0 installed, v12.8.0 available (requires Xcode 16.2+/Swift 6.0)
+  - PhoneNumberKit: v3.8.0 installed, v4.0.0 available
+- Documented Firebase products used: Core, Auth, Firestore, Database, Storage, Functions, Analytics
+- Documented PhoneNumberKit usage: phone parsing, E.164 formatting, validation
+- Listed all transitive dependencies for reference
 
 ## Files to Review
 - ~~`TrailMates/Utilities/FacebookService.swift`~~ - DELETED
