@@ -12,6 +12,7 @@ import PhoneNumberKit
 /// Legacy phone number utility class.
 /// - Note: Deprecated. Use `PhoneNumberService` for all new code.
 @available(*, deprecated, message: "Use PhoneNumberService instead")
+@MainActor
 class PhoneNumberUtility {
     // Shared instance for better performance
     static let shared = PhoneNumberUtility()

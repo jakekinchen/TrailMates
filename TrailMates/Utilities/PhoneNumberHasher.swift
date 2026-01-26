@@ -11,6 +11,7 @@ import CryptoKit
 
 /// Utility class for securely hashing phone numbers.
 /// Uses PhoneNumberService for normalization before hashing.
+@MainActor
 final class PhoneNumberHasher {
     // Shared instance
     static let shared = PhoneNumberHasher()

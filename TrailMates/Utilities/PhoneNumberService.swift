@@ -13,6 +13,7 @@ import PhoneNumberKit
 
 /// Unified service for all phone number operations.
 /// Provides formatting, validation, and normalization using PhoneNumberKit.
+@MainActor
 final class PhoneNumberService {
 
     // MARK: - Singleton

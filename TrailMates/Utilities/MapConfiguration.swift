@@ -10,6 +10,7 @@
 import MapKit
 import SwiftUI
 
+@MainActor
 struct MapConfiguration {
     // MARK: - Display Options
     var showUserLocation: Bool = false
