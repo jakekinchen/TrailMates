@@ -7,6 +7,7 @@ import UIKit
 // enabling dependency injection and testability.
 
 /// Protocol for user-related Firebase operations
+@MainActor
 protocol UserDataProviding {
     // Current user operations
     func fetchCurrentUser() async -> User?
@@ -35,6 +36,7 @@ protocol UserDataProviding {
 }
 
 /// Protocol for event-related Firebase operations
+@MainActor
 protocol EventDataProviding {
     // Event CRUD operations
     func fetchAllEvents() async -> [Event]
@@ -55,6 +57,7 @@ protocol EventDataProviding {
 }
 
 /// Protocol for friend-related Firebase operations
+@MainActor
 protocol FriendDataProviding {
     // Friend request operations
     func sendFriendRequest(fromUserId: String, to targetUserId: String) async throws
@@ -71,6 +74,7 @@ protocol FriendDataProviding {
 }
 
 /// Protocol for image storage operations
+@MainActor
 protocol ImageStorageProviding {
     // Upload operations
     func uploadProfileImage(_ image: UIImage, for userId: String) async throws -> (fullUrl: String, thumbnailUrl: String)
@@ -88,6 +92,7 @@ protocol ImageStorageProviding {
 }
 
 /// Protocol for landmark-related Firebase operations
+@MainActor
 protocol LandmarkDataProviding {
     // Landmark queries
     func fetchTotalLandmarks() async -> Int
@@ -101,6 +106,7 @@ protocol LandmarkDataProviding {
 }
 
 /// Protocol for location-related Firebase operations
+@MainActor
 protocol LocationDataProviding {
     // Location update operations
     func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async throws
@@ -112,6 +118,7 @@ protocol LocationDataProviding {
 }
 
 /// Protocol for notification-related Firebase operations
+@MainActor
 protocol NotificationDataProviding {
     // Send operations
     func sendNotification(to userId: String, type: NotificationType, fromUserId: String, content: String, relatedEventId: String?) async throws
