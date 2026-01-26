@@ -803,23 +803,16 @@ class UserManager: ObservableObject {
             try await userProvider.saveUser(updatedUser)
             print("✅ User saved successfully to Firebase")
 
-            // Force a fresh fetch to get updated URLs
-            print("📥 Fetching updated user from Firebase")
-            let refreshedUser = await userProvider.fetchUser(by: updatedUser.id)
-            print("   Fetch completed. Got refreshed user: \(refreshedUser != nil)")
-
-            if let refreshedUser = refreshedUser {
-                print("✅ Setting refreshed user:")
-                print("   - First Name: '\(refreshedUser.firstName)'")
-                print("   - Last Name: '\(refreshedUser.lastName)'")
-                print("   - Username: '\(refreshedUser.username)'")
-                self.currentUser = refreshedUser
-            } else {
-                print("⚠️ No refreshed user found, using updated user")
-                self.currentUser = updatedUser
-            }
+            // Force SwiftUI to detect the change by explicitly notifying
+            // (User is a class, so setting the same reference doesn't trigger @Published)
+            print("✅ Setting current user to saved user")
+            objectWillChange.send()
+            self.currentUser = updatedUser
             self.persistUserSession()
             print("✅ Initial profile save completed")
+            print("   - First Name: '\(updatedUser.firstName)'")
+            print("   - Last Name: '\(updatedUser.lastName)'")
+            print("   - Username: '\(updatedUser.username)'")
         } catch {
             print("❌ Error saving initial profile: \(error.localizedDescription)")
             print("   Detailed error: \(error)")
