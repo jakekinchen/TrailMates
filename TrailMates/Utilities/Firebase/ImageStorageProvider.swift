@@ -22,6 +22,7 @@ import SwiftUI
 /// // Download with automatic caching
 /// let image = try await ImageStorageProvider.shared.downloadProfileImage(from: url)
 /// ```
+@MainActor
 class ImageStorageProvider {
     // MARK: - Singleton
     static let shared = ImageStorageProvider()

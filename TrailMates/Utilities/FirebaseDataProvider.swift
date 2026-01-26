@@ -19,6 +19,7 @@ import FirebaseStorage
 /// - NotificationDataProvider: Push notifications
 ///
 /// Methods in this class are being progressively deprecated in favor of sub-providers.
+@MainActor
 class FirebaseDataProvider {
     // MARK: - Singleton
     static let shared = FirebaseDataProvider()

@@ -114,15 +114,10 @@ struct ProfileView: View {
     }
 }
 // Keeping the existing supporting views and models
-struct StatCard: View, Equatable {
+struct StatCard: View {
     let icon: String
     let title: String
     let value: String
-
-    // Equatable conformance - ignores colorScheme since it's from environment
-    static func == (lhs: StatCard, rhs: StatCard) -> Bool {
-        lhs.icon == rhs.icon && lhs.title == rhs.title && lhs.value == rhs.value
-    }
 
     @Environment(\.colorScheme) var colorScheme
 
@@ -168,12 +163,8 @@ struct UserStats: Codable, Equatable {
     }
 }
 
-struct StatsSection: View, Equatable {
+struct StatsSection: View {
     let stats: UserStats
-
-    static func == (lhs: StatsSection, rhs: StatsSection) -> Bool {
-        lhs.stats == rhs.stats
-    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -211,6 +202,19 @@ struct StatsSection: View, Equatable {
                 value: "\(stats.attendedEventCount)"
             )
         }
+    }
+}
+
+// MARK: - Equatable Conformances (MainActor isolated for Swift 6 concurrency)
+extension StatCard: @preconcurrency Equatable {
+    static func == (lhs: StatCard, rhs: StatCard) -> Bool {
+        lhs.icon == rhs.icon && lhs.title == rhs.title && lhs.value == rhs.value
+    }
+}
+
+extension StatsSection: @preconcurrency Equatable {
+    static func == (lhs: StatsSection, rhs: StatsSection) -> Bool {
+        lhs.stats == rhs.stats
     }
 }
 

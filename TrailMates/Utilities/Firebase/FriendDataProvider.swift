@@ -6,6 +6,7 @@ import FirebaseDatabase
 
 /// Handles all friend-related Firebase operations
 /// Extracted from FirebaseDataProvider as part of the provider refactoring
+@MainActor
 class FriendDataProvider {
     // MARK: - Singleton
     static let shared = FriendDataProvider()

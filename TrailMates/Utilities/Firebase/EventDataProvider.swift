@@ -4,6 +4,7 @@ import FirebaseFirestore
 
 /// Handles all event-related Firebase operations
 /// Extracted from FirebaseDataProvider as part of the provider refactoring
+@MainActor
 class EventDataProvider {
     // MARK: - Singleton
     static let shared = EventDataProvider()

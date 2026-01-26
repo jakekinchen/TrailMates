@@ -156,6 +156,7 @@ extension NotificationDataProvider: NotificationDataProviding {}
 ///     ...
 /// )
 /// ```
+@MainActor
 final class FirebaseProviderContainer {
     // MARK: - Singleton (for production use)
     static let shared = FirebaseProviderContainer()

@@ -32,6 +32,7 @@ import SwiftUI
 /// ## Thread Safety
 /// All methods are safe to call from any thread. Firestore handles
 /// thread synchronization internally.
+@MainActor
 class UserDataProvider {
     // MARK: - Singleton
     static let shared = UserDataProvider()

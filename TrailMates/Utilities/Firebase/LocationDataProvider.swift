@@ -7,6 +7,7 @@ import CoreLocation
 
 /// Handles all location-related Firebase operations
 /// Extracted from FirebaseDataProvider as part of the provider refactoring
+@MainActor
 class LocationDataProvider {
     // MARK: - Singleton
     static let shared = LocationDataProvider()

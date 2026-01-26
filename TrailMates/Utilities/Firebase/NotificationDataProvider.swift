@@ -5,6 +5,7 @@ import FirebaseDatabase
 
 /// Handles all notification-related Firebase operations
 /// Extracted from FirebaseDataProvider as part of the provider refactoring
+@MainActor
 class NotificationDataProvider {
     // MARK: - Singleton
     static let shared = NotificationDataProvider()

@@ -4,6 +4,7 @@ import FirebaseFirestore
 
 /// Handles all landmark-related Firebase operations
 /// Extracted from FirebaseDataProvider as part of the provider refactoring
+@MainActor
 class LandmarkDataProvider {
     // MARK: - Singleton
     static let shared = LandmarkDataProvider()
