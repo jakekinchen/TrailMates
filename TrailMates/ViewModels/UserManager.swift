@@ -376,8 +376,11 @@ class UserManager: ObservableObject {
         do {
             return try await userProvider.findUsersByPhoneNumbers(phoneNumbers)
         } catch {
-            print("Error finding users by phone numbers: \(error)")
-            throw error
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("Error finding users by phone numbers: \(appError.errorDescription ?? "Unknown")")
+            #endif
+            throw appError
         }
     }
     
@@ -388,11 +391,13 @@ class UserManager: ObservableObject {
     }
     
     func createNewUser(phoneNumber: String, id: String) async throws {
+        #if DEBUG
         print("Starting signup process for phone: \(phoneNumber)")
+        #endif
 
         // First check if a user with this phone number already exists
         if await checkUserExists(phoneNumber: phoneNumber) {
-            throw ValidationError.invalidData("Phone number already registered")
+            throw AppError.alreadyExists("Phone number already registered")
         }
 
         // Create new user with Firebase UID as the primary identifier
@@ -408,9 +413,13 @@ class UserManager: ObservableObject {
         print("Created initial user object with ID: \(initialUser.id)")
 
         do {
+            #if DEBUG
             print("Attempting to save initial user")
+            #endif
             try await userProvider.saveInitialUser(initialUser)
+            #if DEBUG
             print("Initial user saved successfully")
+            #endif
 
             await MainActor.run {
                 self.currentUser = initialUser
@@ -418,10 +427,15 @@ class UserManager: ObservableObject {
                 self.isLoggedIn = true
                 self.persistUserSession()
             }
+            #if DEBUG
             print("User session persisted with minimal data")
+            #endif
         } catch {
-            print("Error saving user: \(error.localizedDescription)")
-            throw error
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("Error saving user: \(appError.errorDescription ?? "Unknown")")
+            #endif
+            throw appError
         }
     }
 
@@ -616,22 +630,29 @@ class UserManager: ObservableObject {
         do {
             // Only log location updates every 5 minutes or if there's an error
             let shouldLog = lastLocationLogTime?.timeIntervalSinceNow ?? -300 <= -300
+            #if DEBUG
             if shouldLog {
                 print("UserManager: Updating location for user \(userId)")
                 lastLocationLogTime = Date()
             }
+            #endif
 
             try await locationProvider.updateUserLocation(userId: userId, location: location)
             if let updatedUser = currentUser {
                 updatedUser.location = location
                 self.currentUser = updatedUser
 
+                #if DEBUG
                 if shouldLog {
                     print("UserManager: Location updated successfully")
                 }
+                #endif
             }
         } catch {
-            print("UserManager: Error updating location: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserManager: Error updating location: \(appError.errorDescription ?? "Unknown")")
+            #endif
         }
     }
 
@@ -684,7 +705,7 @@ class UserManager: ObservableObject {
     // MARK: - Profile Image Management
     func setProfileImage(_ image: UIImage) async throws {
         guard let currentUser = self.currentUser else {
-            throw ValidationError.userNotAuthenticated("No current user found")
+            throw AppError.notAuthenticated("No current user found")
         }
 
         // Upload image and get URLs
@@ -709,7 +730,10 @@ class UserManager: ObservableObject {
                 let image = try await imageProvider.downloadProfileImage(from: imageUrl)
                 return image
             } catch {
-                print("Failed to fetch remote image: \(error.localizedDescription)")
+                let appError = AppError.from(error)
+                #if DEBUG
+                print("Failed to fetch remote image: \(appError.errorDescription ?? "Unknown")")
+                #endif
             }
         }
 
@@ -738,11 +762,13 @@ class UserManager: ObservableObject {
     }
 
     func login(phoneNumber: String, id: String) async throws {
+        #if DEBUG
         print("Starting login process for phone: \(phoneNumber)")
+        #endif
 
         // Instead of fetching the user by phone number, fetch directly by UID:
         guard let existingUser = await userProvider.fetchUser(by: id) else {
-            throw ValidationError.invalidData("No account found with this UID")
+            throw AppError.notFound("No account found with this UID")
         }
 
         // (Optional) If you want to double-check that this user has the same phone number:

@@ -29,13 +29,13 @@ class FriendDataProvider {
 
         guard let userId = userDoc.get("id") as? String,
               let targetId = targetDoc.get("id") as? String else {
-            throw FirebaseDataProvider.ValidationError.invalidData("Could not find Firebase UIDs for users")
+            throw AppError.invalidData("Could not find Firebase UIDs for users")
         }
 
         // Verify the current user is sending the request
         guard let currentUser = Auth.auth().currentUser,
               currentUser.uid == userId else {
-            throw FirebaseDataProvider.ValidationError.userNotAuthenticated("Cannot send request on behalf of another user")
+            throw AppError.notAuthenticated("Cannot send request on behalf of another user")
         }
 
         let requestId = UUID().uuidString
@@ -64,7 +64,7 @@ class FriendDataProvider {
         // Get Firebase UID for the accepting user (for RTDB operations)
         let userDoc = try await db.collection("users").document(userId).getDocument()
         guard let firebaseUid = userDoc.get("id") as? String else {
-            throw FirebaseDataProvider.ValidationError.invalidData("Could not find Firebase UID for user")
+            throw AppError.invalidData("Could not find Firebase UID for user")
         }
 
         // Add friend relationship in Firestore using SwiftData UUIDs
@@ -90,7 +90,7 @@ class FriendDataProvider {
 
     func rejectFriendRequest(requestId: String) async throws {
         guard let currentUser = Auth.auth().currentUser else {
-            throw FirebaseDataProvider.ValidationError.userNotAuthenticated("No authenticated user")
+            throw AppError.notAuthenticated()
         }
 
         // Remove friend request and its notification from RTDB
@@ -112,7 +112,7 @@ class FriendDataProvider {
 
     func updateFriendRequestStatus(requestId: String, targetUserId: String, status: FriendRequestStatus) async throws {
         guard let currentUser = Auth.auth().currentUser else {
-            throw FirebaseDataProvider.ValidationError.userNotAuthenticated("No authenticated user")
+            throw AppError.notAuthenticated()
         }
 
         let requestRef = rtdb.child("friend_requests")
@@ -204,7 +204,9 @@ class FriendDataProvider {
 
     func observeFriendRequests(for userId: String, completion: @escaping ([FriendRequest]) -> Void) {
         guard let currentUser = Auth.auth().currentUser else {
+            #if DEBUG
             print("FriendDataProvider: No authenticated user for friend requests")
+            #endif
             completion([])
             return
         }

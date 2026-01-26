@@ -49,7 +49,9 @@ class NotificationDataProvider {
 
     func observeNotifications(for userId: String, completion: @escaping ([TrailNotification]) -> Void) {
         guard let currentUser = Auth.auth().currentUser else {
+            #if DEBUG
             print("NotificationDataProvider: No authenticated user for notifications")
+            #endif
             completion([])
             return
         }
@@ -97,7 +99,7 @@ class NotificationDataProvider {
     func fetchNotifications(forId id: String, userID: String) async throws -> [TrailNotification] {
         return try await withCheckedThrowingContinuation { [weak self] continuation in
             guard let self = self else {
-                continuation.resume(throwing: FirebaseDataProvider.ValidationError.invalidData("NotificationDataProvider instance was deallocated"))
+                continuation.resume(throwing: AppError.unknown())
                 return
             }
 

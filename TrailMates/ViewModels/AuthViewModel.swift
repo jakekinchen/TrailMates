@@ -85,18 +85,10 @@ class AuthViewModel: ObservableObject {
                 
                 if isSigningUp && userExists {
                     // Prevent existing users from using signup
-                    throw NSError(
-                        domain: "com.trailmates.error",
-                        code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "An account with this phone number already exists. Please use the login option."]
-                    )
+                    throw AppError.alreadyExists("An account with this phone number already exists. Please use the login option.")
                 } else if !isSigningUp && !userExists {
                     // Prevent non-existent users from using login
-                    throw NSError(
-                        domain: "com.trailmates.error",
-                        code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "No account found with this phone number. Please sign up first."]
-                    )
+                    throw AppError.notFound("No account found with this phone number. Please sign up first.")
                 }
                 
                 if isSigningUp {
@@ -118,17 +110,25 @@ class AuthViewModel: ObservableObject {
                     print("✅ Auth state updated: isAuthenticated=true, isLoggedIn=true")
                 }
             } catch {
-                print("❌ User initialization failed: \(error.localizedDescription)")
+                let appError = AppError.from(error)
+                #if DEBUG
+                print("User initialization failed: \(appError.errorDescription ?? "Unknown")")
+                #endif
                 // If initialization fails, sign out to maintain consistent state
                 try? auth.signOut()
-                print("🔥 Auth: User signed out")
-                throw error
+                #if DEBUG
+                print("Auth: User signed out")
+                #endif
+                throw appError
             }
         } catch {
-            print("❌ Verification failed: \(error.localizedDescription)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("Verification failed: \(appError.errorDescription ?? "Unknown")")
+            #endif
             await MainActor.run {
                 self.showError = true
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = appError.errorDescription ?? "An error occurred"
                 self.isLoading = false
                 self.isVerifying = false
                 self.isAuthenticated = false
@@ -136,28 +136,24 @@ class AuthViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func formatPhoneNumber(_ number: String) throws -> String {
         // Remove any non-numeric characters
         let cleanNumber = number.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-        
+
         // Check if the number starts with "+" already
         if number.hasPrefix("+") {
             return number
         }
-        
+
         // Add "+1" prefix if not present for US numbers
         if cleanNumber.count == 10 {
             return "+1\(cleanNumber)"
         } else if cleanNumber.count == 11 && cleanNumber.hasPrefix("1") {
             return "+\(cleanNumber)"
         }
-        
-        throw NSError(
-            domain: "com.trailmates.error",
-            code: -1,
-            userInfo: [NSLocalizedDescriptionKey: "Invalid phone number format"]
-        )
+
+        throw AppError.invalidInput("Invalid phone number format")
     }
     
     func signOut() async {

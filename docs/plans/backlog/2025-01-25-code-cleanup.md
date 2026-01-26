@@ -2,7 +2,7 @@
 title: Code Cleanup and Consolidation
 created: 2025-01-25
 priority: backlog
-status: mostly-complete
+status: complete
 tags: [cleanup, technical-debt, refactoring]
 ---
 
@@ -73,9 +73,9 @@ Phone utilities analysis:
 
 ### Phase 4: Standardize Error Handling
 - [x] Create `AppError` enum for consistent errors
-- [ ] Replace generic error logging with typed errors
+- [x] Replace generic error logging with typed errors
 - [x] Add user-facing error messages
-- [ ] Implement retry logic where appropriate
+- [x] Implement retry logic where appropriate
 
 **Completed 2025-01-25:**
 - Created `AppError.swift` with unified error types:
@@ -88,6 +88,24 @@ Phone utilities analysis:
 - Added `title` property for alert titles
 - Added `isRetryable` property for retry logic
 - Note: Existing `ValidationError` enums kept for backward compatibility; migrate gradually
+
+**Completed 2025-01-26:**
+- Replaced generic `print("Error: ...")` statements with typed `AppError` across Firebase providers:
+  - `UserDataProvider.swift`: Updated all error handling to use `AppError.from()` conversion
+  - `EventDataProvider.swift`: Converted all fetch/query error handling
+  - `FriendDataProvider.swift`: Replaced `FirebaseDataProvider.ValidationError` with `AppError`
+  - `LandmarkDataProvider.swift`: Updated all error logging
+  - `NotificationDataProvider.swift`: Converted error handling
+  - `LocationDataProvider.swift`: Replaced validation errors with `AppError`
+- Updated ViewModels to use `AppError`:
+  - `AuthViewModel.swift`: Replaced `NSError` throws with `AppError` types
+  - `UserManager.swift`: Updated error handling in user operations
+  - `EventViewModel.swift`: Added `asAppError` conversion for `EventError`
+- Implemented retry logic with exponential backoff (1s, 2s, 4s) for network operations:
+  - All Firestore fetch operations (fetchUser, fetchAllUsers, fetchAllEvents, etc.)
+  - Cloud Function calls (checkUserExists, findUsersByPhoneNumbers, checkUsernameTaken)
+  - Using `withRetry()` helper from `AppError.swift`
+- Wrapped debug print statements in `#if DEBUG` blocks for production builds
 
 ### Phase 5: Documentation
 - [x] Add file headers where missing

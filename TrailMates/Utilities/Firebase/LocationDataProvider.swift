@@ -44,12 +44,12 @@ class LocationDataProvider {
     func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async throws {
         // 1. Verify the current user is updating their own location
         guard let currentUser = Auth.auth().currentUser else {
-            throw FirebaseDataProvider.ValidationError.userNotAuthenticated("No authenticated user")
+            throw AppError.notAuthenticated()
         }
 
         // 2. Ensure the userId matches the currentUser's UID
         guard userId == currentUser.uid else {
-            throw FirebaseDataProvider.ValidationError.invalidData("Cannot update location for another user")
+            throw AppError.unauthorized("Cannot update location for another user")
         }
 
         // 3. Get fresh ID token to ensure auth is valid
@@ -133,7 +133,9 @@ class LocationDataProvider {
 
                 activeListeners[path] = handle
             } else {
+                #if DEBUG
                 print("LocationDataProvider: Could not find Firebase UID for user \(userId)")
+                #endif
                 completion(nil)
             }
         }

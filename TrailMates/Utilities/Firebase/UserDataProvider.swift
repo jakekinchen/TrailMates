@@ -128,11 +128,19 @@ class UserDataProvider {
 
     func fetchUser(by id: String) async -> User? {
         do {
+            #if DEBUG
             print("UserDataProvider: Fetching user with ID: \(id)")
-            let document = try await db.collection("users").document(id).getDocument()
+            #endif
+
+            // Use retry logic for network fetch
+            let document = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("users").document(id).getDocument()
+            }
 
             guard document.exists else {
+                #if DEBUG
                 print("UserDataProvider: No user document found with ID: \(id)")
+                #endif
                 return nil
             }
 
@@ -140,7 +148,9 @@ class UserDataProvider {
 
             // Validate and fix ID if needed
             if user.id != document.documentID {
+                #if DEBUG
                 print("Warning: Stored ID mismatch with document ID")
+                #endif
                 user.id = document.documentID
                 try? await db.collection("users").document(id).updateData([
                     "id": document.documentID
@@ -151,9 +161,24 @@ class UserDataProvider {
             if let imageUrl = user.profileImageUrl {
                 do {
                     user.profileImage = try await ImageStorageProvider.shared.downloadProfileImage(from: imageUrl)
+                    #if DEBUG
                     print("UserDataProvider: Loaded profile image from remote URL")
+                    #endif
+                } catch let error as AppError {
+                    #if DEBUG
+                    print("Warning: Failed to load remote image: \(error.errorDescription ?? "Unknown")")
+                    #endif
+                    user.profileImageUrl = nil
+                    user.profileThumbnailUrl = nil
+
+                    try? await db.collection("users").document(id).updateData([
+                        "profileImageUrl": FieldValue.delete(),
+                        "profileThumbnailUrl": FieldValue.delete()
+                    ])
                 } catch {
+                    #if DEBUG
                     print("Warning: Failed to load remote image: \(error.localizedDescription)")
+                    #endif
                     user.profileImageUrl = nil
                     user.profileThumbnailUrl = nil
 
@@ -166,31 +191,42 @@ class UserDataProvider {
 
             return user
         } catch {
-            print("UserDataProvider: Error fetching user: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserDataProvider: Error fetching user: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return nil
         }
     }
 
     func fetchAllUsers() async -> [User] {
         do {
-            let snapshot = try await db.collection("users").getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("users").getDocuments()
+            }
             return snapshot.documents.compactMap { try? $0.data(as: User.self) }
         } catch {
-            print("UserDataProvider: Error fetching all users: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserDataProvider: Error fetching all users: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }
 
     func saveInitialUser(_ user: User) async throws {
+        #if DEBUG
         print("UserDataProvider: Starting initial user save")
+        #endif
         guard !user.phoneNumber.isEmpty else {
-            throw FirebaseDataProvider.ValidationError.emptyField("Phone number cannot be empty")
+            throw AppError.emptyField("Phone number")
         }
 
         // Ensure user.id matches Auth UID
         guard let currentUser = auth.currentUser,
               user.id == currentUser.uid else {
-            throw FirebaseDataProvider.ValidationError.invalidData("User ID must match Firebase Auth UID")
+            throw AppError.invalidData("User ID must match Firebase Auth UID")
         }
 
         let userRef = db.collection("users").document(user.id)
@@ -198,7 +234,7 @@ class UserDataProvider {
         // First check if document already exists
         let docSnapshot = try await userRef.getDocument()
         guard !docSnapshot.exists else {
-            throw FirebaseDataProvider.ValidationError.invalidData("User document already exists")
+            throw AppError.alreadyExists("User document")
         }
 
         let initialData: [String: Any] = [
@@ -231,36 +267,46 @@ class UserDataProvider {
         guard verifySnapshot.exists,
               let storedId = verifySnapshot.get("id") as? String,
               storedId == user.id else {
-            throw FirebaseDataProvider.ValidationError.invalidData("Failed to verify user creation or ID mismatch")
+            throw AppError.invalidData("Failed to verify user creation or ID mismatch")
         }
     }
 
     func saveUser(_ user: User) async throws {
+        #if DEBUG
         print("UserDataProvider: Starting full user save")
+        #endif
 
         // Only validate required fields if this is not initial setup
         if !user.firstName.isEmpty || !user.lastName.isEmpty || !user.username.isEmpty {
             guard !user.firstName.isEmpty,
                   !user.lastName.isEmpty,
                   !user.username.isEmpty else {
+                #if DEBUG
                 print("UserDataProvider: Error - Missing required fields")
                 print("User: \(user)")
-                throw FirebaseDataProvider.ValidationError.missingRequiredFields("All required fields must be non-empty")
+                #endif
+                throw AppError.missingRequiredFields("First name, last name, and username are required")
             }
         }
 
         let userData = user
+        #if DEBUG
         print("UserDataProvider: Using document ID: \(user.id)")
+        #endif
 
         // If there's a profile image, upload it to Storage first
         if let image = user.profileImage {
+            #if DEBUG
             print("UserDataProvider: Profile image found, uploading...")
+            #endif
             // Delete old profile images
             await ImageStorageProvider.shared.deleteOldProfileImage(for: user.id)
 
             // Upload new image and get URLs
             let urls = try await ImageStorageProvider.shared.uploadProfileImage(image, for: user.id)
+            #if DEBUG
             print("UserDataProvider: Profile image uploaded successfully")
+            #endif
 
             // Store the URLs and clear the image data
             userData.profileImage = nil
@@ -272,14 +318,20 @@ class UserDataProvider {
         let userRef = db.collection("users").document(user.id)
         let data = try Firestore.Encoder().encode(userData)
 
+        #if DEBUG
         print("UserDataProvider: Attempting to save full user data")
+        #endif
         do {
             try await userRef.setData(data)
+            #if DEBUG
             print("UserDataProvider: Full user data saved successfully")
+            #endif
         } catch {
-            print("UserDataProvider: Error saving full user: \(error.localizedDescription)")
-            print("Error details: \(String(describing: error))")
-            throw error
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserDataProvider: Error saving full user: \(appError.errorDescription ?? "Unknown")")
+            #endif
+            throw appError
         }
     }
 
@@ -298,28 +350,47 @@ class UserDataProvider {
     // MARK: - Phone Number Operations
 
     func fetchUser(byPhoneNumber phoneNumber: String) async -> User? {
+        #if DEBUG
         print("UserDataProvider: Fetching user by phone number")
+        #endif
         let hashedNumber = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
+        #if DEBUG
         print("   Hashed number: '\(hashedNumber)'")
+        #endif
 
         do {
+            #if DEBUG
             print("Querying Firestore for hashed phone: '\(hashedNumber)'")
-            let snapshot = try await db.collection("users")
-                                    .whereField("hashedPhoneNumber", isEqualTo: hashedNumber)
-                                    .limit(to: 1)
-                                    .getDocuments()
+            #endif
+
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("users")
+                    .whereField("hashedPhoneNumber", isEqualTo: hashedNumber)
+                    .limit(to: 1)
+                    .getDocuments()
+            }
 
             if let doc = snapshot.documents.first {
+                #if DEBUG
                 print("UserDataProvider: Found user document: \(doc.documentID)")
+                #endif
                 let user = try doc.data(as: User.self)
+                #if DEBUG
                 print("   User details: \(user.firstName) \(user.lastName)")
+                #endif
                 return user
             } else {
+                #if DEBUG
                 print("UserDataProvider: No user document found for hashed phone: '\(hashedNumber)'")
+                #endif
                 return nil
             }
         } catch {
-            print("UserDataProvider: Error fetching user by phone: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserDataProvider: Error fetching user by phone: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return nil
         }
     }
@@ -329,13 +400,19 @@ class UserDataProvider {
 
         let function = functions.httpsCallable("checkUserExists")
         do {
-            let result = try await function.call(["hashedPhoneNumber": hashedNumber])
+            // Use retry logic for cloud function call
+            let result = try await withRetry(maxAttempts: 3) {
+                try await function.call(["hashedPhoneNumber": hashedNumber])
+            }
             if let data = result.data as? [String: Any],
                let userExists = data["userExists"] as? Bool {
                 return userExists
             }
         } catch {
-            print("UserDataProvider: Error calling checkUserExists function: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserDataProvider: Error calling checkUserExists function: \(appError.errorDescription ?? "Unknown")")
+            #endif
         }
         return false
     }
@@ -345,11 +422,15 @@ class UserDataProvider {
 
         do {
             let callable = functions.httpsCallable("findUsersByPhoneNumbers")
-            let result = try await callable.call(["hashedPhoneNumbers": hashedNumbers])
+
+            // Use retry logic for cloud function call
+            let result = try await withRetry(maxAttempts: 3) {
+                try await callable.call(["hashedPhoneNumbers": hashedNumbers])
+            }
 
             guard let response = result.data as? [String: Any],
                   let usersData = response["users"] as? [[String: Any]] else {
-                throw FirebaseDataProvider.ValidationError.invalidData("Invalid response format")
+                throw AppError.invalidData("Invalid response format from server")
             }
 
             let matchedUsers = try usersData.map { userData in
@@ -357,12 +438,17 @@ class UserDataProvider {
                 return try JSONDecoder().decode(User.self, from: jsonData)
             }
 
+            #if DEBUG
             print("UserDataProvider: Successfully matched \(matchedUsers.count) users")
+            #endif
             return matchedUsers
 
         } catch {
-            print("UserDataProvider: Error finding users by phone numbers: \(error)")
-            throw error
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserDataProvider: Error finding users by phone numbers: \(appError.errorDescription ?? "Unknown")")
+            #endif
+            throw appError
         }
     }
 
@@ -374,18 +460,24 @@ class UserDataProvider {
 
     func isUsernameTakenCloudFunction(_ username: String, excludingUserId: String?) async -> Bool {
         do {
-            let result = try await functions.httpsCallable("checkUsernameTaken")
-                .call([
-                    "username": username,
-                    "excludeUserId": excludingUserId ?? ""
-                ])
+            // Use retry logic for cloud function call
+            let result = try await withRetry(maxAttempts: 3) {
+                try await self.functions.httpsCallable("checkUsernameTaken")
+                    .call([
+                        "username": username,
+                        "excludeUserId": excludingUserId ?? ""
+                    ])
+            }
 
             if let data = result.data as? [String: Any],
                let usernameTaken = data["usernameTaken"] as? Bool {
                 return usernameTaken
             }
         } catch {
-            print("UserDataProvider: Error calling checkUsernameTaken:", error)
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserDataProvider: Error calling checkUsernameTaken: \(appError.errorDescription ?? "Unknown")")
+            #endif
         }
         return false
     }
@@ -400,13 +492,18 @@ class UserDataProvider {
         let listener = db.collection("users").document(id)
             .addSnapshotListener { documentSnapshot, error in
                 guard let document = documentSnapshot else {
-                    print("UserDataProvider: Error fetching document: \(error?.localizedDescription ?? "Unknown error")")
+                    let appError = error.map { AppError.from($0) } ?? AppError.unknown()
+                    #if DEBUG
+                    print("UserDataProvider: Error fetching document: \(appError.errorDescription ?? "Unknown")")
+                    #endif
                     onChange(nil)
                     return
                 }
 
                 guard document.exists else {
+                    #if DEBUG
                     print("UserDataProvider: Document does not exist")
+                    #endif
                     onChange(nil)
                     return
                 }
@@ -415,7 +512,10 @@ class UserDataProvider {
                     let user = try document.data(as: User.self)
                     onChange(user)
                 } catch {
-                    print("UserDataProvider: Error decoding user: \(error)")
+                    let appError = AppError.from(error)
+                    #if DEBUG
+                    print("UserDataProvider: Error decoding user: \(appError.errorDescription ?? "Unknown")")
+                    #endif
                     onChange(nil)
                 }
             }

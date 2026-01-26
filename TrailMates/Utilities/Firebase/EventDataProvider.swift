@@ -25,20 +25,32 @@ class EventDataProvider {
 
     func fetchAllEvents() async -> [Event] {
         do {
-            let snapshot = try await db.collection("events").getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("events").getDocuments()
+            }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
         } catch {
-            print("EventDataProvider: Error fetching all events: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("EventDataProvider: Error fetching all events: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }
 
     func fetchEvent(by id: String) async -> Event? {
         do {
-            let document = try await db.collection("events").document(id).getDocument()
+            // Use retry logic for network fetch
+            let document = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("events").document(id).getDocument()
+            }
             return try document.data(as: Event.self)
         } catch {
-            print("EventDataProvider: Error fetching event: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("EventDataProvider: Error fetching event: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return nil
         }
     }
@@ -59,7 +71,10 @@ class EventDataProvider {
             try await saveEvent(updatedEvent)
             return updatedEvent
         } catch {
-            print("EventDataProvider: Error updating event status: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("EventDataProvider: Error updating event status: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return event
         }
     }
@@ -81,12 +96,18 @@ class EventDataProvider {
 
     func fetchUserEvents(for userId: String) async -> [Event] {
         do {
-            let snapshot = try await db.collection("events")
-                .whereField("creatorId", isEqualTo: userId)
-                .getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("events")
+                    .whereField("creatorId", isEqualTo: userId)
+                    .getDocuments()
+            }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
         } catch {
-            print("EventDataProvider: Error fetching user events: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("EventDataProvider: Error fetching user events: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }
@@ -94,24 +115,36 @@ class EventDataProvider {
     func fetchCircleEvents(for userId: String, friendIds: [String]) async -> [Event] {
         do {
             let friendIdsStrings = friendIds.map { $0 }
-            let snapshot = try await db.collection("events")
-                .whereField("creatorId", in: [userId] + friendIdsStrings)
-                .getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("events")
+                    .whereField("creatorId", in: [userId] + friendIdsStrings)
+                    .getDocuments()
+            }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
         } catch {
-            print("EventDataProvider: Error fetching circle events: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("EventDataProvider: Error fetching circle events: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }
 
     func fetchPublicEvents() async -> [Event] {
         do {
-            let snapshot = try await db.collection("events")
-                .whereField("isPublic", isEqualTo: true)
-                .getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("events")
+                    .whereField("isPublic", isEqualTo: true)
+                    .getDocuments()
+            }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
         } catch {
-            print("EventDataProvider: Error fetching public events: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("EventDataProvider: Error fetching public events: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }
@@ -119,12 +152,18 @@ class EventDataProvider {
     /// Fetch events that the user is attending
     func fetchAttendingEvents(for userId: String) async -> [Event] {
         do {
-            let snapshot = try await db.collection("events")
-                .whereField("attendeeIds", arrayContains: userId)
-                .getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("events")
+                    .whereField("attendeeIds", arrayContains: userId)
+                    .getDocuments()
+            }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
         } catch {
-            print("EventDataProvider: Error fetching attending events: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("EventDataProvider: Error fetching attending events: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }
@@ -132,13 +171,19 @@ class EventDataProvider {
     /// Fetch events within a date range
     func fetchEvents(from startDate: Date, to endDate: Date) async -> [Event] {
         do {
-            let snapshot = try await db.collection("events")
-                .whereField("startTime", isGreaterThanOrEqualTo: startDate)
-                .whereField("startTime", isLessThanOrEqualTo: endDate)
-                .getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("events")
+                    .whereField("startTime", isGreaterThanOrEqualTo: startDate)
+                    .whereField("startTime", isLessThanOrEqualTo: endDate)
+                    .getDocuments()
+            }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
         } catch {
-            print("EventDataProvider: Error fetching events in date range: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("EventDataProvider: Error fetching events in date range: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }

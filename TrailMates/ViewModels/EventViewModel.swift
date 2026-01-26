@@ -194,16 +194,27 @@ class EventViewModel: ObservableObject {
 
 // MARK: - Error Types
 extension EventViewModel {
+    /// Event-specific errors that map to AppError for consistent handling
     enum EventError: LocalizedError {
         case eventNotFound
         case unauthorized
-        
+
         var errorDescription: String? {
             switch self {
             case .eventNotFound:
                 return "Event not found"
             case .unauthorized:
                 return "You are not authorized to perform this action"
+            }
+        }
+
+        /// Convert to AppError for consistent error handling
+        var asAppError: AppError {
+            switch self {
+            case .eventNotFound:
+                return .notFound("Event")
+            case .unauthorized:
+                return .unauthorized()
             }
         }
     }

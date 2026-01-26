@@ -25,30 +25,48 @@ class LandmarkDataProvider {
 
     func fetchTotalLandmarks() async -> Int {
         do {
-            let snapshot = try await db.collection("landmarks").getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("landmarks").getDocuments()
+            }
             return snapshot.documents.count
         } catch {
-            print("LandmarkDataProvider: Error fetching total landmarks: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("LandmarkDataProvider: Error fetching total landmarks: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return 0
         }
     }
 
     func fetchAllLandmarks() async -> [Landmark] {
         do {
-            let snapshot = try await db.collection("landmarks").getDocuments()
+            // Use retry logic for network fetch
+            let snapshot = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("landmarks").getDocuments()
+            }
             return snapshot.documents.compactMap { try? $0.data(as: Landmark.self) }
         } catch {
-            print("LandmarkDataProvider: Error fetching all landmarks: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("LandmarkDataProvider: Error fetching all landmarks: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }
 
     func fetchLandmark(by id: String) async -> Landmark? {
         do {
-            let document = try await db.collection("landmarks").document(id).getDocument()
+            // Use retry logic for network fetch
+            let document = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("landmarks").document(id).getDocument()
+            }
             return try document.data(as: Landmark.self)
         } catch {
-            print("LandmarkDataProvider: Error fetching landmark: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("LandmarkDataProvider: Error fetching landmark: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return nil
         }
     }
@@ -62,7 +80,10 @@ class LandmarkDataProvider {
                 "visitedLandmarkIds": FieldValue.arrayUnion([landmarkId])
             ])
         } catch {
-            print("LandmarkDataProvider: Error marking landmark as visited: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("LandmarkDataProvider: Error marking landmark as visited: \(appError.errorDescription ?? "Unknown")")
+            #endif
         }
     }
 
@@ -73,17 +94,26 @@ class LandmarkDataProvider {
                 "visitedLandmarkIds": FieldValue.arrayRemove([landmarkId])
             ])
         } catch {
-            print("LandmarkDataProvider: Error unmarking landmark as visited: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("LandmarkDataProvider: Error unmarking landmark as visited: \(appError.errorDescription ?? "Unknown")")
+            #endif
         }
     }
 
     /// Fetch landmarks visited by a specific user
     func fetchVisitedLandmarks(for userId: String) async -> [String] {
         do {
-            let document = try await db.collection("users").document(userId).getDocument()
+            // Use retry logic for network fetch
+            let document = try await withRetry(maxAttempts: 3) {
+                try await self.db.collection("users").document(userId).getDocument()
+            }
             return document.get("visitedLandmarkIds") as? [String] ?? []
         } catch {
-            print("LandmarkDataProvider: Error fetching visited landmarks: \(error)")
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("LandmarkDataProvider: Error fetching visited landmarks: \(appError.errorDescription ?? "Unknown")")
+            #endif
             return []
         }
     }
