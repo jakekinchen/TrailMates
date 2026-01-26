@@ -63,9 +63,17 @@ class EventDataProvider {
         }
     }
 
+    /// Generate a new event reference with DocumentReference type (for internal use)
     func generateNewEventReference() -> (reference: DocumentReference, id: String) {
         let eventRef = db.collection("events").document()
         return (eventRef, eventRef.documentID)
+    }
+
+    /// Generate a new event reference with Any type (for protocol conformance)
+    /// This allows the protocol to be Firebase-agnostic for testing
+    func generateNewEventReferenceAny() -> (reference: Any, id: String) {
+        let result = generateNewEventReference()
+        return (reference: result.reference as Any, id: result.id)
     }
 
     // MARK: - Event Query Methods

@@ -5,8 +5,33 @@ import FirebaseFirestore
 import FirebaseFunctions
 import SwiftUI
 
-/// Handles all user-related Firebase operations
-/// Extracted from FirebaseDataProvider as part of the provider refactoring
+/// Handles all user-related Firebase operations including CRUD, authentication, and queries.
+///
+/// This is the primary provider for user data operations. It manages:
+/// - User document CRUD operations
+/// - Phone number and username lookups
+/// - Real-time user observation
+/// - Profile validation
+///
+/// ## Usage
+/// ```swift
+/// // Fetch current user
+/// if let user = await UserDataProvider.shared.fetchCurrentUser() {
+///     print("Welcome, \(user.firstName)")
+/// }
+///
+/// // Save user changes
+/// try await UserDataProvider.shared.saveUser(user)
+///
+/// // Observe real-time updates
+/// UserDataProvider.shared.observeUser(id: userId) { user in
+///     // Handle updates
+/// }
+/// ```
+///
+/// ## Thread Safety
+/// All methods are safe to call from any thread. Firestore handles
+/// thread synchronization internally.
 class UserDataProvider {
     // MARK: - Singleton
     static let shared = UserDataProvider()
@@ -23,11 +48,11 @@ class UserDataProvider {
     }()
     private lazy var auth = Auth.auth()
 
-    // Store active listeners
+    /// Active Firestore listeners keyed by user ID for cleanup
     private var userListeners = [String: ListenerRegistration]()
 
     private init() {
-        // Configure Firestore settings if not already configured
+        // Configure Firestore settings with offline persistence
         let settings = FirestoreSettings()
         settings.cacheSettings = PersistentCacheSettings()
         db.settings = settings
@@ -45,24 +70,36 @@ class UserDataProvider {
 
     // MARK: - Current User Operations
 
+    /// Fetches the currently authenticated user from Firestore.
+    ///
+    /// This method requires an active Firebase Auth session. It also validates
+    /// that the stored user ID matches the document ID, correcting mismatches.
+    ///
+    /// - Returns: The current User, or nil if not authenticated or not found
     func fetchCurrentUser() async -> User? {
         guard let currentUser = auth.currentUser else {
+            #if DEBUG
             print("UserDataProvider: No authenticated user found")
+            #endif
             return nil
         }
 
         do {
             let document = try await db.collection("users").document(currentUser.uid).getDocument()
             guard document.exists else {
+                #if DEBUG
                 print("UserDataProvider: No user document found for Firebase UID")
+                #endif
                 return nil
             }
 
             let user = try document.data(as: User.self)
 
-            // Validate that stored ID matches document ID
+            // Validate and fix ID mismatch if needed (legacy data migration)
             guard user.id == document.documentID else {
-                print("Warning: Stored ID mismatch with document ID")
+                #if DEBUG
+                print("Warning: Stored ID mismatch with document ID - auto-correcting")
+                #endif
                 try await db.collection("users").document(document.documentID).updateData([
                     "id": document.documentID
                 ])
@@ -72,11 +109,16 @@ class UserDataProvider {
 
             return user
         } catch {
+            #if DEBUG
             print("UserDataProvider: Error fetching user: \(error)")
+            #endif
             return nil
         }
     }
 
+    /// Checks if there is an active Firebase Auth session.
+    ///
+    /// - Returns: true if a user is currently authenticated
     func isUserAuthenticated() -> Bool {
         auth.currentUser != nil
     }

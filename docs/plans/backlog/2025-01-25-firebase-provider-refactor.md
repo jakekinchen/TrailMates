@@ -2,7 +2,7 @@
 title: FirebaseDataProvider Refactoring
 created: 2025-01-25
 priority: backlog
-status: in-progress
+status: complete
 tags: [firebase, refactoring, architecture]
 skill: swiftui-view-refactor
 ---
@@ -36,12 +36,12 @@ FirebaseDataProvider (coordinator)
 - [x] Document all public methods in FirebaseDataProvider
 - [x] Categorize methods by domain (user, event, friend, image, landmark)
 - [x] Identify shared dependencies (Firestore, Functions, Storage)
-- [ ] Map current usage across ViewModels
+- [x] Map current usage across ViewModels
 
 ### Phase 2: Create Base Infrastructure
-- [ ] Create `FirebaseProviderProtocol` with common interface
+- [x] Create `FirebaseProviderProtocol` with common interface
 - [x] Create shared configuration/initialization
-- [ ] Set up dependency injection pattern
+- [x] Set up dependency injection pattern
 
 ### Phase 3: Extract UserDataProvider
 - [x] Move user CRUD operations
@@ -163,15 +163,67 @@ All files created in `TrailMates/Utilities/Firebase/`:
 - Backward compatibility maintained - existing code continues to work
 - Memory warning handler now uses ImageStorageProvider.clearCache()
 
-## Next Steps
-1. Add protocols for dependency injection (FirebaseProviderProtocol)
-2. Add unit tests for each provider
-3. Add mock implementations for testing
+## Completed Work (2025-01-25 - Phase 3: Protocols & DI)
+
+### Created FirebaseProviderProtocol.swift
+
+Created `TrailMates/Utilities/Firebase/FirebaseProviderProtocol.swift` containing:
+
+1. **Protocol Definitions**:
+   - `UserDataProviding` - Contract for user operations
+   - `EventDataProviding` - Contract for event operations
+   - `FriendDataProviding` - Contract for friend operations
+   - `ImageStorageProviding` - Contract for image storage operations
+   - `LandmarkDataProviding` - Contract for landmark operations
+   - `LocationDataProviding` - Contract for location operations
+   - `NotificationDataProviding` - Contract for notification operations
+
+2. **Protocol Conformance Extensions**:
+   - All concrete providers now conform to their respective protocols
+   - Enables compile-time checking of protocol compliance
+
+3. **FirebaseProviderContainer**:
+   - Dependency injection container holding all provider dependencies
+   - Singleton `.shared` for production use
+   - Custom initializer for testing with mock providers
+   - Enables proper dependency injection in ViewModels
+
+### ViewModel to Provider Mapping
+
+| ViewModel/Manager | Providers Used | Notes |
+|------------------|----------------|-------|
+| **UserManager** | UserDataProvider, ImageStorageProvider, LandmarkDataProvider, LocationDataProvider, FriendDataProvider | Central user management, delegates to specialized providers |
+| **EventViewModel** | EventDataProvider | All event operations |
+| **FriendsViewModel** | (via UserManager) | Delegates to UserManager for all operations |
+| **AuthViewModel** | (via UserManager) | Uses UserManager for user creation/login |
+| **LocationManager** | (via UserManager) | Delegates location updates to UserManager |
+| **ContactsListViewModel** | (via UserManager) | Uses UserManager.findUsersByPhoneNumbers() |
+| **LocationPickerViewModel** | None | No Firebase operations, uses CoreLocation only |
+| **PermissionsViewModel** | None | No Firebase operations, manages system permissions |
+
+### Provider Dependency Graph
+
+```
+FirebaseProviderContainer
+├── UserDataProvider (Firestore, Functions, Auth)
+├── EventDataProvider (Firestore)
+├── FriendDataProvider (Firestore, RTDB, Auth)
+├── ImageStorageProvider (Storage)
+├── LandmarkDataProvider (Firestore)
+├── LocationDataProvider (Firestore, RTDB, Auth)
+└── NotificationDataProvider (RTDB, Auth)
+```
+
+## Next Steps (Future Work)
+1. Add unit tests for each provider using protocols
+2. Create mock protocol implementations for comprehensive testing
+3. Test integration between providers
 4. Gradually migrate remaining code that uses deprecated methods
 
 ## Notes
 - Maintain singleton access during transition for compatibility
-- Consider protocol-based abstraction for testing
-- Each provider should be independently testable
+- Protocol-based abstraction enables proper testing
+- Each provider is independently testable via its protocol
 - Document migration path for existing code
 - Deprecation warnings guide developers to use new providers
+- FirebaseProviderContainer enables dependency injection for testing
