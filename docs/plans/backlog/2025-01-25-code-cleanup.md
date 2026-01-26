@@ -91,14 +91,27 @@ Phone utilities analysis:
 
 ### Phase 5: Documentation
 - [x] Add file headers where missing
-- [ ] Document public APIs
-- [ ] Add inline comments for complex logic
-- [ ] Update CLAUDE.md/AGENTS.md with patterns
+- [x] Document public APIs
+- [x] Add inline comments for complex logic
+- [x] Update CLAUDE.md/AGENTS.md with patterns
 
 **Completed 2025-01-25:**
 - Added file headers to new files: `PhoneNumberService.swift`, `AppError.swift`
 - Added file header and deprecation notice to `PhoneNumberUtility.swift`
 - Updated file header for `PhoneNumberHasher.swift`
+
+**Completed 2025-01-26:**
+- Documented all Firebase provider protocols in `FirebaseProviderProtocol.swift`:
+  - `UserDataProviding`, `EventDataProviding`, `FriendDataProviding`
+  - `ImageStorageProviding`, `LandmarkDataProviding`, `LocationDataProviding`
+  - `NotificationDataProviding`
+- Added comprehensive inline comments to `PhoneNumberHasher.swift`:
+  - Explained the hashing algorithm (normalize -> pepper -> SHA-256)
+  - Documented security considerations (rainbow tables, entropy)
+- Updated `CLAUDE.md` and `AGENTS.md` with pattern sections:
+  - Error handling patterns (using `AppError`)
+  - Phone number handling (using `PhoneNumberService`)
+  - Firebase provider patterns (using protocol-based providers)
 
 ### Phase 6: Dependency Audit
 - [x] Review Package.swift dependencies

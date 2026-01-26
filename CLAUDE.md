@@ -100,3 +100,83 @@ EOF
 - Use SwiftUI best practices
 - Prefer @Observable over ObservableObject for new code
 - Keep views lightweight and composable
+
+## Error Handling Patterns
+
+Use `AppError` for all error handling to ensure consistent user-facing messages:
+
+```swift
+// Throwing typed errors
+throw AppError.notAuthenticated()
+throw AppError.invalidInput("Username must be at least 3 characters")
+
+// Converting from external errors (Firebase, URLSession, etc.)
+do {
+    try await someOperation()
+} catch {
+    throw AppError.from(error)  // Automatically converts to appropriate AppError
+}
+
+// Checking if retry is appropriate
+if error.isRetryable {
+    // Show retry button in UI
+}
+
+// Using the retry helper for network operations
+let result = try await withRetry(maxAttempts: 3) {
+    try await networkRequest()
+}
+```
+
+**Error categories**: authentication, network, validation, resource, image, unknown
+
+## Phone Number Handling
+
+Use `PhoneNumberService` for all phone number operations:
+
+```swift
+// Formatting for display
+let display = PhoneNumberService.shared.format(phone, for: .display)  // "(555) 123-4567"
+
+// Formatting for database storage (E.164)
+let storage = PhoneNumberService.shared.format(phone, for: .storage)  // "+15551234567"
+
+// Validation
+if PhoneNumberService.shared.validate(phone) {
+    // Valid phone number
+}
+
+// Batch processing contacts
+let cleaned = PhoneNumberService.shared.cleansePhoneNumbers(contactNumbers)
+
+// Hashing for privacy-preserving contact matching
+let hash = PhoneNumberHasher.shared.hashPhoneNumber(phone)
+```
+
+**Important**: Always store phone numbers in E.164 format (`.storage`). Use `.display` only for UI.
+
+## Firebase Provider Patterns
+
+Use protocol-based providers for Firebase operations to enable testing:
+
+```swift
+// Access providers via the shared container
+let container = FirebaseProviderContainer.shared
+
+// User operations
+let user = await container.userProvider.fetchCurrentUser()
+try await container.userProvider.saveUser(updatedUser)
+
+// Event operations
+let events = await container.eventProvider.fetchPublicEvents()
+try await container.eventProvider.saveEvent(newEvent)
+
+// For testing, inject mock providers
+let mockContainer = FirebaseProviderContainer(
+    userProvider: MockUserDataProvider(),
+    eventProvider: MockEventDataProvider(),
+    // ... other providers
+)
+```
+
+**Available protocols**: `UserDataProviding`, `EventDataProviding`, `FriendDataProviding`, `ImageStorageProviding`, `LandmarkDataProviding`, `LocationDataProviding`, `NotificationDataProviding`
