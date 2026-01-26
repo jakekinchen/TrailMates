@@ -71,15 +71,16 @@ final class UserModelTests: XCTestCase {
     }
     
     func testPhoneNumberNormalization() {
+        // Using 512 (Austin, TX) area code - a real US area code that PhoneNumberKit recognizes
         let testCases = [
-            ("+1 (555) 123-4567", "15551234567"),
-            ("5551234567", "15551234567"),
-            ("+15551234567", "15551234567"),
-            ("(555) 123-4567", "15551234567")
+            ("+1 (512) 555-1234", "+15125551234"),
+            ("5125551234", "+15125551234"),
+            ("+15125551234", "+15125551234"),
+            ("(512) 555-1234", "+15125551234")
         ]
-        
+
         let firstHash = PhoneNumberHasher.shared.hashPhoneNumber(testCases[0].0)
-        
+
         for (input, _) in testCases {
             let user = User(
                 id: "test",

@@ -2,10 +2,16 @@ import XCTest
 @testable import TrailMatesATX
 
 /// Integration tests for FirebaseDataProvider.
-/// Note: These tests require Firebase to be configured and may interact with actual data.
+/// These tests require Firebase to be configured with test data and are SKIPPED by default.
+/// To run these tests, set the environment variable ENABLE_FIREBASE_INTEGRATION_TESTS=1
 /// For pure unit tests, see AsyncNetworkTests which uses MockFirebaseDataProvider.
 final class FirebaseDataProviderTests: XCTestCase {
     var dataProvider: FirebaseDataProvider!
+
+    /// Check if integration tests should run
+    private var shouldRunIntegrationTests: Bool {
+        ProcessInfo.processInfo.environment["ENABLE_FIREBASE_INTEGRATION_TESTS"] == "1"
+    }
 
     override func setUp() {
         super.setUp()
@@ -16,8 +22,9 @@ final class FirebaseDataProviderTests: XCTestCase {
         dataProvider = nil
         super.tearDown()
     }
-    
+
     func testFetchUserByHashedNumber() async throws {
+        try XCTSkipUnless(shouldRunIntegrationTests, "Skipping Firebase integration test")
         let phoneNumber = "+1 (555) 123-4567"
         let expectedHash = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
         
@@ -32,6 +39,7 @@ final class FirebaseDataProviderTests: XCTestCase {
     }
     
     func testFindUsersByHashedNumbers() async throws {
+        try XCTSkipUnless(shouldRunIntegrationTests, "Skipping Firebase integration test")
         let phoneNumbers = [
             "+1 (555) 123-4567",
             "+1 (555) 234-5678",
@@ -47,7 +55,8 @@ final class FirebaseDataProviderTests: XCTestCase {
         XCTAssertEqual(Set(resultHashes), Set(expectedHashes))
     }
     
-    func testCheckUserExists() async {
+    func testCheckUserExists() async throws {
+        try XCTSkipUnless(shouldRunIntegrationTests, "Skipping Firebase integration test")
         let phoneNumber = "+1 (555) 123-4567"
         let exists = await dataProvider.checkUserExists(phoneNumber: phoneNumber)
         XCTAssertTrue(exists)
@@ -58,6 +67,7 @@ final class FirebaseDataProviderTests: XCTestCase {
     }
     
     func testSaveInitialUser() async throws {
+        try XCTSkipUnless(shouldRunIntegrationTests, "Skipping Firebase integration test")
         let phoneNumber = "+1 (555) 123-4567"
         let user = User(
             id: "test-user-id",

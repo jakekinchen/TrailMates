@@ -16,16 +16,17 @@ final class PhoneNumberHasherTests: XCTestCase {
     
     func testHashPhoneNumberWithValidNumbers() {
         // Test various valid phone number formats
+        // Using 512 (Austin, TX) area code - a real US area code that PhoneNumberKit recognizes
         let testCases = [
-            "+1 (555) 123-4567",
-            "5551234567",
-            "+15551234567",
-            "(555) 123-4567"
+            "+1 (512) 555-1234",
+            "5125551234",
+            "+15125551234",
+            "(512) 555-1234"
         ]
-        
+
         // All these formats should hash to the same value since they represent the same number
         let expectedHash = hasher.hashPhoneNumber(testCases[0])
-        
+
         for phoneNumber in testCases {
             let hash = hasher.hashPhoneNumber(phoneNumber)
             XCTAssertEqual(hash, expectedHash, "Hash mismatch for \(phoneNumber)")
