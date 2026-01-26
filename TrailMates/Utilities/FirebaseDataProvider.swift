@@ -95,18 +95,23 @@ class FirebaseDataProvider {
     }
     
     deinit {
-        // Remove auth listener when provider is deallocated
-        if let listener = authStateListener {
-            auth.removeStateDidChangeListener(listener)
-        }
-
-        // Remove memory warning observer
+        // Remove memory warning observer (this is safe from nonisolated context)
         if let observer = memoryWarningObserver {
             NotificationCenter.default.removeObserver(observer)
         }
 
-        // Clean up all active listeners
-        removeAllListeners()
+        // Use Task to call MainActor-isolated methods from nonisolated deinit context
+        // Capture the listener handle before entering the Task
+        let listener = authStateListener
+        Task { @MainActor [weak self] in
+            // Remove auth listener when provider is deallocated
+            if let listener = listener {
+                Auth.auth().removeStateDidChangeListener(listener)
+            }
+
+            // Clean up all active listeners
+            self?.removeAllListeners()
+        }
     }
     
     private func removeAllListeners() {

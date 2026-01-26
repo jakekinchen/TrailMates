@@ -143,9 +143,13 @@ class UserManager: ObservableObject {
         // Cancel publishers (this is safe as it's not actor-isolated)
         cancellables.forEach { $0.cancel() }
 
-        // Use the tracked ID for cleanup
-        if let userId = currentUserId {
-            userProvider.stopObservingUser(id: userId)
+        // Use Task to call MainActor-isolated method from nonisolated deinit context
+        // Capture the userId before entering the Task
+        let userId = currentUserId
+        Task { @MainActor in
+            if let userId = userId {
+                UserDataProvider.shared.stopObservingUser(id: userId)
+            }
         }
     }
     

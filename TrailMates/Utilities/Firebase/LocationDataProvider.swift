@@ -26,7 +26,10 @@ class LocationDataProvider {
 
     deinit {
         // Clean up all active listeners
-        removeAllListeners()
+        // Use Task to call MainActor-isolated method from nonisolated deinit context
+        Task { @MainActor [weak self] in
+            self?.removeAllListeners()
+        }
     }
 
     private func removeAllListeners() {
