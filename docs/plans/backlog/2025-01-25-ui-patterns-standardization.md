@@ -2,7 +2,7 @@
 title: UI Patterns Standardization
 created: 2025-01-25
 priority: backlog
-status: in-progress
+status: complete
 tags: [swiftui, ui, patterns, design-system]
 skill: swiftui-ui-patterns
 ---
@@ -51,7 +51,7 @@ Establish consistent UI patterns and create a reusable component library for Tra
 - [x] Document navigation patterns (NavigationStack, sheets, full-screen covers)
 - [x] Standardize sheet presentation (prefer `.sheet(item:)`)
 - [x] Create navigation helper types if needed
-- [ ] Update views to follow standard patterns
+- [x] Update views to follow standard patterns
 
 **Navigation Patterns Documentation (completed 2025-01-25):**
 
@@ -69,9 +69,9 @@ Establish consistent UI patterns and create a reusable component library for Tra
 | ProfileView | `.sheet(isPresented:)` x2 | Could consolidate |
 | ProfileSetupView | `.sheet(isPresented:)` x2 | Fine for simple cases |
 
-#### NavigationStack vs NavigationView Usage
-- `NavigationStack` (preferred): PermissionsView, AddFriendsView, CreateEventView
-- `NavigationView` (legacy): SettingsView, NotificationsView, LocationPickerView, EventDetailView
+#### NavigationStack vs NavigationView Usage (Updated 2025-01-25)
+- `NavigationStack` (preferred): PermissionsView, AddFriendsView, CreateEventView, SettingsView, NotificationsView, LocationPickerView
+- `NavigationView` (legacy): None remaining - all migrated to NavigationStack
 
 ### Phase 3: Component Library
 - [x] Create `Components/` folder structure:
@@ -107,7 +107,15 @@ Establish consistent UI patterns and create a reusable component library for Tra
 - [x] Create `FormSection` component
 - [x] Create `FormField` component (text, phone, email variants)
 - [x] Standardize validation display
-- [ ] Create keyboard handling utilities
+- [x] Create keyboard handling utilities
+
+**Keyboard Utilities Created (2025-01-25):**
+Located in `/Utilities/KeyboardUtilities.swift`:
+- `KeyboardUtilities.dismiss()` - Programmatic keyboard dismissal
+- `KeyboardObserver` - Observable object tracking keyboard height/visibility
+- `.dismissKeyboardOnTap()` - View modifier for tap-to-dismiss
+- `.keyboardAdaptive(offset:)` - View modifier for keyboard-aware layout
+- `.keyboardDismissButton()` - Toolbar button for number pads
 
 ### Phase 5: List Patterns
 - [x] Create `ListRowView` base component
@@ -181,44 +189,87 @@ struct ExampleComponent: View {
 - `SegmentedControl`: Good animation handling
 - `PermissionCard`: Clear status visualization
 
-## New Component Locations Summary
+## Complete Component Library Catalog
+
+### Components Directory Structure
 ```
 TrailMates/
 ├── Components/
 │   ├── Buttons/
-│   │   ├── PrimaryButton.swift
-│   │   └── SecondaryButton.swift
+│   │   ├── PrimaryButton.swift      - Main action button with loading state
+│   │   └── SecondaryButton.swift    - Secondary/outline button styles
 │   ├── Cards/
-│   │   ├── EventDetailView.swift
-│   │   ├── EventRowView.swift
-│   │   ├── FriendsListCard.swift
-│   │   ├── PermissionCard.swift
-│   │   └── ProfileHeader.swift
+│   │   ├── EventDetailView.swift    - Full event details display
+│   │   ├── EventRowView.swift       - Event list row
+│   │   ├── FriendsListCard.swift    - Friends list display
+│   │   ├── PermissionCard.swift     - Permission request card
+│   │   └── ProfileHeader.swift      - User profile header
 │   ├── Common/
-│   │   ├── EmptyStateView.swift
-│   │   ├── ErrorView.swift
-│   │   ├── IllustrationView.swift
-│   │   ├── LoadingView.swift
-│   │   ├── PermissionStatus.swift
-│   │   └── SegmentedControl.swift
+│   │   ├── EmptyStateView.swift     - Empty state with action button
+│   │   ├── ErrorView.swift          - Error display with retry
+│   │   ├── IllustrationView.swift   - Animated bird decoration
+│   │   ├── LoadingView.swift        - Standard loading indicator
+│   │   ├── PermissionStatus.swift   - Permission state enum
+│   │   └── SegmentedControl.swift   - Pill-style segment picker
 │   ├── Forms/
-│   │   ├── FormField.swift
-│   │   ├── FormSection.swift
-│   │   └── ValidationError.swift
+│   │   ├── FormField.swift          - Text input with floating label
+│   │   ├── FormSection.swift        - Groups related form fields
+│   │   └── ValidationErrorView.swift - Error message display
 │   ├── Lists/
-│   │   └── ListRowView.swift
+│   │   └── ListRowView.swift        - Reusable list row with icons
 │   ├── Map/
-│   │   ├── AnnotationViews.swift
-│   │   ├── CustomPin.swift
-│   │   ├── MapAnnotations.swift
-│   │   └── MapView+AnnotationManagement.swift
+│   │   ├── AnnotationViews.swift    - MKAnnotationView subclasses
+│   │   ├── CustomPin.swift          - Draggable map pin
+│   │   ├── MapAnnotations.swift     - MKPointAnnotation subclasses
+│   │   └── MapView+AnnotationManagement.swift - Map extension helpers
 │   └── Overlays/
-│       ├── BottomSheet.swift
-│       └── TransparentBlurView.swift
-└── Theme/
-    ├── AppColors.swift
-    ├── AppSpacing.swift
-    └── AppTypography.swift
+│       ├── BottomSheet.swift        - Draggable sheet with 3 positions
+│       └── TransparentBlurView.swift - Glass-morphism blur effect
+├── Theme/
+│   ├── AppColors.swift              - Semantic color definitions
+│   ├── AppSpacing.swift             - Spacing scale and layout helpers
+│   └── AppTypography.swift          - Font scale and text styles
+└── Utilities/
+    ├── KeyboardUtilities.swift      - Keyboard handling utilities
+    ├── ViewExtensions.swift         - Common view modifiers
+    └── NavigationBarModifier.swift  - Custom navigation bar (root level)
+```
+
+### Usage Quick Reference
+
+**Buttons:**
+```swift
+PrimaryButton(title: "Save", isLoading: isSaving) { await save() }
+SecondaryButton(title: "Cancel", style: .outline) { dismiss() }
+```
+
+**State Views:**
+```swift
+LoadingView(message: "Loading...")
+ErrorView(message: error.message) { retry() }
+EmptyStateView(title: "No Items", message: "Add something", actionTitle: "Add") { add() }
+```
+
+**Forms:**
+```swift
+FormSection(title: "Personal Info") {
+    FormField(text: $name, placeholder: "Name", type: .text)
+    FormField(text: $email, placeholder: "Email", type: .email)
+}
+```
+
+**Keyboard Handling:**
+```swift
+VStack { ... }
+    .dismissKeyboardOnTap()
+    .keyboardDismissButton()
+```
+
+**Theming:**
+```swift
+Text("Title").appTextStyle(.titleLarge)
+view.background(AppColors.backgroundPrimary)
+VStack(spacing: AppSpacing.md) { ... }
 ```
 
 ## Notes
@@ -227,3 +278,8 @@ TrailMates/
 - Document usage in component file header
 - Consider extracting to separate package eventually
 - Xcode project uses PBXFileSystemSynchronizedRootGroup - folder changes auto-sync
+
+## Remaining Work (Future Tasks)
+- Phase 5: Create section header style, add pull-to-refresh helper
+- Phase 6: Document design system in a formal guide
+- Phase 7: Complete accessibility audit and improvements
