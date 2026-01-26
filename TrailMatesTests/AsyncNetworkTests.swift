@@ -13,7 +13,7 @@ struct AsyncNetworkTests {
     @Test("MockFirebaseDataProvider handles save failure gracefully")
     func testSaveFailureRecovery() async throws {
         let mockProvider = MockFirebaseDataProvider()
-        mockProvider.shouldFailOnSave = true
+        await mockProvider.configure(shouldFailOnSave: true)
 
         let user = TestFixtures.sampleUser
 
@@ -26,7 +26,7 @@ struct AsyncNetworkTests {
         }
 
         // Verify that after failure, we can recover by changing mock behavior
-        mockProvider.shouldFailOnSave = false
+        await mockProvider.configure(shouldFailOnSave: false)
         try await mockProvider.saveUser(user)
 
         let savedUser = await mockProvider.fetchUser(by: user.id)
@@ -37,17 +37,17 @@ struct AsyncNetworkTests {
     @Test("MockFirebaseDataProvider handles fetch failure gracefully")
     func testFetchFailureRecovery() async {
         let mockProvider = MockFirebaseDataProvider()
-        mockProvider.shouldFailOnFetch = true
+        await mockProvider.configure(shouldFailOnFetch: true)
 
         // Store a user first (without failure)
-        mockProvider.users[TestFixtures.sampleUser.id] = TestFixtures.sampleUser
+        await mockProvider.setUser(TestFixtures.sampleUser)
 
         // Fetch should return nil when failing
         let user = await mockProvider.fetchUser(by: TestFixtures.sampleUser.id)
         #expect(user == nil)
 
         // Recovery: disable failure mode
-        mockProvider.shouldFailOnFetch = false
+        await mockProvider.configure(shouldFailOnFetch: false)
         let recoveredUser = await mockProvider.fetchUser(by: TestFixtures.sampleUser.id)
         #expect(recoveredUser != nil)
     }
@@ -61,7 +61,7 @@ struct AsyncNetworkTests {
         try await mockProvider.saveEvent(event)
 
         // Enable failure mode
-        mockProvider.shouldFailOnSave = true
+        await mockProvider.configure(shouldFailOnSave: true)
 
         do {
             try await mockProvider.deleteEvent(event.id)
@@ -71,12 +71,12 @@ struct AsyncNetworkTests {
         }
 
         // Event should still exist
-        mockProvider.shouldFailOnFetch = false
+        await mockProvider.configure(shouldFailOnFetch: false)
         let stillExists = await mockProvider.fetchEvent(by: event.id)
         #expect(stillExists != nil)
 
         // Recovery
-        mockProvider.shouldFailOnSave = false
+        await mockProvider.configure(shouldFailOnSave: false)
         try await mockProvider.deleteEvent(event.id)
         let deleted = await mockProvider.fetchEvent(by: event.id)
         #expect(deleted == nil)
@@ -85,7 +85,7 @@ struct AsyncNetworkTests {
     @Test("MockFirebaseDataProvider handles friend request failure")
     func testFriendRequestFailureRecovery() async throws {
         let mockProvider = MockFirebaseDataProvider()
-        mockProvider.shouldFailOnSave = true
+        await mockProvider.configure(shouldFailOnSave: true)
 
         do {
             try await mockProvider.sendFriendRequest(fromUserId: "user-1", to: "user-2")
@@ -95,10 +95,11 @@ struct AsyncNetworkTests {
         }
 
         // Recovery
-        mockProvider.shouldFailOnSave = false
+        await mockProvider.configure(shouldFailOnSave: false)
         try await mockProvider.sendFriendRequest(fromUserId: "user-1", to: "user-2")
 
-        #expect(mockProvider.sendFriendRequestCallCount == 2)
+        let callCount = await mockProvider.getSendFriendRequestCallCount()
+        #expect(callCount == 2)
     }
 
     @Test("MockUserManager handles auth failure gracefully")
@@ -130,12 +131,11 @@ struct AsyncNetworkTests {
         let mockProvider = MockFirebaseDataProvider()
 
         // Add some data while "online"
-        mockProvider.users["user-1"] = TestFixtures.sampleUser
-        mockProvider.events["event-1"] = TestFixtures.sampleWalkEvent
+        await mockProvider.setUser(TestFixtures.sampleUser)
+        await mockProvider.setEvent(TestFixtures.sampleWalkEvent)
 
         // Go "offline"
-        mockProvider.shouldFailOnFetch = true
-        mockProvider.shouldFailOnSave = true
+        await mockProvider.configure(shouldFailOnSave: true, shouldFailOnFetch: true)
 
         // All fetches should return nil/empty
         let user = await mockProvider.fetchCurrentUser()
@@ -161,18 +161,17 @@ struct AsyncNetworkTests {
         let mockProvider = MockFirebaseDataProvider()
 
         // Add data while online
-        mockProvider.users["user-1"] = TestFixtures.sampleUser
+        let testUser = TestFixtures.createUser(id: "user-1", firstName: "Test")
+        await mockProvider.setUser(testUser)
 
         // Go offline
-        mockProvider.shouldFailOnFetch = true
-        mockProvider.shouldFailOnSave = true
+        await mockProvider.configure(shouldFailOnSave: true, shouldFailOnFetch: true)
 
         let offlineResult = await mockProvider.fetchUser(by: "user-1")
         #expect(offlineResult == nil)
 
         // Reconnect
-        mockProvider.shouldFailOnFetch = false
-        mockProvider.shouldFailOnSave = false
+        await mockProvider.configure(shouldFailOnSave: false, shouldFailOnFetch: false)
 
         let onlineResult = await mockProvider.fetchUser(by: "user-1")
         #expect(onlineResult != nil)
@@ -225,22 +224,18 @@ struct AsyncNetworkTests {
         var attemptCount = 0
         let maxAttempts = 3
 
-        // Simulate intermittent failure
-        func simulatedSave() async throws {
-            attemptCount += 1
-            if attemptCount < maxAttempts {
-                mockProvider.shouldFailOnSave = true
-            } else {
-                mockProvider.shouldFailOnSave = false
-            }
-            try await mockProvider.saveUser(TestFixtures.sampleUser)
-        }
-
-        // Retry logic
+        // Retry logic with simulated intermittent failure
         var succeeded = false
-        for _ in 1...maxAttempts {
+        for attempt in 1...maxAttempts {
+            attemptCount += 1
+            // Configure failure mode based on attempt number
+            if attempt < maxAttempts {
+                await mockProvider.configure(shouldFailOnSave: true)
+            } else {
+                await mockProvider.configure(shouldFailOnSave: false)
+            }
             do {
-                try await simulatedSave()
+                try await mockProvider.saveUser(TestFixtures.sampleUser)
                 succeeded = true
                 break
             } catch {
@@ -256,7 +251,7 @@ struct AsyncNetworkTests {
     @Test("Operation fails after max retries exhausted")
     func testMaxRetriesExhausted() async {
         let mockProvider = MockFirebaseDataProvider()
-        mockProvider.shouldFailOnSave = true
+        await mockProvider.configure(shouldFailOnSave: true)
 
         var attemptCount = 0
         let maxAttempts = 3
@@ -279,7 +274,7 @@ struct AsyncNetworkTests {
     func testConcurrentFetches() async {
         let mockProvider = MockFirebaseDataProvider()
         let testUser = TestFixtures.sampleUser
-        mockProvider.users[testUser.id] = testUser
+        await mockProvider.setUser(testUser)
 
         // Perform concurrent fetches
         async let fetch1 = mockProvider.fetchUser(by: testUser.id)
@@ -313,10 +308,14 @@ struct AsyncNetworkTests {
         try await save3
 
         // All users should be saved
-        #expect(mockProvider.users.count == 3)
-        #expect(mockProvider.users["user-1"] != nil)
-        #expect(mockProvider.users["user-2"] != nil)
-        #expect(mockProvider.users["user-3"] != nil)
+        let usersCount = await mockProvider.getUsersCount()
+        #expect(usersCount == 3)
+        let savedUser1 = await mockProvider.getUser("user-1")
+        let savedUser2 = await mockProvider.getUser("user-2")
+        let savedUser3 = await mockProvider.getUser("user-3")
+        #expect(savedUser1 != nil)
+        #expect(savedUser2 != nil)
+        #expect(savedUser3 != nil)
     }
 
     // MARK: - Custom Error Tests
@@ -325,8 +324,7 @@ struct AsyncNetworkTests {
     func testCustomMockError() async {
         let mockProvider = MockFirebaseDataProvider()
         let customError = NSError(domain: "TestDomain", code: 42, userInfo: [NSLocalizedDescriptionKey: "Custom test error"])
-        mockProvider.shouldFailOnSave = true
-        mockProvider.mockError = customError
+        await mockProvider.configure(shouldFailOnSave: true, mockError: customError)
 
         do {
             try await mockProvider.saveUser(TestFixtures.sampleUser)
@@ -369,8 +367,8 @@ struct AsyncNetworkTests {
     @Test("MockFirebaseDataProvider tracks call counts correctly")
     func testCallCountTracking() async throws {
         let mockProvider = MockFirebaseDataProvider()
-        mockProvider.mockCurrentUserId = "test-user"
-        mockProvider.users["test-user"] = TestFixtures.sampleUser
+        await mockProvider.configure(mockCurrentUserId: "test-user")
+        await mockProvider.setUser(TestFixtures.sampleUser)
 
         // Perform various operations
         _ = await mockProvider.fetchCurrentUser()
@@ -380,9 +378,12 @@ struct AsyncNetworkTests {
         try await mockProvider.saveUser(TestFixtures.sampleUser)
         try await mockProvider.saveUser(TestFixtures.sampleUser)
 
-        #expect(mockProvider.fetchCurrentUserCallCount == 2)
-        #expect(mockProvider.fetchUserByIdCallCount == 1)
-        #expect(mockProvider.saveUserCallCount == 3)
+        let fetchCurrentUserCount = await mockProvider.getFetchCurrentUserCallCount()
+        let fetchUserByIdCount = await mockProvider.getFetchUserByIdCallCount()
+        let saveUserCount = await mockProvider.getSaveUserCallCount()
+        #expect(fetchCurrentUserCount == 2)
+        #expect(fetchUserByIdCount == 1)
+        #expect(saveUserCount == 3)
     }
 
     @Test("MockFirebaseDataProvider reset clears call counts")
@@ -393,16 +394,22 @@ struct AsyncNetworkTests {
         _ = await mockProvider.fetchAllEvents()
         try await mockProvider.saveEvent(TestFixtures.sampleWalkEvent)
 
-        #expect(mockProvider.fetchAllEventsCallCount == 1)
-        #expect(mockProvider.saveEventCallCount == 1)
+        var fetchAllEventsCount = await mockProvider.getFetchAllEventsCallCount()
+        var saveEventCount = await mockProvider.getSaveEventCallCount()
+        #expect(fetchAllEventsCount == 1)
+        #expect(saveEventCount == 1)
 
         // Reset
-        mockProvider.reset()
+        await mockProvider.reset()
 
-        #expect(mockProvider.fetchAllEventsCallCount == 0)
-        #expect(mockProvider.saveEventCallCount == 0)
-        #expect(mockProvider.users.isEmpty)
-        #expect(mockProvider.events.isEmpty)
+        fetchAllEventsCount = await mockProvider.getFetchAllEventsCallCount()
+        saveEventCount = await mockProvider.getSaveEventCallCount()
+        let usersCount = await mockProvider.getUsersCount()
+        let eventsCount = await mockProvider.getEventsCount()
+        #expect(fetchAllEventsCount == 0)
+        #expect(saveEventCount == 0)
+        #expect(usersCount == 0)
+        #expect(eventsCount == 0)
     }
 
     // MARK: - Timeout Simulation Tests
@@ -410,7 +417,8 @@ struct AsyncNetworkTests {
     @Test("Simulated delay does not affect mock behavior")
     func testSimulatedDelay() async throws {
         let mockProvider = MockFirebaseDataProvider()
-        mockProvider.users["user-1"] = TestFixtures.sampleUser
+        let testUser = TestFixtures.createUser(id: "user-1", firstName: "Test")
+        await mockProvider.setUser(testUser)
 
         // Measure time
         let start = Date()

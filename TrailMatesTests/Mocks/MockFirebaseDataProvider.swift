@@ -5,7 +5,8 @@ import UIKit
 
 /// A mock implementation of FirebaseDataProvider for testing purposes.
 /// This mock allows tests to control Firebase responses without actual network calls.
-class MockFirebaseDataProvider {
+/// Implemented as an actor to ensure thread-safe concurrent access during tests.
+actor MockFirebaseDataProvider {
     // MARK: - Mock Data Storage
     var users: [String: User] = [:]
     var events: [String: Event] = [:]
@@ -37,6 +38,76 @@ class MockFirebaseDataProvider {
 
     // MARK: - Generated IDs
     private var nextEventId = 1
+
+    init() {}
+
+    // MARK: - Configuration Methods (for test setup)
+
+    func setUser(_ user: User) {
+        users[user.id] = user
+    }
+
+    func setEvent(_ event: Event) {
+        events[event.id] = event
+    }
+
+    func configure(
+        shouldFailOnSave: Bool = false,
+        shouldFailOnFetch: Bool = false,
+        mockError: Error? = nil,
+        mockCurrentUserId: String? = nil,
+        mockUsernameTaken: Bool = false,
+        mockUserExists: Bool = false
+    ) {
+        self.shouldFailOnSave = shouldFailOnSave
+        self.shouldFailOnFetch = shouldFailOnFetch
+        self.mockError = mockError
+        self.mockCurrentUserId = mockCurrentUserId
+        self.mockUsernameTaken = mockUsernameTaken
+        self.mockUserExists = mockUserExists
+    }
+
+    func getUsersCount() -> Int {
+        return users.count
+    }
+
+    func getUser(_ id: String) -> User? {
+        return users[id]
+    }
+
+    func getEventsCount() -> Int {
+        return events.count
+    }
+
+    func getEvent(_ id: String) -> Event? {
+        return events[id]
+    }
+
+    // MARK: - Call Count Getters (for test assertions)
+
+    func getSendFriendRequestCallCount() -> Int {
+        return sendFriendRequestCallCount
+    }
+
+    func getFetchCurrentUserCallCount() -> Int {
+        return fetchCurrentUserCallCount
+    }
+
+    func getFetchUserByIdCallCount() -> Int {
+        return fetchUserByIdCallCount
+    }
+
+    func getSaveUserCallCount() -> Int {
+        return saveUserCallCount
+    }
+
+    func getFetchAllEventsCallCount() -> Int {
+        return fetchAllEventsCallCount
+    }
+
+    func getSaveEventCallCount() -> Int {
+        return saveEventCallCount
+    }
 
     // MARK: - User Operations
 
