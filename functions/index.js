@@ -4,6 +4,41 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
+async function updateFriendArrays(userId, friendId, shouldAdd) {
+  const userRef = admin.firestore().collection("users").doc(userId);
+  const friendRef = admin.firestore().collection("users").doc(friendId);
+
+  await admin.firestore().runTransaction(async (transaction) => {
+    const [userDoc, friendDoc] = await Promise.all([
+      transaction.get(userRef),
+      transaction.get(friendRef),
+    ]);
+
+    if (!userDoc.exists || !friendDoc.exists) {
+      throw new Error("User document not found.");
+    }
+
+    const userFriends = Array.isArray(userDoc.data().friends) ?
+      userDoc.data().friends : [];
+    const friendFriends = Array.isArray(friendDoc.data().friends) ?
+      friendDoc.data().friends : [];
+
+    const userSet = new Set(userFriends);
+    const friendSet = new Set(friendFriends);
+
+    if (shouldAdd) {
+      userSet.add(friendId);
+      friendSet.add(userId);
+    } else {
+      userSet.delete(friendId);
+      friendSet.delete(userId);
+    }
+
+    transaction.update(userRef, {friends: Array.from(userSet)});
+    transaction.update(friendRef, {friends: Array.from(friendSet)});
+  });
+}
+
 // Cloud Function: findUsersByPhoneNumbers
 exports.findUsersByPhoneNumbers =
 functions.https.onCall(async (data, context) => {
@@ -136,6 +171,99 @@ exports.checkUserExists = functions.https.onCall(async (data, context) => {
     return {userExists: !snapshot.empty};
   } catch (error) {
     console.error("Error checking user existence:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+// Cloud Function: acceptFriendRequest
+exports.acceptFriendRequest = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated.",
+    );
+  }
+
+  const {requestId} = data || {};
+  if (!requestId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "requestId is required.",
+    );
+  }
+
+  const userId = context.auth.uid;
+  const requestRef = admin.database()
+      .ref(`friend_requests/${userId}/${requestId}`);
+  const snapshot = await requestRef.get();
+
+  if (!snapshot.exists()) {
+    throw new functions.https.HttpsError(
+        "not-found",
+        "Friend request not found.",
+    );
+  }
+
+  const fromUserId = snapshot.child("fromUserId").val();
+  if (!fromUserId || typeof fromUserId !== "string") {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Invalid friend request payload.",
+    );
+  }
+
+  if (fromUserId === userId) {
+    throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Cannot friend yourself.",
+    );
+  }
+
+  try {
+    await updateFriendArrays(userId, fromUserId, true);
+
+    const updates = {};
+    updates[`friend_requests/${userId}/${requestId}`] = null;
+    updates[`notifications/${userId}/${requestId}`] = null;
+    await admin.database().ref().update(updates);
+
+    return {success: true, friendId: fromUserId};
+  } catch (error) {
+    console.error("Error accepting friend request:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+// Cloud Function: removeFriend
+exports.removeFriend = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated.",
+    );
+  }
+
+  const {friendId} = data || {};
+  if (!friendId || typeof friendId !== "string") {
+    throw new functions.https.HttpsError(
+        "invalid-argument",
+        "friendId is required.",
+    );
+  }
+
+  const userId = context.auth.uid;
+  if (friendId === userId) {
+    throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Cannot remove yourself as a friend.",
+    );
+  }
+
+  try {
+    await updateFriendArrays(userId, friendId, false);
+    return {success: true};
+  } catch (error) {
+    console.error("Error removing friend:", error);
     throw new functions.https.HttpsError("internal", error.message);
   }
 });
