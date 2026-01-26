@@ -96,14 +96,6 @@ enum AppColors {
     static var navigationBackground: Color { beige.opacity(0.65) }
 }
 
-// MARK: - Color Extensions
-extension Color {
-    /// Creates a color with the given opacity applied
-    func opacity(_ opacity: Double) -> Color {
-        self.opacity(opacity)
-    }
-}
-
 // MARK: - Previews
 #Preview("Brand Colors") {
     VStack(spacing: 16) {
