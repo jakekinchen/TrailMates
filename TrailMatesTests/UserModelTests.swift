@@ -1,5 +1,5 @@
 import XCTest
-@testable import TrailMates
+@testable import TrailMatesATX
 
 final class UserModelTests: XCTestCase {
     var user: User!

@@ -1,7 +1,7 @@
 import Foundation
 import CoreLocation
 import UIKit
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// A mock implementation of UserManager for testing purposes.
 /// This mock allows tests to control user state and operations without actual Firebase calls.

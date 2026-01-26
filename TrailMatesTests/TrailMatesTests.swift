@@ -6,7 +6,7 @@
 //
 
 import Testing
-@testable import TrailMates
+@testable import TrailMatesATX
 
 struct TrailMatesTests {
 

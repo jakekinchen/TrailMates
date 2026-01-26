@@ -1,6 +1,6 @@
 import Foundation
 import CoreLocation
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// Test fixtures providing sample data for unit tests.
 /// Use these fixtures to create consistent test data across test files.

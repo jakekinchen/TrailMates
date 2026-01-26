@@ -1,12 +1,13 @@
 import Testing
 import Foundation
 import CoreLocation
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// Tests for UserManager user state management and business logic.
 /// Note: UserManager uses a singleton pattern with FirebaseDataProvider dependency.
 /// These tests focus on testable state management and utility functions.
 @Suite("UserManager Tests")
+@MainActor
 struct UserManagerTests {
 
     // MARK: - Phone Number Normalization Tests

@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import CoreLocation
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// Tests for FriendsViewModel friend list management and filtering logic.
 /// Note: FriendsViewModel depends on UserManager for data operations.

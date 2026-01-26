@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// Tests for AuthViewModel phone authentication flow states and error handling.
 /// Note: AuthViewModel depends on FirebaseAuth which requires actual Firebase initialization.

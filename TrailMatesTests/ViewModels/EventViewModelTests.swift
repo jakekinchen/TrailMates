@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import CoreLocation
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// Tests for EventViewModel event management and filtering logic.
 /// Note: EventViewModel uses a singleton pattern with FirebaseDataProvider dependency.

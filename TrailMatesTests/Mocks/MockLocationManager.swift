@@ -1,6 +1,6 @@
 import Foundation
 import CoreLocation
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// A mock implementation of LocationManager for testing purposes.
 /// This mock allows tests to control location updates and authorization status without actual GPS.

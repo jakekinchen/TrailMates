@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import CoreLocation
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// Tests for async operations, error recovery, and offline behavior simulation.
 /// These tests verify that the app handles network failures and edge cases gracefully.

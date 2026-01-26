@@ -1,7 +1,7 @@
 import Foundation
 import CoreLocation
 import UIKit
-@testable import TrailMates
+@testable import TrailMatesATX
 
 /// A mock implementation of FirebaseDataProvider for testing purposes.
 /// This mock allows tests to control Firebase responses without actual network calls.

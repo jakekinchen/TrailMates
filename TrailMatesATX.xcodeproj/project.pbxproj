@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		487383AAFA8E5D22F80E249C /* Pods_TrailMatesATXTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15AB30E49C6964094EED86E0 /* Pods_TrailMatesATXTests.framework */; };
 		73611DDC2D01FD8F00868529 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 73611DDB2D01FD8F00868529 /* FirebaseFunctions */; };
 		736EC68C2D3C475E00664BA1 /* PhoneNumberKit in Frameworks */ = {isa = PBXBuildFile; productRef = 736EC68B2D3C475E00664BA1 /* PhoneNumberKit */; };
 		73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */; };
@@ -16,8 +15,6 @@
 		73D868CA2CED5F7000AF0CAD /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C92CED5F7000AF0CAD /* FirebaseDatabase */; };
 		73D868CC2CED5F7000AF0CAD /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868CB2CED5F7000AF0CAD /* FirebaseFirestore */; };
 		73D869962CF02DA000AF0CAD /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 73D869952CF02DA000AF0CAD /* FirebaseStorage */; };
-		92DDCA45D03401DEF0316489 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBE303B5867650D316F6A973 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework */; };
-		F70A2B83D159591BDA4F7CA7 /* Pods_TrailMatesATX.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D82C2401057F16999D6F15F4 /* Pods_TrailMatesATX.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,19 +35,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		030191C7FF78D364E9FABC7E /* Pods-TrailMatesATX.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATX.release.xcconfig"; path = "Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX.release.xcconfig"; sourceTree = "<group>"; };
-		15AB30E49C6964094EED86E0 /* Pods_TrailMatesATXTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TrailMatesATXTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		5FEF23103267851868BD6CAC /* Pods-TrailMatesATX.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATX.debug.xcconfig"; path = "Target Support Files/Pods-TrailMatesATX/Pods-TrailMatesATX.debug.xcconfig"; sourceTree = "<group>"; };
-		648088AB38921F8F79E12232 /* Pods-TrailMatesATXTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATXTests.debug.xcconfig"; path = "Target Support Files/Pods-TrailMatesATXTests/Pods-TrailMatesATXTests.debug.xcconfig"; sourceTree = "<group>"; };
 		73266DA92CAEDBF60087B7A1 /* TrailMatesATX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TrailMatesATX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73266DBB2CAEDBF80087B7A1 /* TrailMatesATXTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrailMatesATXTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		73266DC52CAEDBF80087B7A1 /* TrailMatesATXUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrailMatesATXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		73D869872CEFEBDC00AF0CAD /* TrailMatesATX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TrailMatesATX.entitlements; sourceTree = "<group>"; };
-		8F851F652CAAF28BDBA9B96C /* Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig"; path = "Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig"; sourceTree = "<group>"; };
-		B6A6A13BB3B93BE667A9C14D /* Pods-TrailMatesATXTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATXTests.release.xcconfig"; path = "Target Support Files/Pods-TrailMatesATXTests/Pods-TrailMatesATXTests.release.xcconfig"; sourceTree = "<group>"; };
-		BBE303B5867650D316F6A973 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TrailMatesATX_TrailMatesATXUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		D82C2401057F16999D6F15F4 /* Pods_TrailMatesATX.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TrailMatesATX.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		F52DA2B3EF539E2F343D2E87 /* Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig"; path = "Target Support Files/Pods-TrailMatesATX-TrailMatesATXUITests/Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -76,11 +64,15 @@
 		};
 		73266DBE2CAEDBF80087B7A1 /* TrailMatesTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = TrailMatesTests;
 			sourceTree = "<group>";
 		};
 		73266DC82CAEDBF80087B7A1 /* TrailMatesUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = TrailMatesUITests;
 			sourceTree = "<group>";
 		};
@@ -99,7 +91,6 @@
 				73D869962CF02DA000AF0CAD /* FirebaseStorage in Frameworks */,
 				736EC68C2D3C475E00664BA1 /* PhoneNumberKit in Frameworks */,
 				73D868C62CED5F7000AF0CAD /* FirebaseAuth in Frameworks */,
-				F70A2B83D159591BDA4F7CA7 /* Pods_TrailMatesATX.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -107,7 +98,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				487383AAFA8E5D22F80E249C /* Pods_TrailMatesATXTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -115,7 +105,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				92DDCA45D03401DEF0316489 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -129,7 +118,6 @@
 				73266DAB2CAEDBF60087B7A1 /* TrailMates */,
 				73266DBE2CAEDBF80087B7A1 /* TrailMatesTests */,
 				73266DC82CAEDBF80087B7A1 /* TrailMatesUITests */,
-				73D868C42CED5F7000AF0CAD /* Frameworks */,
 				73266DAA2CAEDBF60087B7A1 /* Products */,
 				B528289D0890C7CB5AFD4911 /* Pods */,
 			);
@@ -145,25 +133,9 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		73D868C42CED5F7000AF0CAD /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				D82C2401057F16999D6F15F4 /* Pods_TrailMatesATX.framework */,
-				BBE303B5867650D316F6A973 /* Pods_TrailMatesATX_TrailMatesATXUITests.framework */,
-				15AB30E49C6964094EED86E0 /* Pods_TrailMatesATXTests.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		B528289D0890C7CB5AFD4911 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				5FEF23103267851868BD6CAC /* Pods-TrailMatesATX.debug.xcconfig */,
-				030191C7FF78D364E9FABC7E /* Pods-TrailMatesATX.release.xcconfig */,
-				8F851F652CAAF28BDBA9B96C /* Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig */,
-				F52DA2B3EF539E2F343D2E87 /* Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig */,
-				648088AB38921F8F79E12232 /* Pods-TrailMatesATXTests.debug.xcconfig */,
-				B6A6A13BB3B93BE667A9C14D /* Pods-TrailMatesATXTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -175,7 +147,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 73266DCF2CAEDBF80087B7A1 /* Build configuration list for PBXNativeTarget "TrailMatesATX" */;
 			buildPhases = (
-				0FC45D0A8BC73A81585B2C9A /* [CP] Check Pods Manifest.lock */,
 				73266DA52CAEDBF60087B7A1 /* Sources */,
 				73266DA62CAEDBF60087B7A1 /* Frameworks */,
 				73D868B72CE6A29700AF0CAD /* Resources */,
@@ -206,7 +177,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 73266DD22CAEDBF80087B7A1 /* Build configuration list for PBXNativeTarget "TrailMatesATXTests" */;
 			buildPhases = (
-				20CC861DC50441FFCE7ABAC2 /* [CP] Check Pods Manifest.lock */,
 				73266DB72CAEDBF80087B7A1 /* Sources */,
 				73266DB82CAEDBF80087B7A1 /* Frameworks */,
 				73266DB92CAEDBF80087B7A1 /* Resources */,
@@ -228,7 +198,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 73266DD52CAEDBF80087B7A1 /* Build configuration list for PBXNativeTarget "TrailMatesATXUITests" */;
 			buildPhases = (
-				E5BDA9BCF31D7775047B1506 /* [CP] Check Pods Manifest.lock */,
 				73266DC12CAEDBF80087B7A1 /* Sources */,
 				73266DC22CAEDBF80087B7A1 /* Frameworks */,
 				73266DC32CAEDBF80087B7A1 /* Resources */,
@@ -317,75 +286,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		0FC45D0A8BC73A81585B2C9A /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-TrailMatesATX-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		20CC861DC50441FFCE7ABAC2 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-TrailMatesATXTests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		E5BDA9BCF31D7775047B1506 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-TrailMatesATX-TrailMatesATXUITests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		73266DA52CAEDBF60087B7A1 /* Sources */ = {
@@ -546,7 +446,6 @@
 		};
 		73266DD02CAEDBF80087B7A1 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5FEF23103267851868BD6CAC /* Pods-TrailMatesATX.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -588,7 +487,6 @@
 		};
 		73266DD12CAEDBF80087B7A1 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 030191C7FF78D364E9FABC7E /* Pods-TrailMatesATX.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -630,7 +528,6 @@
 		};
 		73266DD32CAEDBF80087B7A1 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 648088AB38921F8F79E12232 /* Pods-TrailMatesATXTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -650,7 +547,6 @@
 		};
 		73266DD42CAEDBF80087B7A1 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B6A6A13BB3B93BE667A9C14D /* Pods-TrailMatesATXTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -670,7 +566,6 @@
 		};
 		73266DD62CAEDBF80087B7A1 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8F851F652CAAF28BDBA9B96C /* Pods-TrailMatesATX-TrailMatesATXUITests.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -688,7 +583,6 @@
 		};
 		73266DD72CAEDBF80087B7A1 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F52DA2B3EF539E2F343D2E87 /* Pods-TrailMatesATX-TrailMatesATXUITests.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;

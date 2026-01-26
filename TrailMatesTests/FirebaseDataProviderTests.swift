@@ -1,24 +1,18 @@
 import XCTest
-@testable import TrailMates
-import Firebase
-import FirebaseAuth
-import FirebaseFunctions
+@testable import TrailMatesATX
 
+/// Integration tests for FirebaseDataProvider.
+/// Note: These tests require Firebase to be configured and may interact with actual data.
+/// For pure unit tests, see AsyncNetworkTests which uses MockFirebaseDataProvider.
 final class FirebaseDataProviderTests: XCTestCase {
     var dataProvider: FirebaseDataProvider!
-    var mockAuth: MockAuth!
-    var mockFunctions: MockFunctions!
-    
+
     override func setUp() {
         super.setUp()
-        mockAuth = MockAuth()
-        mockFunctions = MockFunctions()
         dataProvider = FirebaseDataProvider.shared
     }
-    
+
     override func tearDown() {
-        mockAuth = nil
-        mockFunctions = nil
         dataProvider = nil
         super.tearDown()
     }
@@ -79,34 +73,5 @@ final class FirebaseDataProviderTests: XCTestCase {
         let savedUser = await dataProvider.fetchUser(byPhoneNumber: phoneNumber)
         XCTAssertNotNil(savedUser)
         XCTAssertEqual(savedUser?.hashedPhoneNumber, user.hashedPhoneNumber)
-    }
-}
-
-// MARK: - Mock Classes
-class MockAuth: Auth {
-    var mockCurrentUser: User?
-    
-    override var currentUser: User? {
-        return mockCurrentUser
-    }
-}
-
-class MockFunctions: Functions {
-    var mockResults: [String: Any] = [:]
-    
-    override func httpsCallable(_ name: String) -> HTTPSCallable {
-        return MockCallable(mockResults: mockResults)
-    }
-}
-
-class MockCallable: HTTPSCallable {
-    let mockResults: [String: Any]
-    
-    init(mockResults: [String: Any]) {
-        self.mockResults = mockResults
-    }
-    
-    override func call(_ data: Any?, completion: @escaping (Result<HTTPSCallableResult, Error>) -> Void) {
-        // Implement mock behavior
     }
 } 
