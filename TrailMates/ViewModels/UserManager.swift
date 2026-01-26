@@ -194,6 +194,8 @@ class UserManager: ObservableObject {
            let user = try? JSONDecoder().decode(User.self, from: userData) {
             currentUser = user
             isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
+            isWelcomeComplete = UserDefaults.standard.bool(forKey: "isWelcomeComplete")
+            isPermissionsGranted = UserDefaults.standard.bool(forKey: "isPermissionsGranted")
             isOnboardingComplete = UserDefaults.standard.bool(forKey: "isOnboardingComplete")
             hasAddedFriends = UserDefaults.standard.bool(forKey: "hasAddedFriends")
             return true

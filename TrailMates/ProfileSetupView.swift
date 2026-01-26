@@ -217,16 +217,6 @@ private extension ProfileSetupView {
             )
         }
         .padding(.horizontal)
-        .onChange(of: firstName) { oldValue, newValue in
-            if !newValue.isEmpty && focusedField == .firstName {
-                focusedField = .lastName
-            }
-        }
-        .onChange(of: lastName) { oldValue, newValue in
-            if !newValue.isEmpty && focusedField == .lastName {
-                focusedField = .username
-            }
-        }
     }
 
     var saveButton: some View {
