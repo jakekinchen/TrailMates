@@ -7,7 +7,7 @@ struct NotificationsView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 ForEach(viewModel.notifications) { notification in
                     NotificationRow(notification: notification)
