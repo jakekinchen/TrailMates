@@ -304,6 +304,20 @@ class UserManager: ObservableObject {
         userProvider.observeUser(id: userId) { [weak self] updatedUser in
             guard let self = self else { return }
             if let user = updatedUser {
+                // Don't overwrite valid profile data with stale/empty data from Firebase
+                // This can happen due to Firebase read/write replication delays
+                let currentHasProfile = !(self.currentUser?.firstName.isEmpty ?? true) &&
+                                       !(self.currentUser?.lastName.isEmpty ?? true) &&
+                                       !(self.currentUser?.username.isEmpty ?? true)
+                let fetchedHasProfile = !user.firstName.isEmpty &&
+                                       !user.lastName.isEmpty &&
+                                       !user.username.isEmpty
+
+                if currentHasProfile && !fetchedHasProfile {
+                    print("⚠️ refreshUserData: Ignoring stale Firebase data with empty profile fields")
+                    return
+                }
+
                 self.currentUser = user
                 self.persistUserSession()
             }
@@ -473,23 +487,16 @@ class UserManager: ObservableObject {
                 try await userProvider.saveUser(updatedUser)
                 print("✅ User saved successfully to Firebase")
 
-                // Force a fresh fetch to get updated URLs
-                print("📥 Fetching updated user from Firebase")
-                let refreshedUser = await userProvider.fetchUser(by: updatedUser.id)
-                print("   Fetch completed. Got refreshed user: \(refreshedUser != nil)")
-
-                if let refreshedUser = refreshedUser {
-                    print("✅ Setting refreshed user:")
-                    print("   - First Name: '\(refreshedUser.firstName)'")
-                    print("   - Last Name: '\(refreshedUser.lastName)'")
-                    print("   - Username: '\(refreshedUser.username)'")
-                    self.currentUser = refreshedUser
-                } else {
-                    print("⚠️ No refreshed user found, using updated user")
-                    self.currentUser = updatedUser
-                }
+                // Use the updatedUser directly instead of fetching from Firebase
+                // Firebase read may return stale/cached data before write replication completes
+                print("✅ Setting current user to saved user (skipping fetch to avoid stale data)")
+                objectWillChange.send()
+                self.currentUser = updatedUser
                 self.persistUserSession()
                 print("✅ Profile save process completed")
+                print("   - First Name: '\(updatedUser.firstName)'")
+                print("   - Last Name: '\(updatedUser.lastName)'")
+                print("   - Username: '\(updatedUser.username)'")
             } catch {
                 print("❌ Error saving profile: \(error.localizedDescription)")
                 print("   Detailed error: \(error)")
@@ -692,6 +699,19 @@ class UserManager: ObservableObject {
 
         if let userId = currentUser?.id,
            let refreshedUser = await userProvider.fetchUser(by: userId) {
+            // Don't overwrite valid profile data with stale/empty data from Firebase
+            let currentHasProfile = !(self.currentUser?.firstName.isEmpty ?? true) &&
+                                   !(self.currentUser?.lastName.isEmpty ?? true) &&
+                                   !(self.currentUser?.username.isEmpty ?? true)
+            let fetchedHasProfile = !refreshedUser.firstName.isEmpty &&
+                                   !refreshedUser.lastName.isEmpty &&
+                                   !refreshedUser.username.isEmpty
+
+            if currentHasProfile && !fetchedHasProfile {
+                print("⚠️ refreshUserInBackground: Ignoring stale Firebase data with empty profile fields")
+                return
+            }
+
             self.currentUser = refreshedUser
             self.persistUserSession()
             lastRefreshTime = Date()
