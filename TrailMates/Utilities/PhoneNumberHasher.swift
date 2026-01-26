@@ -11,14 +11,14 @@ import CryptoKit
 
 /// Utility class for securely hashing phone numbers.
 /// Uses PhoneNumberService for normalization before hashing.
-@MainActor
-final class PhoneNumberHasher {
-    // Shared instance
+/// This class is thread-safe as it only performs stateless hashing operations.
+final class PhoneNumberHasher: Sendable {
+    // Shared instance - safe to access from any thread
     static let shared = PhoneNumberHasher()
 
     private init() {}
 
-    /// Hashes a phone number using SHA-256
+    /// Hashes a phone number using SHA-256.
     /// - Parameters:
     ///   - phoneNumber: The phone number to hash
     ///   - pepper: Optional server-side pepper for additional security
@@ -33,15 +33,15 @@ final class PhoneNumberHasher {
         // Hash the normalized number with pepper
         return hashValue(normalized + pepper)
     }
-    
+
     /// Internal method to create SHA-256 hash
     private func hashValue(_ input: String) -> String {
         let inputData = Data(input.utf8)
         let hashed = SHA256.hash(data: inputData)
         return hashed.compactMap { String(format: "%02x", $0) }.joined()
     }
-    
-    /// Batch hashes multiple phone numbers
+
+    /// Batch hashes multiple phone numbers.
     /// - Parameters:
     ///   - phoneNumbers: Array of phone numbers to hash
     ///   - pepper: Optional server-side pepper

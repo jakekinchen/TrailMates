@@ -13,17 +13,18 @@ import PhoneNumberKit
 
 /// Unified service for all phone number operations.
 /// Provides formatting, validation, and normalization using PhoneNumberKit.
-@MainActor
-final class PhoneNumberService {
+/// This class is thread-safe as PhoneNumberKit is designed to be used from any thread.
+final class PhoneNumberService: Sendable {
 
     // MARK: - Singleton
 
+    /// Shared instance - safe to access from any thread
     static let shared = PhoneNumberService()
 
     // MARK: - Types
 
     /// Format type for phone number output
-    enum FormatType {
+    enum FormatType: Sendable {
         /// Human-readable display format (e.g., "+1 (555) 123-4567")
         case display
         /// E.164 format for database storage (e.g., "+15551234567")
@@ -34,8 +35,9 @@ final class PhoneNumberService {
 
     // MARK: - Private Properties
 
-    /// PhoneNumberKit instance - expensive to create, so we keep one instance
-    private let phoneNumberKit = PhoneNumberKit()
+    /// PhoneNumberKit instance - expensive to create, so we keep one instance.
+    /// PhoneNumberKit is thread-safe by design, so we use nonisolated(unsafe).
+    nonisolated(unsafe) private let phoneNumberKit = PhoneNumberKit()
 
     // MARK: - Initialization
 
