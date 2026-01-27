@@ -2,7 +2,7 @@
 title: Fix phone login "User document not found" for existing accounts
 created: 2026-01-27
 priority: urgent
-status: blocked
+status: in-progress
 tags: [auth, firebase, firestore, phone-number]
 ---
 
@@ -20,6 +20,7 @@ Unblock users who can authenticate via phone number but fail login because their
 - [x] Add/extend Cloud Function tests for the new callable
 - [x] Unblock Cloud Functions v2 deploy (Pub/Sub + Eventarc service identities)
 - [x] Deploy `ensureUserDocument` Cloud Function to production
+- [x] Persist profile setup fields to Firestore (avoid re-prompt on re-login)
 - [ ] Verify phone login works end-to-end (existing account)
 - [x] Run tests/builds (functions + iOS)
 - [ ] Archive this plan when complete

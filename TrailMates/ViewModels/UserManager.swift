@@ -118,24 +118,6 @@ class UserManager: ObservableObject {
     }
     
     private func setupObservers() {
-        // Setup automatic saving with location change filtering
-        // Uses User.hasOnlyLocationChanged() to avoid unnecessary saves when only location changes
-        $currentUser
-            .dropFirst()
-            .debounce(for: .seconds(5), scheduler: RunLoop.main)
-            .compactMap { $0 }
-            .removeDuplicates { oldUser, newUser in
-                // Skip save if only location changed (handled separately by LocationManager)
-                // Return true to mark as "duplicate" and filter out
-                return newUser.hasOnlyLocationChanged(comparedTo: oldUser)
-            }
-            .sink { [weak self] user in
-                Task { [weak self] in
-                    try await self?.saveProfile(updatedUser: user)
-                }
-            }
-            .store(in: &cancellables)
-        
         // Setup state observations
         Publishers.CombineLatest4($isLoggedIn, $isWelcomeComplete, $isPermissionsGranted, $hasAddedFriends)
             .dropFirst()
@@ -496,36 +478,31 @@ class UserManager: ObservableObject {
         print("   - Last Name: '\(updatedUser.lastName)'")
         print("   - Username: '\(updatedUser.username)'")
 
-        // Check if this is initial profile setup
-        let isInitialSetup = currentUser?.firstName.isEmpty ?? true ||
-                            currentUser?.lastName.isEmpty ?? true ||
-                            currentUser?.username.isEmpty ?? true
+        do {
+            print("📤 Attempting to save user to Firebase")
+            try await userProvider.saveUser(updatedUser)
+            print("✅ User saved successfully to Firebase")
 
-        // Always save during initial setup or when there are changes
-        if isInitialSetup || updatedUser.profileImage != nil || currentUser != updatedUser {
-            print("✅ Changes detected or initial setup, proceeding with save")
-            do {
-                print("📤 Attempting to save user to Firebase")
-                try await userProvider.saveUser(updatedUser)
-                print("✅ User saved successfully to Firebase")
-
-                // Use the updatedUser directly instead of fetching from Firebase
-                // Firebase read may return stale/cached data before write replication completes
-                print("✅ Setting current user to saved user (skipping fetch to avoid stale data)")
+            // Ensure the in-memory reference is the same user we just saved.
+            // Avoid re-assigning the same instance (which can create redundant update loops).
+            if currentUser !== updatedUser {
                 objectWillChange.send()
                 self.currentUser = updatedUser
-                self.persistUserSession()
-                print("✅ Profile save process completed")
-                print("   - First Name: '\(updatedUser.firstName)'")
-                print("   - Last Name: '\(updatedUser.lastName)'")
-                print("   - Username: '\(updatedUser.username)'")
-            } catch {
-                print("❌ Error saving profile: \(error.localizedDescription)")
-                print("   Detailed error: \(error)")
-                throw error
             }
-        } else {
-            print("ℹ️ No changes detected, skipping save")
+
+            self.currentUserId = updatedUser.id
+            self.persistUserSession()
+
+            print("✅ Profile save process completed")
+            print("   - First Name: '\(updatedUser.firstName)'")
+            print("   - Last Name: '\(updatedUser.lastName)'")
+            print("   - Username: '\(updatedUser.username)'")
+        } catch {
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("❌ Error saving profile: \(appError.errorDescription ?? "Unknown")")
+            #endif
+            throw appError
         }
     }
 

@@ -383,16 +383,16 @@ private extension ProfileSetupView {
         print("   Last Name: '\(oldUser.lastName)'")
         print("   Username: '\(oldUser.username)'")
 
-        let newUser = oldUser
-        newUser.firstName = firstName
-        newUser.lastName = lastName
-        newUser.username = username
+        let wasProfileIncomplete = oldUser.firstName.isEmpty ||
+                                  oldUser.lastName.isEmpty ||
+                                  oldUser.username.isEmpty
 
-        let isInitialSetup = oldUser.firstName.isEmpty ||
-                            oldUser.lastName.isEmpty ||
-                            oldUser.username.isEmpty
+        let user = oldUser
+        user.firstName = firstName
+        user.lastName = lastName
+        user.username = username
 
-        if isInitialSetup {
+        if wasProfileIncomplete {
             print("Initial profile setup detected - will force save")
         }
 
@@ -403,15 +403,15 @@ private extension ProfileSetupView {
         }
 
         print("Updated User State:")
-        print("   First Name: '\(newUser.firstName)'")
-        print("   Last Name: '\(newUser.lastName)'")
-        print("   Username: '\(newUser.username)'")
+        print("   First Name: '\(user.firstName)'")
+        print("   Last Name: '\(user.lastName)'")
+        print("   Username: '\(user.username)'")
 
         print("\n Saving updated user...")
-        if isInitialSetup {
-            try await userManager.saveInitialProfile(updatedUser: newUser)
+        if wasProfileIncomplete {
+            try await userManager.saveInitialProfile(updatedUser: user)
         } else {
-            try await userManager.saveProfile(updatedUser: newUser)
+            try await userManager.saveProfile(updatedUser: user)
         }
         print("User saved successfully")
 
