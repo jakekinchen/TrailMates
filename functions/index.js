@@ -183,22 +183,60 @@ exports.checkUsernameTaken = onCall(
 exports.checkUserExists = onCall(
     {region: "us-central1", maxInstances: 3},
     async (request) => {
-      const {hashedPhoneNumber} = request.data;
-      if (!hashedPhoneNumber) {
+      const {hashedPhoneNumber, phoneNumberE164} = request.data;
+      if (!hashedPhoneNumber && !phoneNumberE164) {
         throw new HttpsError(
             "invalid-argument",
-            "The function must be called with a hashed phone number.",
+            "The function must be called with a hashed phone number " +
+            "or E.164 phone number.",
         );
       }
 
       try {
-        const snapshot = await admin.firestore()
-            .collection("users")
-            .where("hashedPhoneNumber", "==", hashedPhoneNumber)
-            .limit(1)
-            .get();
+        // First try by hashedPhoneNumber (preferred for new users)
+        if (hashedPhoneNumber) {
+          const snapshot = await admin.firestore()
+              .collection("users")
+              .where("hashedPhoneNumber", "==", hashedPhoneNumber)
+              .limit(1)
+              .get();
 
-        return {userExists: !snapshot.empty};
+          if (!snapshot.empty) {
+            return {userExists: true};
+          }
+        }
+
+        // Fallback: check by phoneNumber for legacy users without hash
+        if (phoneNumberE164) {
+          // Check various phone number formats that might be stored
+          const formats = [
+            phoneNumberE164, // +12345678901
+            phoneNumberE164.replace(/^\+1/, "+1 "), // +1 2345678901
+          ];
+
+          // Format with parentheses: +1 (234) 567-8901
+          const digits = phoneNumberE164.replace(/\D/g, "");
+          if (digits.length === 11 && digits.startsWith("1")) {
+            const areaCode = digits.slice(1, 4);
+            const prefix = digits.slice(4, 7);
+            const line = digits.slice(7, 11);
+            formats.push(`+1 (${areaCode}) ${prefix}-${line}`);
+          }
+
+          for (const format of formats) {
+            const snapshot = await admin.firestore()
+                .collection("users")
+                .where("phoneNumber", "==", format)
+                .limit(1)
+                .get();
+
+            if (!snapshot.empty) {
+              return {userExists: true};
+            }
+          }
+        }
+
+        return {userExists: false};
       } catch (error) {
         console.error("Error checking user existence:", error);
         throw new HttpsError("internal", error.message);
@@ -259,10 +297,33 @@ exports.ensureUserDocument = onCall(
       const hashedPhoneNumber = hashPhoneNumberE164(phoneNumber);
 
       try {
-        const legacyQuerySnapshot = await usersRef
+        // First try by hashedPhoneNumber
+        let legacyQuerySnapshot = await usersRef
             .where("hashedPhoneNumber", "==", hashedPhoneNumber)
             .limit(1)
             .get();
+
+        // Fallback: try by phoneNumber for legacy users without hash
+        if (legacyQuerySnapshot.empty) {
+          // Try various phone number formats
+          const digits = phoneNumber.replace(/\D/g, "");
+          const formats = [phoneNumber];
+
+          if (digits.length === 11 && digits.startsWith("1")) {
+            const areaCode = digits.slice(1, 4);
+            const prefix = digits.slice(4, 7);
+            const line = digits.slice(7, 11);
+            formats.push(`+1 (${areaCode}) ${prefix}-${line}`);
+          }
+
+          for (const format of formats) {
+            legacyQuerySnapshot = await usersRef
+                .where("phoneNumber", "==", format)
+                .limit(1)
+                .get();
+            if (!legacyQuerySnapshot.empty) break;
+          }
+        }
 
         if (legacyQuerySnapshot.empty) {
           throw new HttpsError(

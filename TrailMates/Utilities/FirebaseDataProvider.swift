@@ -83,7 +83,9 @@ class FirebaseDataProvider {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.handleMemoryWarning()
+            Task { @MainActor in
+                self?.handleMemoryWarning()
+            }
         }
 
         print("🔥 FirebaseDataProvider init started - Services will be initialized on first use")

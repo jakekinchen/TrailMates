@@ -133,32 +133,32 @@ class NotificationsViewModel: ObservableObject {
     @Published private(set) var notifications: [TrailNotification] = []
     @Published private(set) var isLoading = false
     @Published private(set) var error: Error?
-    
-    private let dataProvider = FirebaseDataProvider.shared
+
+    private let notificationProvider = NotificationDataProvider.shared
     private let userManager = UserManager.shared
-    
+
     init() { }
-    
+
     func fetchNotifications() async {
         isLoading = true
         error = nil
-        
+
         do {
             guard let firebaseUser = Auth.auth().currentUser,
                   let currentUser = userManager.currentUser else { return }
-            
-            notifications = try await dataProvider.fetchNotifications(forid: firebaseUser.uid, userID: currentUser.id)
+
+            notifications = try await notificationProvider.fetchNotifications(forId: firebaseUser.uid, userID: currentUser.id)
         } catch {
             self.error = error
         }
-        
+
         isLoading = false
     }
-    
+
     func deleteNotification(_ notification: TrailNotification) async {
         do {
             guard let firebaseUser = Auth.auth().currentUser else { return }
-            try await dataProvider.deleteNotification(
+            try await notificationProvider.deleteNotification(
                 id: firebaseUser.uid,
                 notificationId: notification.id
             )
@@ -169,7 +169,7 @@ class NotificationsViewModel: ObservableObject {
             self.error = error
         }
     }
-    
+
     func clearAllNotifications() async {
         for notification in notifications {
             await deleteNotification(notification)
@@ -179,16 +179,14 @@ class NotificationsViewModel: ObservableObject {
 
 @MainActor
 class NotificationRowViewModel: ObservableObject {
-    
-    private let dataProvider = FirebaseDataProvider.shared
-    
 
-    
+    private let notificationProvider = NotificationDataProvider.shared
+
     func handleNotificationTap(_ notification: TrailNotification) async {
         if !notification.isRead {
             do {
                 guard let firebaseUser = Auth.auth().currentUser else { return }
-                try await dataProvider.markNotificationAsRead(
+                try await notificationProvider.markNotificationAsRead(
                     id: firebaseUser.uid,
                     notificationId: notification.id
                 )

@@ -184,7 +184,7 @@ class NotificationDataProvider {
 
     // MARK: - Helper Methods
 
-    private func getTitleForNotificationType(_ type: NotificationType) -> String {
+    private nonisolated func getTitleForNotificationType(_ type: NotificationType) -> String {
         switch type {
         case .friendRequest:
             return "New Friend Request"

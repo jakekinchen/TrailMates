@@ -397,12 +397,17 @@ class UserDataProvider {
 
     func checkUserExists(phoneNumber: String) async -> Bool {
         let hashedNumber = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
+        // Also send E.164 format for legacy user lookup
+        let e164Number = PhoneNumberService.shared.format(phoneNumber, for: .storage)
 
         let function = functions.httpsCallable("checkUserExists")
         do {
             // Use retry logic for cloud function call
             let result = try await withRetry(maxAttempts: 3) {
-                try await function.call(["hashedPhoneNumber": hashedNumber])
+                try await function.call([
+                    "hashedPhoneNumber": hashedNumber,
+                    "phoneNumberE164": e164Number ?? phoneNumber
+                ])
             }
             if let data = result.data as? [String: Any],
                let userExists = data["userExists"] as? Bool {

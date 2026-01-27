@@ -205,14 +205,14 @@ struct StatsSection: View {
     }
 }
 
-// MARK: - Equatable Conformances (MainActor isolated for Swift 6 concurrency)
-extension StatCard: @preconcurrency Equatable {
+// MARK: - Equatable Conformances
+extension StatCard: Equatable {
     static func == (lhs: StatCard, rhs: StatCard) -> Bool {
         lhs.icon == rhs.icon && lhs.title == rhs.title && lhs.value == rhs.value
     }
 }
 
-extension StatsSection: @preconcurrency Equatable {
+extension StatsSection: Equatable {
     static func == (lhs: StatsSection, rhs: StatsSection) -> Bool {
         lhs.stats == rhs.stats
     }

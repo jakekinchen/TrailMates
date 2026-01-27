@@ -18,8 +18,8 @@ Unblock users who can authenticate via phone number but fail login because their
   - [x] Copy legacy doc data into `/users/{uid}` when needed
 - [x] Update iOS login flow to call the ensure/migration path when `/users/{uid}` is missing
 - [x] Add/extend Cloud Function tests for the new callable
-- [ ] Unblock Cloud Functions v2 deploy (Pub/Sub + Eventarc service identities)
-- [ ] Deploy `ensureUserDocument` Cloud Function to production
+- [x] Unblock Cloud Functions v2 deploy (Pub/Sub + Eventarc service identities)
+- [x] Deploy `ensureUserDocument` Cloud Function to production
 - [ ] Verify phone login works end-to-end (existing account)
 - [x] Run tests/builds (functions + iOS)
 - [ ] Archive this plan when complete

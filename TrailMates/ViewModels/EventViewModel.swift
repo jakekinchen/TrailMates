@@ -13,18 +13,11 @@ class EventViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     
     // MARK: - Private Properties
-    // MARK: Sub-provider (preferred for new code)
     private let eventProvider = EventDataProvider.shared
-
-    // Legacy provider (deprecated - use eventProvider instead)
-    @available(*, deprecated, message: "Use eventProvider instead")
-    let dataProvider: FirebaseDataProvider
-
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
-    private init(dataProvider: FirebaseDataProvider = FirebaseDataProvider.shared) {
-        self.dataProvider = dataProvider
+    private init() {
         setupSubscriptions()
         Task { await loadEvents() }
     }
