@@ -30,10 +30,15 @@ TrailMates started in **React Native**, providing a flexible cross-platform foun
 
 1. Clone the repository: `git clone https://github.com/username/trailmates.git`
 2. Navigate to the project directory: `cd trailmates`
-3. Install dependencies: `pod install`
-4. Open the `.xcworkspace` file in Xcode: `open TrailMates.xcworkspace`
-5. Configure API keys: Set up environment keys for Firestore or other services in your Xcode project.
-6. Run the app: `Command + R`
+3. Open the workspace in Xcode: `open TrailMatesATX.xcworkspace`
+4. Configure Firebase (required):
+   - Copy `TrailMates/App/GoogleService-Info.plist.template` → `TrailMates/App/GoogleService-Info.plist`
+   - Replace the placeholder values with the real values from Firebase Console
+5. Run the app: select scheme `TrailMatesATX` → `⌘R`
+
+### CLI build/test (optional)
+- Build: `xcodebuild -workspace TrailMatesATX.xcworkspace -scheme TrailMatesATX -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build`
+- Test: `xcodebuild test -workspace TrailMatesATX.xcworkspace -scheme TrailMatesATX -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
 
 ## Future Roadmap
 
@@ -51,4 +56,4 @@ Contributions to TrailMates are welcome. To contribute:
 
 ## License
 
-TrailMates is licensed under the MIT License.
+License: TBD.

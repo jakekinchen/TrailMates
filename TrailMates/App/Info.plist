@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.bridges.trailmates.firebaseauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>${FIREBASE_AUTH_URL_SCHEME}</string>
+			</array>
+		</dict>
+	</array>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<true/>
+	<key>GoogleUtilitiesAppDelegateProxyEnabled</key>
+	<true/>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>TrailMates needs access to your calendar to add events you&apos;re attending.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>TrailMates needs camera access to take your profile photo.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>TrailMates uses your contacts to help you find friends who already use the app.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>TrailMates uses your location in the background to share your live position with friends while you&apos;re on the trail.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>TrailMates uses your location to show nearby friends and trail events.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>TrailMates needs photo library access to choose your profile photo.</string>
+	<key>FirebaseAutomaticScreenReportingEnabled</key>
+	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>comgooglemaps</string>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>magic-retro.ttf</string>
+		<string>SF-Pro.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+</dict>
+</plist>
