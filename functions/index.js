@@ -1,14 +1,28 @@
 const functions = require("firebase-functions");
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 // const {DocumentSnapshot} = require("firebase-admin/firestore");
 
 admin.initializeApp();
 
+/**
+ * Hashes an E.164 phone number using SHA-256.
+ * @param {string} phoneNumberE164 E.164 formatted phone number.
+ *   Example: +15551234567
+ * @return {string} Lowercase hex SHA-256 hash.
+ */
 function hashPhoneNumberE164(phoneNumberE164) {
   return crypto.createHash("sha256").update(phoneNumberE164).digest("hex");
 }
 
+/**
+ * Updates two users' friend arrays in a single Firestore transaction.
+ * @param {string} userId Current user's UID.
+ * @param {string} friendId Friend user's UID.
+ * @param {boolean} shouldAdd True to add, false to remove.
+ * @return {Promise<void>} Resolves when the transaction completes.
+ */
 async function updateFriendArrays(userId, friendId, shouldAdd) {
   const userRef = admin.firestore().collection("users").doc(userId);
   const friendRef = admin.firestore().collection("users").doc(friendId);
@@ -45,140 +59,152 @@ async function updateFriendArrays(userId, friendId, shouldAdd) {
 }
 
 // Cloud Function: findUsersByPhoneNumbers
-exports.findUsersByPhoneNumbers =
-functions.https.onCall(async (data, context) => {
-  // 1. Verify authentication
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-        "unauthenticated",
-        "The function must be called while authenticated.",
-    );
-  }
-  console.log(`🔐 Authenticated user: ${context.auth.uid}`);
+exports.findUsersByPhoneNumbers = onCall(
+    {region: "us-central1", maxInstances: 3},
+    async (request) => {
+      // 1. Verify authentication
+      if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "The function must be called while authenticated.",
+        );
+      }
+      console.log(`🔐 Authenticated user: ${request.auth.uid}`);
 
-  // 2. Validate input
-  const {hashedPhoneNumbers} = data;
-  if (!hashedPhoneNumbers || !Array.isArray(hashedPhoneNumbers)) {
-    throw new functions.https.HttpsError(
-        "invalid-argument",
-        "The function must be called with an array of hashed phone numbers.",
-    );
-  }
+      // 2. Validate input
+      const {hashedPhoneNumbers} = request.data;
+      if (!hashedPhoneNumbers || !Array.isArray(hashedPhoneNumbers)) {
+        throw new HttpsError(
+            "invalid-argument",
+            "The function must be called with an array of " +
+              "hashed phone numbers.",
+        );
+      }
 
-  if (hashedPhoneNumbers.length === 0) {
-    return {users: []};
-  }
+      if (hashedPhoneNumbers.length === 0) {
+        return {users: []};
+      }
 
-  try {
-    // 3. Query Firestore for all matching users in chunks (Firestore "in" limit = 10)
-    const usersRef = admin.firestore().collection("users");
-    const uniqueHashes = [...new Set(hashedPhoneNumbers)];
-    const chunkSize = 10;
-    const matchedUsers = [];
-    const matchedUserIds = new Set();
+      try {
+        // 3. Query Firestore for all matching users in chunks
+        // (Firestore "in" limit = 10).
+        const usersRef = admin.firestore().collection("users");
+        const uniqueHashes = [...new Set(hashedPhoneNumbers)];
+        const chunkSize = 10;
+        const matchedUsers = [];
+        const matchedUserIds = new Set();
 
-    for (let i = 0; i < uniqueHashes.length; i += chunkSize) {
-      const batch = uniqueHashes.slice(i, i + chunkSize);
-      const snapshot = await usersRef
-          .where("hashedPhoneNumber", "in", batch)
-          .get();
+        for (let i = 0; i < uniqueHashes.length; i += chunkSize) {
+          const batch = uniqueHashes.slice(i, i + chunkSize);
+          const snapshot = await usersRef
+              .where("hashedPhoneNumber", "in", batch)
+              .get();
 
-      snapshot.forEach((doc) => {
-        if (matchedUserIds.has(doc.id)) {
-          return;
+          snapshot.forEach((doc) => {
+            if (matchedUserIds.has(doc.id)) {
+              return;
+            }
+
+            const userData = doc.data();
+            matchedUserIds.add(doc.id);
+
+            // Only return necessary user data for matching
+            matchedUsers.push({
+              id: doc.id,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              username: userData.username,
+              phoneNumber: userData.phoneNumber,
+              profileImageUrl: userData.profileImageUrl,
+              profileThumbnailUrl: userData.profileThumbnailUrl,
+            });
+          });
         }
 
-        const userData = doc.data();
-        matchedUserIds.add(doc.id);
+        console.log(`\n📊 Results Summary:`);
+        console.log(`   Input hashes: ${hashedPhoneNumbers.length}`);
+        console.log(`   Matches found: ${matchedUsers.length}`);
 
-        // Only return necessary user data for matching
-        matchedUsers.push({
-          id: doc.id,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          username: userData.username,
-          phoneNumber: userData.phoneNumber,
-          profileImageUrl: userData.profileImageUrl,
-          profileThumbnailUrl: userData.profileThumbnailUrl,
-        });
-      });
-    }
-
-    console.log(`\n📊 Results Summary:`);
-    console.log(`   Input hashes: ${hashedPhoneNumbers.length}`);
-    console.log(`   Matches found: ${matchedUsers.length}`);
-
-    return {users: matchedUsers};
-  } catch (error) {
-    console.error("Error in findUsersByPhoneNumbers:", error);
-    throw new functions.https.HttpsError("internal", error.message);
-  }
-});
+        return {users: matchedUsers};
+      } catch (error) {
+        console.error("Error in findUsersByPhoneNumbers:", error);
+        throw new HttpsError("internal", error.message);
+      }
+    },
+);
 
 // Cloud Function: checkUsernameTaken
-exports.checkUsernameTaken = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-        "unauthenticated",
-        "The function must be called while authenticated.",
-    );
-  }
+exports.checkUsernameTaken = onCall(
+    {region: "us-central1", maxInstances: 3},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "The function must be called while authenticated.",
+        );
+      }
 
-  // 1. Validate input
-  const {username, excludeUserId} = data || {};
-  if (!username || typeof username !== "string") {
-    throw new functions.https.HttpsError(
-        "invalid-argument",
-        "A valid username string is required.",
-    );
-  }
+      // 1. Validate input
+      const {username, excludeUserId} = request.data || {};
+      if (!username || typeof username !== "string") {
+        throw new HttpsError(
+            "invalid-argument",
+            "A valid username string is required.",
+        );
+      }
 
-  console.log(`🔎 Checking if username is taken: ${username}`);
+      console.log(`🔎 Checking if username is taken: ${username}`);
 
-  // 2. Query Firestore
-  try {
-    const snapshot = await admin
-        .firestore()
-        .collection("users")
-        .where("username", "==", username)
-        .get();
+      // 2. Query Firestore
+      try {
+        const snapshot = await admin
+            .firestore()
+            .collection("users")
+            .where("username", "==", username)
+            .get();
 
-    // 3. Return true/false
-    const usernameTaken = snapshot.docs.some((doc) => doc.id !== excludeUserId);
-    console.log(`Username: '${username}' isTaken: ${usernameTaken}`);
-    return {usernameTaken};
-  } catch (error) {
-    console.error("Error checking username:", error);
-    throw new functions.https.HttpsError(
-        "internal",
-        "An error occurred while checking username.",
-    );
-  }
-});
+        // 3. Return true/false
+        const usernameTaken = snapshot.docs.some(
+            (doc) => doc.id !== excludeUserId,
+        );
+        console.log(`Username: '${username}' isTaken: ${usernameTaken}`);
+        return {usernameTaken};
+      } catch (error) {
+        console.error("Error checking username:", error);
+        throw new HttpsError(
+            "internal",
+            "An error occurred while checking username.",
+        );
+      }
+    },
+);
 
 // Cloud Function: checkUserExists
-exports.checkUserExists = functions.https.onCall(async (data, context) => {
-  const {hashedPhoneNumber} = data;
-  if (!hashedPhoneNumber) {
-    throw new functions.https.HttpsError(
-        "invalid-argument",
-        "The function must be called with a hashed phone number.",
-    );
-  }
+exports.checkUserExists = onCall(
+    {region: "us-central1", maxInstances: 3},
+    async (request) => {
+      const {hashedPhoneNumber} = request.data;
+      if (!hashedPhoneNumber) {
+        throw new HttpsError(
+            "invalid-argument",
+            "The function must be called with a hashed phone number.",
+        );
+      }
 
-  try {
-    const snapshot = await admin.firestore()
-        .collection("users")
-        .where("hashedPhoneNumber", "==", hashedPhoneNumber)
-        .limit(1)
-        .get();
+      try {
+        const snapshot = await admin.firestore()
+            .collection("users")
+            .where("hashedPhoneNumber", "==", hashedPhoneNumber)
+            .limit(1)
+            .get();
 
-    return {userExists: !snapshot.empty};
-  } catch (error) {
-    console.error("Error checking user existence:", error);
-    throw new functions.https.HttpsError("internal", error.message);
-  }
-});
+        return {userExists: !snapshot.empty};
+      } catch (error) {
+        console.error("Error checking user existence:", error);
+        throw new HttpsError("internal", error.message);
+      }
+    },
+);
 
 // Cloud Function: ensureUserDocument
 //
@@ -187,88 +213,103 @@ exports.checkUserExists = functions.https.onCall(async (data, context) => {
 // security rules. This callable ensures there is a `/users/{uid}` doc for the
 // authenticated user by migrating data from a legacy doc that matches the
 // user's authenticated phone number.
-exports.ensureUserDocument = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-        "unauthenticated",
-        "The function must be called while authenticated.",
-    );
-  }
+exports.ensureUserDocument = onCall(
+    {region: "us-central1", maxInstances: 3},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "The function must be called while authenticated.",
+        );
+      }
 
-  const uid = context.auth.uid;
-  const usersRef = admin.firestore().collection("users");
+      const uid = request.auth.uid;
+      const usersRef = admin.firestore().collection("users");
 
-  // Fast path: correct doc already exists.
-  const existingSnapshot = await usersRef.doc(uid).get();
-  if (existingSnapshot.exists) {
-    return {ensured: true, action: "existing", uid};
-  }
+      // Fast path: correct doc already exists.
+      const existingSnapshot = await usersRef.doc(uid).get();
+      if (existingSnapshot.exists) {
+        return {ensured: true, action: "existing", uid};
+      }
 
-  // Bind migration to the authenticated user's phone number (do not accept
-  // arbitrary phone numbers/hashes from clients).
-  let phoneNumber;
-  try {
-    const authUser = await admin.auth().getUser(uid);
-    phoneNumber = authUser.phoneNumber;
-  } catch (error) {
-    console.error("Error fetching auth user for ensureUserDocument:", error);
-    throw new functions.https.HttpsError("internal", "Failed to fetch auth user.");
-  }
+      // Bind migration to the authenticated user's phone number (do not accept
+      // arbitrary phone numbers/hashes from clients).
+      let phoneNumber;
+      try {
+        const authUser = await admin.auth().getUser(uid);
+        phoneNumber = authUser.phoneNumber;
+      } catch (error) {
+        console.error(
+            "Error fetching auth user for ensureUserDocument:",
+            error,
+        );
+        throw new HttpsError(
+            "internal",
+            "Failed to fetch auth user.",
+        );
+      }
 
-  if (!phoneNumber) {
-    throw new functions.https.HttpsError(
-        "failed-precondition",
-        "Authenticated user does not have a phone number.",
-    );
-  }
+      if (!phoneNumber) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Authenticated user does not have a phone number.",
+        );
+      }
 
-  const hashedPhoneNumber = hashPhoneNumberE164(phoneNumber);
+      const hashedPhoneNumber = hashPhoneNumberE164(phoneNumber);
 
-  try {
-    const legacyQuerySnapshot = await usersRef
-        .where("hashedPhoneNumber", "==", hashedPhoneNumber)
-        .limit(1)
-        .get();
+      try {
+        const legacyQuerySnapshot = await usersRef
+            .where("hashedPhoneNumber", "==", hashedPhoneNumber)
+            .limit(1)
+            .get();
 
-    if (legacyQuerySnapshot.empty) {
-      throw new functions.https.HttpsError(
-          "not-found",
-          "User document not found for this phone number.",
-      );
-    }
+        if (legacyQuerySnapshot.empty) {
+          throw new HttpsError(
+              "not-found",
+              "User document not found for this phone number.",
+          );
+        }
 
-    const legacyDoc = legacyQuerySnapshot.docs[0];
-    const legacyData = legacyDoc.data() || {};
+        const legacyDoc = legacyQuerySnapshot.docs[0];
+        const legacyData = legacyDoc.data() || {};
 
-    // Create the correct UID-keyed document using legacy data, while ensuring
-    // the ID/phone/hash are consistent with Auth.
-    const migratedData = {
-      ...legacyData,
-      id: uid,
-      phoneNumber,
-      hashedPhoneNumber,
-    };
+        // Create the correct UID-keyed document using legacy data, while
+        // ensuring the ID/phone/hash are consistent with Auth.
+        const migratedData = {
+          ...legacyData,
+          id: uid,
+          phoneNumber,
+          hashedPhoneNumber,
+        };
 
-    await usersRef.doc(uid).set(migratedData);
+        await usersRef.doc(uid).set(migratedData);
 
-    // Prevent duplicates in phone-number matching by "tombstoning" the legacy
-    // doc's hash (leaving the doc intact avoids breaking unknown references).
-    if (legacyDoc.id !== uid) {
-      await legacyDoc.ref.update({
-        hashedPhoneNumber: null,
-        migratedToUserId: uid,
-      });
-    }
+        // Prevent duplicates in phone-number matching by "tombstoning" the
+        // legacy doc's hash (leaving the doc intact avoids breaking unknown
+        // references).
+        if (legacyDoc.id !== uid) {
+          await legacyDoc.ref.update({
+            hashedPhoneNumber: null,
+            migratedToUserId: uid,
+          });
+        }
 
-    return {ensured: true, action: "migrated", uid, legacyUserId: legacyDoc.id};
-  } catch (error) {
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    console.error("Error ensuring user document:", error);
-    throw new functions.https.HttpsError("internal", error.message);
-  }
-});
+        return {
+          ensured: true,
+          action: "migrated",
+          uid,
+          legacyUserId: legacyDoc.id,
+        };
+      } catch (error) {
+        if (error instanceof HttpsError) {
+          throw error;
+        }
+        console.error("Error ensuring user document:", error);
+        throw new HttpsError("internal", error.message);
+      }
+    },
+);
 
 // Cloud Function: acceptFriendRequest
 exports.acceptFriendRequest = functions.https.onCall(async (data, context) => {
@@ -414,10 +455,14 @@ exports.syncFriendsToRTDB = functions.firestore
       const beforeData = change.before.exists ? change.before.data() : null;
       const afterData = change.after.exists ? change.after.data() : null;
 
-      const beforeFriendsList =
-          beforeData && Array.isArray(beforeData.friends) ? beforeData.friends : [];
-      const afterFriendsList =
-          afterData && Array.isArray(afterData.friends) ? afterData.friends : [];
+      let beforeFriendsList = [];
+      if (beforeData && Array.isArray(beforeData.friends)) {
+        beforeFriendsList = beforeData.friends;
+      }
+      let afterFriendsList = [];
+      if (afterData && Array.isArray(afterData.friends)) {
+        afterFriendsList = afterData.friends;
+      }
 
       const beforeFriends = new Set(beforeFriendsList);
       const afterFriends = new Set(afterFriendsList);

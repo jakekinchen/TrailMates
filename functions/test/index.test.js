@@ -29,9 +29,9 @@ const authStub = {
 };
 
 const adminStub = {
-  initializeApp: () => {},
-  firestore: () => firestoreStub,
-  auth: () => authStub,
+  "initializeApp": () => {},
+  "firestore": () => firestoreStub,
+  "auth": () => authStub,
   "@global": true,
 };
 
@@ -51,10 +51,11 @@ mocha.describe("Phone Number Functions", () => {
 
   mocha.describe("findUsersByPhoneNumbers", () => {
     mocha.it("should require authentication", async () => {
-      const wrapped = test.wrap(functionsMock.findUsersByPhoneNumbers);
-
       try {
-        await wrapped({hashedPhoneNumbers: []}, {auth: null});
+        await functionsMock.findUsersByPhoneNumbers.run({
+          data: {hashedPhoneNumbers: []},
+          auth: null,
+        });
         assert.fail("Should have thrown an error");
       } catch (error) {
         assert.equal(error.code, "unauthenticated");
@@ -62,18 +63,20 @@ mocha.describe("Phone Number Functions", () => {
     });
 
     mocha.it("should validate input", async () => {
-      const wrapped = test.wrap(functionsMock.findUsersByPhoneNumbers);
       const auth = {uid: "test-user"};
 
       try {
-        await wrapped({}, {auth});
+        await functionsMock.findUsersByPhoneNumbers.run({data: {}, auth});
         assert.fail("Should have thrown an error");
       } catch (error) {
         assert.equal(error.code, "invalid-argument");
       }
 
       try {
-        await wrapped({hashedPhoneNumbers: "not-an-array"}, {auth});
+        await functionsMock.findUsersByPhoneNumbers.run({
+          data: {hashedPhoneNumbers: "not-an-array"},
+          auth,
+        });
         assert.fail("Should have thrown an error");
       } catch (error) {
         assert.equal(error.code, "invalid-argument");
@@ -81,7 +84,6 @@ mocha.describe("Phone Number Functions", () => {
     });
 
     mocha.it("should return matching users", async () => {
-      const wrapped = test.wrap(functionsMock.findUsersByPhoneNumbers);
       const auth = {uid: "test-user"};
 
       const mockUsers = [
@@ -128,29 +130,27 @@ mocha.describe("Phone Number Functions", () => {
         }),
       });
 
-      const result = await wrapped(
-        {hashedPhoneNumbers: ["hash1", "hash2"]},
-        {auth},
-      );
+      const result = await functionsMock.findUsersByPhoneNumbers.run({
+        data: {hashedPhoneNumbers: ["hash1", "hash2"]},
+        auth,
+      });
 
       assert.equal(result.users.length, 2);
       assert.equal(result.users[0].id, "user1");
       assert.equal(result.users[1].id, "user2");
       assert(firestoreStub.collection.calledWith("users"));
       assert(whereStub.calledWith(
-        "hashedPhoneNumber",
-        "in",
-        ["hash1", "hash2"],
+          "hashedPhoneNumber",
+          "in",
+          ["hash1", "hash2"],
       ));
     });
   });
 
   mocha.describe("checkUserExists", () => {
     mocha.it("should validate input", async () => {
-      const wrapped = test.wrap(functionsMock.checkUserExists);
-
       try {
-        await wrapped({});
+        await functionsMock.checkUserExists.run({data: {}, auth: null});
         assert.fail("Should have thrown an error");
       } catch (error) {
         assert.equal(error.code, "invalid-argument");
@@ -158,8 +158,6 @@ mocha.describe("Phone Number Functions", () => {
     });
 
     mocha.it("should return true for existing user", async () => {
-      const wrapped = test.wrap(functionsMock.checkUserExists);
-
       // Set up Firestore stub behavior for existing user
       const whereStub = sinon.stub().returns({
         limit: sinon.stub().returns({
@@ -173,19 +171,20 @@ mocha.describe("Phone Number Functions", () => {
         where: whereStub,
       });
 
-      const result = await wrapped({hashedPhoneNumber: "existing-hash"});
+      const result = await functionsMock.checkUserExists.run({
+        data: {hashedPhoneNumber: "existing-hash"},
+        auth: null,
+      });
       assert.equal(result.userExists, true);
       assert(firestoreStub.collection.calledWith("users"));
       assert(whereStub.calledWith(
-        "hashedPhoneNumber",
-        "==",
-        "existing-hash",
+          "hashedPhoneNumber",
+          "==",
+          "existing-hash",
       ));
     });
 
     mocha.it("should return false for non-existent user", async () => {
-      const wrapped = test.wrap(functionsMock.checkUserExists);
-
       // Set up Firestore stub behavior for non-existent user
       const whereStub = sinon.stub().returns({
         limit: sinon.stub().returns({
@@ -199,23 +198,24 @@ mocha.describe("Phone Number Functions", () => {
         where: whereStub,
       });
 
-      const result = await wrapped({hashedPhoneNumber: "non-existent-hash"});
+      const result = await functionsMock.checkUserExists.run({
+        data: {hashedPhoneNumber: "non-existent-hash"},
+        auth: null,
+      });
       assert.equal(result.userExists, false);
       assert(firestoreStub.collection.calledWith("users"));
       assert(whereStub.calledWith(
-        "hashedPhoneNumber",
-        "==",
-        "non-existent-hash",
+          "hashedPhoneNumber",
+          "==",
+          "non-existent-hash",
       ));
     });
   });
 
   mocha.describe("ensureUserDocument", () => {
     mocha.it("should require authentication", async () => {
-      const wrapped = test.wrap(functionsMock.ensureUserDocument);
-
       try {
-        await wrapped({}, {auth: null});
+        await functionsMock.ensureUserDocument.run({data: {}, auth: null});
         assert.fail("Should have thrown an error");
       } catch (error) {
         assert.equal(error.code, "unauthenticated");
@@ -223,7 +223,6 @@ mocha.describe("Phone Number Functions", () => {
     });
 
     mocha.it("should return existing when UID doc exists", async () => {
-      const wrapped = test.wrap(functionsMock.ensureUserDocument);
       const auth = {uid: "test-user"};
 
       const userRef = {
@@ -236,7 +235,10 @@ mocha.describe("Phone Number Functions", () => {
 
       authStub.getUser.resetHistory();
 
-      const result = await wrapped({}, {auth});
+      const result = await functionsMock.ensureUserDocument.run({
+        data: {},
+        auth,
+      });
 
       assert.equal(result.ensured, true);
       assert.equal(result.action, "existing");
@@ -245,7 +247,6 @@ mocha.describe("Phone Number Functions", () => {
     });
 
     mocha.it("should migrate legacy doc when UID doc is missing", async () => {
-      const wrapped = test.wrap(functionsMock.ensureUserDocument);
       const auth = {uid: "test-user"};
 
       const phoneNumber = "+15551234567";
@@ -291,7 +292,10 @@ mocha.describe("Phone Number Functions", () => {
         where: whereStub,
       });
 
-      const result = await wrapped({}, {auth});
+      const result = await functionsMock.ensureUserDocument.run({
+        data: {},
+        auth,
+      });
 
       assert.equal(result.ensured, true);
       assert.equal(result.action, "migrated");
@@ -312,7 +316,6 @@ mocha.describe("Phone Number Functions", () => {
     });
 
     mocha.it("should return not-found when no legacy doc exists", async () => {
-      const wrapped = test.wrap(functionsMock.ensureUserDocument);
       const auth = {uid: "test-user"};
 
       authStub.getUser.resolves({phoneNumber: "+15551234567"});
@@ -337,7 +340,7 @@ mocha.describe("Phone Number Functions", () => {
       });
 
       try {
-        await wrapped({}, {auth});
+        await functionsMock.ensureUserDocument.run({data: {}, auth});
         assert.fail("Should have thrown an error");
       } catch (error) {
         assert.equal(error.code, "not-found");

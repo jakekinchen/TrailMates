@@ -2,7 +2,7 @@
 title: Fix phone login "User document not found" for existing accounts
 created: 2026-01-27
 priority: urgent
-status: in-progress
+status: blocked
 tags: [auth, firebase, firestore, phone-number]
 ---
 
@@ -18,6 +18,7 @@ Unblock users who can authenticate via phone number but fail login because their
   - [x] Copy legacy doc data into `/users/{uid}` when needed
 - [x] Update iOS login flow to call the ensure/migration path when `/users/{uid}` is missing
 - [x] Add/extend Cloud Function tests for the new callable
+- [ ] Unblock Cloud Functions v2 deploy (Pub/Sub + Eventarc service identities)
 - [ ] Deploy `ensureUserDocument` Cloud Function to production
 - [ ] Verify phone login works end-to-end (existing account)
 - [x] Run tests/builds (functions + iOS)
@@ -29,3 +30,6 @@ Unblock users who can authenticate via phone number but fail login because their
 - Local validations:
   - `functions` tests pass (`npm test`)
   - iOS build succeeds (`xcodebuild build`); `xcodebuild test` currently fails due to an unrelated pre-existing `UserManagerTests/testUserEquality` fixture issue.
+- Deployment blocker:
+  - `firebase deploy` fails with “Error generating the service identity for pubsub.googleapis.com / eventarc.googleapis.com”.
+  - Resolve by granting sufficient IAM permissions (e.g., `Owner`, or `Service Usage Admin` + `Service Account Admin`) and retry deploy.
