@@ -206,9 +206,12 @@ final class TrailMatesUITests: XCTestCase {
 
         // Foreground the app
         app.activate()
-        sleep(1)
+        let returnedToForeground = app.wait(for: .runningForeground, timeout: 10)
 
-        // App should still be running
-        XCTAssertTrue(app.state == .runningForeground, "App should survive backgrounding")
+        // App should return to foreground (avoid flakiness on slower simulators)
+        XCTAssertTrue(
+            returnedToForeground,
+            "App should survive backgrounding and return to foreground (state: \(app.state))"
+        )
     }
 }

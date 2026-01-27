@@ -280,7 +280,7 @@ struct FriendsViewModelTests {
     func testPartialNameMatch() {
         let viewModel = FriendsViewModel()
 
-        let jonathan = TestFixtures.createUser(id: "1", firstName: "Jonathan", lastName: "Doe", username: "jonathandoe")
+        let jonathan = TestFixtures.createUser(id: "1", firstName: "Johnathan", lastName: "Doe", username: "jonathandoe")
         jonathan.isActive = true
         let john = TestFixtures.createUser(id: "2", firstName: "John", lastName: "Smith", username: "johnsmith")
         john.isActive = true

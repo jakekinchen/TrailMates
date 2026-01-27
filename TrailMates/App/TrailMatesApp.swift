@@ -20,7 +20,9 @@ struct TrailMatesApp: App {
             print("🔥 Configuring Firebase in TrailMatesApp")
             FirebaseApp.configure()
             // Set Firebase logger level
+            #if DEBUG
             FirebaseConfiguration.shared.setLoggerLevel(.debug)
+            #endif
             print("🔥 Firebase configured successfully in TrailMatesApp.")
         } else {
             print("🔥 Firebase already configured")
@@ -74,11 +76,17 @@ struct TrailMatesApp: App {
 
 @MainActor
 class AppDelegate: NSObject, UIApplicationDelegate {
+    private var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         print("AppDelegate: didFinishLaunchingWithOptions started")
+
+        _ = TrailMatesApp.firebaseConfigured
         
         // Firebase is already configured
         if FirebaseApp.app() != nil {
@@ -86,7 +94,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         } else {
             print("❌ Firebase is not configured in AppDelegate")
         }
-        
+
+        if isRunningTests {
+            print("⏭️ Skipping push notification setup (tests)")
+            print("AppDelegate: didFinishLaunchingWithOptions completed.")
+            return true
+        }
+
         // Configure notifications
         configureNotifications(application)
         
@@ -138,6 +152,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
+        guard !isRunningTests else { return }
         print("📱 Received APNS token from Apple")
         let tokenType: AuthAPNSTokenType = {
             #if DEBUG

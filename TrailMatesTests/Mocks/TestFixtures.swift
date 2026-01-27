@@ -15,7 +15,8 @@ enum TestFixtures {
         lastName: String = "User",
         username: String = "testuser",
         phoneNumber: String = "+1 (555) 123-4567",
-        joinDate: Date = Date()
+        // Use a deterministic default to keep equality tests stable.
+        joinDate: Date = Date(timeIntervalSince1970: 0)
     ) -> User {
         let user = User(
             id: id,
