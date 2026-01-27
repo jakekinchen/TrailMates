@@ -116,7 +116,7 @@ final class User: Codable, Identifiable, Equatable {
     
     // MARK: - Codable
     enum CodingKeys: String, CodingKey {
-        case id, firstName, lastName, username, phoneNumber, joinDate
+        case id, firstName, lastName, username, phoneNumber, joinDate, hashedPhoneNumber
         case profileImageUrl, profileThumbnailUrl, isActive, friends, doNotDisturb
         case createdEventIds, attendingEventIds, visitedLandmarkIds
         case receiveFriendRequests, receiveFriendEvents, receiveEventUpdates
@@ -132,6 +132,7 @@ final class User: Codable, Identifiable, Equatable {
         username = try container.decode(String.self, forKey: .username)
         phoneNumber = try container.decode(String.self, forKey: .phoneNumber)
         joinDate = try container.decode(Date.self, forKey: .joinDate)
+        _ = try container.decodeIfPresent(String.self, forKey: .hashedPhoneNumber)
         profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
         profileThumbnailUrl = try container.decodeIfPresent(String.self, forKey: .profileThumbnailUrl)
         isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
@@ -158,6 +159,7 @@ final class User: Codable, Identifiable, Equatable {
         try container.encode(username, forKey: .username)
         try container.encode(phoneNumber, forKey: .phoneNumber)
         try container.encode(joinDate, forKey: .joinDate)
+        try container.encode(hashedPhoneNumber, forKey: .hashedPhoneNumber)
         try container.encodeIfPresent(profileImageUrl, forKey: .profileImageUrl)
         try container.encodeIfPresent(profileThumbnailUrl, forKey: .profileThumbnailUrl)
         try container.encode(isActive, forKey: .isActive)

@@ -26,6 +26,7 @@ Ensure TrailMates is buildable/testable from a clean checkout, has the minimum r
 - [ ] Firebase / backend sanity
   - [x] Confirm Firestore/Storage rules files referenced in `firebase.json` are the intended ones
   - [x] Remove unused Firebase rules/config files if safe (e.g., `firestorage.rules`)
+  - [x] Ensure user saves preserve `hashedPhoneNumber` (contact matching + lookup)
   - [ ] Review callable functions for user-enumeration risk and add mitigation (auth/App Check/rate limiting) as needed
 - [ ] Simplicity pass
   - [ ] Identify dead files / duplicate schemes / unused targets and remove if safe

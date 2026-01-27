@@ -322,7 +322,7 @@ class UserDataProvider {
         print("UserDataProvider: Attempting to save full user data")
         #endif
         do {
-            try await userRef.setData(data)
+            try await userRef.setData(data, merge: true)
             #if DEBUG
             print("UserDataProvider: Full user data saved successfully")
             #endif
