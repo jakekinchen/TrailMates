@@ -1,6 +1,7 @@
 const assert = require("assert");
 const sinon = require("sinon");
 const proxyquire = require("proxyquire");
+const crypto = require("crypto");
 const test = require("firebase-functions-test")();
 const mocha = require("mocha");
 
@@ -23,9 +24,14 @@ firestoreStub.collection.returns({
 });
 
 // Create admin stub
+const authStub = {
+  getUser: sinon.stub(),
+};
+
 const adminStub = {
   initializeApp: () => {},
   firestore: () => firestoreStub,
+  auth: () => authStub,
   "@global": true,
 };
 
@@ -201,6 +207,141 @@ mocha.describe("Phone Number Functions", () => {
         "==",
         "non-existent-hash",
       ));
+    });
+  });
+
+  mocha.describe("ensureUserDocument", () => {
+    mocha.it("should require authentication", async () => {
+      const wrapped = test.wrap(functionsMock.ensureUserDocument);
+
+      try {
+        await wrapped({}, {auth: null});
+        assert.fail("Should have thrown an error");
+      } catch (error) {
+        assert.equal(error.code, "unauthenticated");
+      }
+    });
+
+    mocha.it("should return existing when UID doc exists", async () => {
+      const wrapped = test.wrap(functionsMock.ensureUserDocument);
+      const auth = {uid: "test-user"};
+
+      const userRef = {
+        get: sinon.stub().resolves({exists: true}),
+      };
+
+      firestoreStub.collection.returns({
+        doc: sinon.stub().returns(userRef),
+      });
+
+      authStub.getUser.resetHistory();
+
+      const result = await wrapped({}, {auth});
+
+      assert.equal(result.ensured, true);
+      assert.equal(result.action, "existing");
+      assert.equal(result.uid, "test-user");
+      assert(authStub.getUser.notCalled);
+    });
+
+    mocha.it("should migrate legacy doc when UID doc is missing", async () => {
+      const wrapped = test.wrap(functionsMock.ensureUserDocument);
+      const auth = {uid: "test-user"};
+
+      const phoneNumber = "+15551234567";
+      const expectedHash = crypto
+          .createHash("sha256")
+          .update(phoneNumber)
+          .digest("hex");
+
+      authStub.getUser.resolves({phoneNumber});
+
+      const userRef = {
+        get: sinon.stub().resolves({exists: false}),
+        set: sinon.stub().resolves(),
+      };
+
+      const legacyRef = {
+        update: sinon.stub().resolves(),
+      };
+
+      const legacyDoc = {
+        id: "legacy-user",
+        ref: legacyRef,
+        data: () => ({
+          firstName: "Test",
+          lastName: "User",
+          username: "testuser",
+          phoneNumber: "(555) 123-4567",
+          hashedPhoneNumber: expectedHash,
+        }),
+      };
+
+      const whereStub = sinon.stub().returns({
+        limit: sinon.stub().returns({
+          get: sinon.stub().resolves({
+            empty: false,
+            docs: [legacyDoc],
+          }),
+        }),
+      });
+
+      firestoreStub.collection.returns({
+        doc: sinon.stub().returns(userRef),
+        where: whereStub,
+      });
+
+      const result = await wrapped({}, {auth});
+
+      assert.equal(result.ensured, true);
+      assert.equal(result.action, "migrated");
+      assert.equal(result.uid, "test-user");
+      assert.equal(result.legacyUserId, "legacy-user");
+
+      assert(userRef.set.calledOnce);
+      const setArg = userRef.set.firstCall.args[0];
+      assert.equal(setArg.id, "test-user");
+      assert.equal(setArg.phoneNumber, phoneNumber);
+      assert.equal(setArg.hashedPhoneNumber, expectedHash);
+
+      assert(legacyRef.update.calledOnce);
+      assert.deepEqual(legacyRef.update.firstCall.args[0], {
+        hashedPhoneNumber: null,
+        migratedToUserId: "test-user",
+      });
+    });
+
+    mocha.it("should return not-found when no legacy doc exists", async () => {
+      const wrapped = test.wrap(functionsMock.ensureUserDocument);
+      const auth = {uid: "test-user"};
+
+      authStub.getUser.resolves({phoneNumber: "+15551234567"});
+
+      const userRef = {
+        get: sinon.stub().resolves({exists: false}),
+        set: sinon.stub().resolves(),
+      };
+
+      const whereStub = sinon.stub().returns({
+        limit: sinon.stub().returns({
+          get: sinon.stub().resolves({
+            empty: true,
+            docs: [],
+          }),
+        }),
+      });
+
+      firestoreStub.collection.returns({
+        doc: sinon.stub().returns(userRef),
+        where: whereStub,
+      });
+
+      try {
+        await wrapped({}, {auth});
+        assert.fail("Should have thrown an error");
+      } catch (error) {
+        assert.equal(error.code, "not-found");
+      }
     });
   });
 

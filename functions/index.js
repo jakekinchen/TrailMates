@@ -1,8 +1,13 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 // const {DocumentSnapshot} = require("firebase-admin/firestore");
 
 admin.initializeApp();
+
+function hashPhoneNumberE164(phoneNumberE164) {
+  return crypto.createHash("sha256").update(phoneNumberE164).digest("hex");
+}
 
 async function updateFriendArrays(userId, friendId, shouldAdd) {
   const userRef = admin.firestore().collection("users").doc(userId);
@@ -175,6 +180,96 @@ exports.checkUserExists = functions.https.onCall(async (data, context) => {
   }
 });
 
+// Cloud Function: ensureUserDocument
+//
+// Some legacy users may have a Firestore user document keyed by a non-UID
+// identifier (e.g., phone number), which becomes unreadable under the current
+// security rules. This callable ensures there is a `/users/{uid}` doc for the
+// authenticated user by migrating data from a legacy doc that matches the
+// user's authenticated phone number.
+exports.ensureUserDocument = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated.",
+    );
+  }
+
+  const uid = context.auth.uid;
+  const usersRef = admin.firestore().collection("users");
+
+  // Fast path: correct doc already exists.
+  const existingSnapshot = await usersRef.doc(uid).get();
+  if (existingSnapshot.exists) {
+    return {ensured: true, action: "existing", uid};
+  }
+
+  // Bind migration to the authenticated user's phone number (do not accept
+  // arbitrary phone numbers/hashes from clients).
+  let phoneNumber;
+  try {
+    const authUser = await admin.auth().getUser(uid);
+    phoneNumber = authUser.phoneNumber;
+  } catch (error) {
+    console.error("Error fetching auth user for ensureUserDocument:", error);
+    throw new functions.https.HttpsError("internal", "Failed to fetch auth user.");
+  }
+
+  if (!phoneNumber) {
+    throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Authenticated user does not have a phone number.",
+    );
+  }
+
+  const hashedPhoneNumber = hashPhoneNumberE164(phoneNumber);
+
+  try {
+    const legacyQuerySnapshot = await usersRef
+        .where("hashedPhoneNumber", "==", hashedPhoneNumber)
+        .limit(1)
+        .get();
+
+    if (legacyQuerySnapshot.empty) {
+      throw new functions.https.HttpsError(
+          "not-found",
+          "User document not found for this phone number.",
+      );
+    }
+
+    const legacyDoc = legacyQuerySnapshot.docs[0];
+    const legacyData = legacyDoc.data() || {};
+
+    // Create the correct UID-keyed document using legacy data, while ensuring
+    // the ID/phone/hash are consistent with Auth.
+    const migratedData = {
+      ...legacyData,
+      id: uid,
+      phoneNumber,
+      hashedPhoneNumber,
+    };
+
+    await usersRef.doc(uid).set(migratedData);
+
+    // Prevent duplicates in phone-number matching by "tombstoning" the legacy
+    // doc's hash (leaving the doc intact avoids breaking unknown references).
+    if (legacyDoc.id !== uid) {
+      await legacyDoc.ref.update({
+        hashedPhoneNumber: null,
+        migratedToUserId: uid,
+      });
+    }
+
+    return {ensured: true, action: "migrated", uid, legacyUserId: legacyDoc.id};
+  } catch (error) {
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    console.error("Error ensuring user document:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
 // Cloud Function: acceptFriendRequest
 exports.acceptFriendRequest = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -290,10 +385,7 @@ exports.migratePhoneNumbers = functions.https.onCall(async (data, context) => {
       const userData = doc.data();
       if (userData.phoneNumber && !userData.hashedPhoneNumber) {
         // Hash the phone number using the same algorithm as the client
-        const hashedPhoneNumber = require("crypto")
-            .createHash("sha256")
-            .update(userData.phoneNumber)
-            .digest("hex");
+        const hashedPhoneNumber = hashPhoneNumberE164(userData.phoneNumber);
 
         batch.update(doc.ref, {hashedPhoneNumber});
         updatedCount++;

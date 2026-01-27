@@ -62,6 +62,11 @@ protocol UserDataProviding {
     /// - Returns: `true` if a user exists, `false` otherwise.
     func checkUserExists(phoneNumber: String) async -> Bool
 
+    /// Ensures there is a Firestore user document at `/users/{uid}` for the currently
+    /// authenticated user, migrating legacy records when needed.
+    /// - Throws: `AppError` if the ensure/migration operation fails.
+    func ensureUserDocument() async throws
+
     /// Finds multiple users by their phone numbers.
     /// - Parameter phoneNumbers: Array of phone numbers to search.
     /// - Returns: Array of matching `User` objects.

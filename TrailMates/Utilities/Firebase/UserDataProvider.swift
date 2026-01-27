@@ -417,6 +417,18 @@ class UserDataProvider {
         return false
     }
 
+    func ensureUserDocument() async throws {
+        let callable = functions.httpsCallable("ensureUserDocument")
+
+        do {
+            _ = try await withRetry(maxAttempts: 3) {
+                try await callable.call()
+            }
+        } catch {
+            throw AppError.from(error)
+        }
+    }
+
     func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User] {
         let hashedNumbers = phoneNumbers.map { PhoneNumberHasher.shared.hashPhoneNumber($0) }
 

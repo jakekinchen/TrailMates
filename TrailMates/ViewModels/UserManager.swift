@@ -84,10 +84,32 @@ class UserManager: ObservableObject {
             }
             print("👤 User fetched from Firebase: \(user.firstName) \(user.lastName)")
         } else {
-            print("❌ No user found in Firebase")
-            await MainActor.run {
-                self.isLoggedIn = false
-                self.currentUser = nil
+            // Self-heal legacy accounts where an Auth session exists but the
+            // Firestore user doc isn't keyed by the Auth UID.
+            if Auth.auth().currentUser != nil {
+                do {
+                    try await userProvider.ensureUserDocument()
+                } catch {
+                    #if DEBUG
+                    let appError = AppError.from(error)
+                    print("UserManager: ensureUserDocument failed during init: \(appError.errorDescription ?? "Unknown")")
+                    #endif
+                }
+            }
+
+            if let user = await userProvider.fetchCurrentUser() {
+                await MainActor.run {
+                    self.currentUser = user
+                    self.isLoggedIn = true
+                    self.persistUserSession()
+                }
+                print("👤 User fetched from Firebase after ensure: \(user.firstName) \(user.lastName)")
+            } else {
+                print("❌ No user found in Firebase")
+                await MainActor.run {
+                    self.isLoggedIn = false
+                    self.currentUser = nil
+                }
             }
         }
 
@@ -788,9 +810,24 @@ class UserManager: ObservableObject {
         print("Starting login process for phone: \(phoneNumber)")
         #endif
 
-        // Instead of fetching the user by phone number, fetch directly by UID:
-        guard let existingUser = await userProvider.fetchUser(by: id) else {
-            throw AppError.notFound("No account found with this UID")
+        let existingUser: User
+        if let user = await userProvider.fetchUser(by: id) {
+            existingUser = user
+        } else {
+            // Self-heal legacy accounts where the user doc isn't keyed by Auth UID.
+            do {
+                try await userProvider.ensureUserDocument()
+            } catch {
+                #if DEBUG
+                let appError = AppError.from(error)
+                print("UserManager: ensureUserDocument failed: \(appError.errorDescription ?? "Unknown")")
+                #endif
+            }
+
+            guard let user = await userProvider.fetchUser(by: id) else {
+                throw AppError.notFound("No account found for this user")
+            }
+            existingUser = user
         }
 
         // (Optional) If you want to double-check that this user has the same phone number:
