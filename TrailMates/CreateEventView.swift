@@ -319,7 +319,7 @@ private struct IntervalDatePicker: UIViewRepresentable {
     let title: String
 
     func makeUIView(context: Context) -> UIDatePicker {
-        let picker = UIDatePicker()
+        let picker = TallerCompactDatePicker()
         picker.datePickerMode = .dateAndTime
         picker.preferredDatePickerStyle = .compact
         picker.minuteInterval = minuteInterval
@@ -346,6 +346,23 @@ private struct IntervalDatePicker: UIViewRepresentable {
         @objc func dateChanged(_ sender: UIDatePicker) {
             date.wrappedValue = sender.date
         }
+    }
+}
+
+private final class TallerCompactDatePicker: UIDatePicker {
+    override var intrinsicContentSize: CGSize {
+        var size = super.intrinsicContentSize
+
+        let bodyLineHeight = UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection).lineHeight
+        let minimumHeight = max(48, bodyLineHeight + 28)
+        size.height = max(size.height, minimumHeight)
+
+        return size
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        invalidateIntrinsicContentSize()
     }
 }
 
