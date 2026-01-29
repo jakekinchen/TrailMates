@@ -61,12 +61,20 @@ class UserManager: ObservableObject {
     
     // Add a non-isolated property to track the current user ID for cleanup
     private var currentUserId: String?
-    
+
+    private var isUITesting: Bool {
+        ProcessInfo.processInfo.arguments.contains("--uitesting")
+    }
+
     func initializeIfNeeded() async {
         guard !hasInitialized else { return }
 
         print("👤 Starting UserManager initialization")
         setupObservers()
+
+        if isUITesting {
+            resetSessionForUITesting()
+        }
 
         // First try to load from persistence
         if checkPersistedUser() {
@@ -115,6 +123,25 @@ class UserManager: ObservableObject {
 
         hasInitialized = true
         print("👤 UserManager initialization completed")
+    }
+
+    private func resetSessionForUITesting() {
+        // Keep UI tests deterministic by always starting from the auth screen.
+        // Do not attempt any network-dependent setup.
+        do {
+            try Auth.auth().signOut()
+        } catch {
+            // Ignored: tests should still proceed in a logged-out state.
+        }
+
+        currentUser = nil
+        currentUserId = nil
+        isLoggedIn = false
+        isOnboardingComplete = false
+        isWelcomeComplete = false
+        isPermissionsGranted = false
+        hasAddedFriends = false
+        clearPersistedUserSession()
     }
     
     private func setupObservers() {

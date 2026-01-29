@@ -45,11 +45,6 @@ struct AuthView: View {
                 Spacer()
                 Spacer()
             }
-            .onChange(of: phoneNumber) { _, newValue in
-                if newValue.count == 10 {
-                    dismissKeyboard()
-                }
-            }
         }
         .simultaneousGesture(TapGesture().onEnded {
             dismissKeyboard()
@@ -108,6 +103,7 @@ private extension AuthView {
                 .padding(.leading, 20)
                 .offset(x: 8)
         }
+        .accessibilityIdentifier("auth_back_button")
     }
 
     @ViewBuilder
@@ -195,6 +191,7 @@ private extension AuthView {
             Text("Verify")
                 .authButtonStyle(primary: true)
         }
+        .accessibilityIdentifier("auth_verify_button")
         .disabled(verificationCode.isEmpty)
     }
 
@@ -210,6 +207,7 @@ private extension AuthView {
                     .authButtonStyle(primary: true)
             }
         }
+        .accessibilityIdentifier("auth_login_button")
         .disabled(isCheckingPhoneNumber)
         .opacity(!showingSignupFields ? 1 : 0)
         .animation(.easeOut(duration: 0.1), value: showingSignupFields)
@@ -227,6 +225,7 @@ private extension AuthView {
                     .authButtonStyle(primary: false)
             }
         }
+        .accessibilityIdentifier("auth_signup_button")
         .disabled(isCheckingPhoneNumber)
         .opacity(!showingLoginFields ? 1 : 0)
         .animation(.easeOut(duration: 0.1), value: showingLoginFields)
@@ -376,6 +375,7 @@ private struct AuthFloatingLabelTextField: View {
                 .textContentType(contentType)
                 .disabled(!isEnabled)
                 .focused($focusedField, equals: field)
+                .accessibilityIdentifier(accessibilityIdentifier)
                 .offset(y: !text.isEmpty ? 2 : 0)
                 .onTapGesture {
                     if focusedField == field {
@@ -403,12 +403,29 @@ private struct AuthFloatingLabelTextField: View {
         .padding(.top, 12)
     }
 
+    private var accessibilityIdentifier: String {
+        switch field {
+        case .phone:
+            return "auth_phone_textfield"
+        case .verification:
+            return "auth_verification_textfield"
+        }
+    }
+
     private func handleTextChange(oldValue: String, newValue: String) {
         let oldDigitCount = oldValue.filter { $0.isNumber }.count
         let newDigitCount = newValue.filter { $0.isNumber }.count
 
-        if field == .phone && newDigitCount >= 11 && newDigitCount > oldDigitCount {
-            focusedField = nil
+        if field == .phone && newDigitCount > oldDigitCount {
+            let digits = newValue.filter { $0.isNumber }
+            let isUSWithCountryCode = digits.hasPrefix("1")
+            let shouldDismiss =
+                (!isUSWithCountryCode && newDigitCount == 10) ||
+                (isUSWithCountryCode && newDigitCount == 11)
+
+            if shouldDismiss {
+                focusedField = nil
+            }
         }
 
         if field == .verification {
@@ -488,6 +505,7 @@ struct FloatingLabelTextField: View {
                 .textContentType(contentType)
                 .disabled(!isEnabled)
                 .focused($focusedField, equals: field)
+                .accessibilityIdentifier(accessibilityIdentifier)
                 .offset(y: !text.isEmpty ? 2 : 0)
                 .onTapGesture {
                     if focusedField == field {
@@ -527,6 +545,15 @@ struct FloatingLabelTextField: View {
                 .foregroundColor(Color("alwaysBeige"))
         }
         .padding(.top, 12)
+    }
+
+    private var accessibilityIdentifier: String {
+        switch field {
+        case .phone:
+            return "auth_phone_textfield"
+        case .verification:
+            return "auth_verification_textfield"
+        }
     }
 }
 

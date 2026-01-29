@@ -98,6 +98,33 @@ final class TrailMatesUITests: XCTestCase {
         XCTAssertTrue(app.state == .runningForeground, "App should be running")
     }
 
+    @MainActor
+    func testPhoneNumberEntryDoesNotLoseFocusMidEntry() throws {
+        app.launch()
+
+        let loginButton = app.buttons["auth_login_button"].firstMatch
+        XCTAssertTrue(loginButton.waitForExistence(timeout: 5), "Expected auth Log In button to exist")
+        loginButton.tap()
+
+        let phoneField = app.textFields["auth_phone_textfield"].firstMatch
+        XCTAssertTrue(phoneField.waitForExistence(timeout: 5), "Expected phone number field to exist")
+        phoneField.tap()
+
+        // Repro sequence: with the old logic, focus would be cleared around 5 digits when formatting adds characters.
+        // Type one digit at a time to avoid flakiness from rapid UITextField reformatting.
+        for digit in ["1", "2", "3", "4", "5"] {
+            phoneField.typeText(digit)
+        }
+        phoneField.typeText("6")
+
+        let value = (phoneField.value as? String) ?? ""
+        let digits = value.filter { $0.isNumber }
+        XCTAssertTrue(
+            digits.hasPrefix("123456"),
+            "Expected digits to start with 123456 after typing, got '\(digits)' (raw: '\(value)')"
+        )
+    }
+
     // MARK: - Navigation Tests
 
     @MainActor
