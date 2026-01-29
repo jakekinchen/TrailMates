@@ -4,12 +4,9 @@ import CoreLocation
 import UserNotifications
 
 struct PermissionsView: View {
-    @EnvironmentObject var userManager: UserManager
-    @Environment(\.dismiss) var dismiss
     @StateObject private var locationManager: LocationManager
-    @State private var showLocationSettingsAlert = false
-    @State private var showNotificationSettingsAlert = false
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
+    @State private var isRequestingPermissions = false
     let onComplete: () -> Void
     
     init(onComplete: @escaping () -> Void) {
@@ -24,16 +21,10 @@ struct PermissionsView: View {
                 Color("beige").ignoresSafeArea()
                 
                 VStack(spacing: 30) {
-                    Button(action: {
-                        Task {
-                            await requestPermissions()
-                        }
-                    }) {
-                        Text("Enable Permissions")
-                            .font(.title)
-                            .foregroundColor(Color("pine"))
-                            .padding(.top, 40)
-                    }
+                    Text("Permissions")
+                        .font(.title)
+                        .foregroundColor(Color("pine"))
+                        .padding(.top, 40)
                     
                     VStack(alignment: .leading, spacing: 20) {
                         PermissionCard(
@@ -60,18 +51,13 @@ struct PermissionsView: View {
                                 await requestPermissions()
                             }
                         }) {
-                            Text("Enable Permissions")
+                            Text("Continue")
                                 .font(.headline)
                                 .foregroundColor(.white)
                                 .padding()
                                 .frame(maxWidth: .infinity)
                                 .background(Color("pumpkin"))
                                 .cornerRadius(10)
-                        }
-                        
-                        Button(action: skipPermissions) {
-                            Text("Set Up Later")
-                                .foregroundColor(Color("pine"))
                         }
                     }
                     .padding()
@@ -80,26 +66,6 @@ struct PermissionsView: View {
             .navigationBarHidden(true)
             .onAppear {
                 checkNotificationStatus()
-            }
-            .alert("Location Access Required", isPresented: $showLocationSettingsAlert) {
-                Button("Open Settings", role: .none) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Background location access is required for core app functionality. Please enable it in Settings.")
-            }
-            .alert("Notifications Required", isPresented: $showNotificationSettingsAlert) {
-                Button("Open Settings", role: .none) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Notifications are required to receive alerts about your friends. Please enable them in Settings.")
             }
         }
     }
@@ -144,45 +110,16 @@ struct PermissionsView: View {
     }
     
     private func requestPermissions() async {
-        // Check and request notification permission
-        let notificationGranted = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
-        if let granted = notificationGranted, !granted {
-            await MainActor.run {
-                showNotificationSettingsAlert = true
-            }
-        }
-        await MainActor.run {
-            checkNotificationStatus()
-        }
-        
-        // Check location permission status
-        let status = await locationManager.requestLocationPermission()
-        if status == .denied || status == .restricted {
-            await MainActor.run {
-                showLocationSettingsAlert = true
-            }
-            return // Stop if location access is denied
-        }
-        
-        // Request background location if needed
-        if status == .authorizedWhenInUse {
-            let alwaysStatus = await locationManager.requestAlwaysAuthorization()
-            if alwaysStatus != .authorizedAlways {
-                await MainActor.run {
-                    showLocationSettingsAlert = true
-                }
-                return
-            }
-        }
-        
-        // Trigger onComplete if all permissions are granted or not needed
-        await MainActor.run {
-            onComplete()
-        }
-    }
-    
-    private func skipPermissions() {
-        userManager.isOnboardingComplete = true
-        userManager.persistUserSession()
+        guard !isRequestingPermissions else { return }
+        isRequestingPermissions = true
+        defer { isRequestingPermissions = false }
+
+        _ = try? await UNUserNotificationCenter.current()
+            .requestAuthorization(options: [.alert, .sound, .badge])
+        await MainActor.run { checkNotificationStatus() }
+
+        _ = await locationManager.requestLocationPermission()
+
+        await MainActor.run { onComplete() }
     }
 }

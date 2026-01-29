@@ -11,44 +11,48 @@ struct ProfileView: View {
         ZStack {
             Color("beige").ignoresSafeArea()
             
-            VStack(spacing: 16) {
-                if let user = userManager.currentUser {
-                    ProfileHeader(user: user, actionButton: AnyView(
-                        Button(action: { showEditProfile = true }) {
-                            Text("Edit Profile")
-                                .font(.system(.body, design: .rounded))
-                                .fontWeight(.medium)
-                                .foregroundColor(Color("beige"))
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(Color("pine"))
-                                .cornerRadius(25)
-                        }
-                    ))
-                } else {
-                    ProgressView()
-                        .frame(width: 120, height: 120)
-                }
-                
-                // Stats Section - uses .equatable() to prevent unnecessary re-renders
-                if let stats = userStats {
-                    StatsSection(stats: stats)
+            ScrollView {
+                VStack(spacing: 16) {
+                    if let user = userManager.currentUser {
+                        ProfileHeader(user: user, actionButton: AnyView(
+                            Button(action: { showEditProfile = true }) {
+                                Text("Edit Profile")
+                                    .font(.system(.body, design: .rounded))
+                                    .fontWeight(.medium)
+                                    .foregroundColor(Color("beige"))
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                                    .background(Color("pine"))
+                                    .cornerRadius(25)
+                            }
+                        ))
+                    } else {
+                        ProgressView()
+                            .frame(width: 120, height: 120)
+                    }
+                    
+                    // Stats Section - uses .equatable() to prevent unnecessary re-renders
+                    if let stats = userStats {
+                        StatsSection(stats: stats)
+                            .equatable()
+                    } else {
+                        // Show placeholder stats while loading
+                        StatsSection(stats: UserStats(
+                            joinDate: "Loading...",
+                            landmarkCompletion: 0,
+                            friendCount: 0,
+                            hostedEventCount: 0,
+                            attendedEventCount: 0
+                        ))
                         .equatable()
-                } else {
-                    // Show placeholder stats while loading
-                    StatsSection(stats: UserStats(
-                        joinDate: "Loading...",
-                        landmarkCompletion: 0,
-                        friendCount: 0,
-                        hostedEventCount: 0,
-                        attendedEventCount: 0
-                    ))
-                    .equatable()
-                    .redacted(reason: .placeholder)
-                    .shimmering()
+                        .redacted(reason: .placeholder)
+                        .shimmering()
+                    }
                 }
+                .padding()
+                .frame(maxWidth: 600)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
         }
         .withDefaultNavigation(
             title: "Profile",
@@ -60,6 +64,7 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showEditProfile) {
             ProfileSetupView(isEditMode: true)
+                .presentationDetents([.large])
         }
         .task {
             // Load cached stats immediately if available

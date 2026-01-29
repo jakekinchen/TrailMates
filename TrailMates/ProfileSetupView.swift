@@ -41,7 +41,6 @@ struct ProfileSetupView: View {
     @State private var showImagePicker = false
     @State private var showCropper = false
     @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
-    @State private var keyboardHeight: CGFloat = 0
     @FocusState private var focusedField: Field?
 
     // MARK: - Field Enum
@@ -55,25 +54,20 @@ struct ProfileSetupView: View {
             ZStack {
                 backgroundImage(geometry: geometry)
 
-                VStack(spacing: 0) {
-                    headerView
-
+                ScrollView {
                     VStack(spacing: 20) {
+                        headerView
                         titleView
                         profileImageView
-
-                        Spacer()
-                            .frame(height: 140)
-
                         textFieldsView
                         saveButton
-
-                        Spacer()
                     }
-                    .offset(y: -keyboardHeight * 0.75)
-                    .animation(.easeOut(duration: 0.25), value: keyboardHeight)
+                    .padding(.top)
+                    .padding(.bottom, 24)
+                    .frame(maxWidth: 600)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.top)
+                .scrollDismissesKeyboard(.interactively)
             }
             .onTapGesture {
                 focusedField = nil
@@ -265,27 +259,6 @@ private extension ProfileSetupView {
             }
         } else {
             print("No current user available during setup")
-        }
-
-        setupKeyboardNotifications()
-    }
-
-    func setupKeyboardNotifications() {
-        NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillShowNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect ?? .zero
-            keyboardHeight = keyboardFrame.height
-        }
-
-        NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillHideNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            keyboardHeight = 0
         }
     }
 }
