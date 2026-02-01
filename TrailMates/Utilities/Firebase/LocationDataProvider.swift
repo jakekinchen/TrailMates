@@ -152,4 +152,22 @@ class LocationDataProvider {
     func stopObservingAllLocations() {
         removeAllListeners()
     }
+
+    /// Deletes a user's location data (used during account deletion)
+    func deleteUserLocation(userId: String) async throws {
+        let locationRef = rtdb.child("locations").child(userId)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            locationRef.removeValue { error, _ in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    #if DEBUG
+                    print("LocationDataProvider: Deleted location data for user \(userId)")
+                    #endif
+                    continuation.resume()
+                }
+            }
+        }
+    }
 }

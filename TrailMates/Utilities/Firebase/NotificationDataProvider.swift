@@ -182,6 +182,24 @@ class NotificationDataProvider {
         }
     }
 
+    /// Deletes all notifications for a user (used during account deletion)
+    func deleteAllNotifications(for userId: String) async throws {
+        let notificationsRef = rtdb.child("notifications").child(userId)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            notificationsRef.removeValue { error, _ in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    #if DEBUG
+                    print("NotificationDataProvider: Deleted all notifications for user \(userId)")
+                    #endif
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
     // MARK: - Helper Methods
 
     private nonisolated func getTitleForNotificationType(_ type: NotificationType) -> String {

@@ -15,6 +15,10 @@ struct SettingsView: View {
     // MARK: - State
     @State private var showsStats = true
     @AppStorage("appearance") private var appearance: String = "System"
+    @State private var showDeleteAccountAlert = false
+    @State private var showDeleteAccountConfirmation = false
+    @State private var isDeletingAccount = false
+    @State private var deleteAccountError: String?
 
     // MARK: - Computed
     private var overlayColor: Color {
@@ -38,6 +42,7 @@ struct SettingsView: View {
                     appPermissionsSection
                     appearanceSection
                     resourcesSection
+                    accountSection
                     logoutSection
                 }
                 .listStyle(InsetGroupedListStyle())
@@ -45,6 +50,32 @@ struct SettingsView: View {
                 .scrollContentBackground(.hidden)
                 .toolbar { toolbarContent }
                 .navigationBarTitleDisplayMode(.inline)
+                .alert("Delete Account", isPresented: $showDeleteAccountAlert) {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Delete", role: .destructive) {
+                        showDeleteAccountConfirmation = true
+                    }
+                } message: {
+                    Text("Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently removed.")
+                }
+                .alert("Final Confirmation", isPresented: $showDeleteAccountConfirmation) {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Delete My Account", role: .destructive) {
+                        Task {
+                            await deleteAccount()
+                        }
+                    }
+                } message: {
+                    Text("This is your last chance. Your account, profile, friends, and all associated data will be permanently deleted.")
+                }
+                .alert("Error", isPresented: .init(
+                    get: { deleteAccountError != nil },
+                    set: { if !$0 { deleteAccountError = nil } }
+                )) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text(deleteAccountError ?? "An unknown error occurred")
+                }
             }
             .tint(Color("pine"))
             .toolbarBackground(Color("altBeige"), for: .navigationBar)
@@ -174,6 +205,28 @@ private extension SettingsView {
         .foregroundColor(Color("pine"))
     }
 
+    var accountSection: some View {
+        Section(header: Text("Account")) {
+            Button(action: {
+                showDeleteAccountAlert = true
+            }) {
+                HStack {
+                    Spacer()
+                    if isDeletingAccount {
+                        ProgressView()
+                            .tint(.red)
+                    } else {
+                        Text("Delete Account")
+                            .foregroundColor(.red)
+                    }
+                    Spacer()
+                }
+            }
+            .disabled(isDeletingAccount)
+        }
+        .listRowBackground(Color("altBeige").opacity(0.9))
+    }
+
     var logoutSection: some View {
         Section {
             Button(action: {
@@ -233,6 +286,18 @@ private extension SettingsView {
                     }
                 }()
             }
+        }
+    }
+
+    func deleteAccount() async {
+        isDeletingAccount = true
+        defer { isDeletingAccount = false }
+
+        do {
+            try await authViewModel.deleteAccount()
+            dismiss()
+        } catch {
+            deleteAccountError = error.localizedDescription
         }
     }
 }

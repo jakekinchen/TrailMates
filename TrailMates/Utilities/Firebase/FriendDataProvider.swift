@@ -237,4 +237,49 @@ class FriendDataProvider {
             completion(requests)
         })
     }
+
+    // MARK: - Account Deletion Operations
+
+    /// Deletes all friend requests for a user (used during account deletion)
+    func deleteAllFriendRequests(for userId: String) async throws {
+        let requestsRef = rtdb.child("friend_requests").child(userId)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            requestsRef.removeValue { error, _ in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    #if DEBUG
+                    print("FriendDataProvider: Deleted all friend requests for user \(userId)")
+                    #endif
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    /// Removes a user from all their friends' friend lists (used during account deletion)
+    func removeUserFromAllFriendLists(userId: String, friendIds: [String]) async throws {
+        for friendId in friendIds {
+            let friendRef = db.collection("users").document(friendId)
+
+            do {
+                let friendDoc = try await friendRef.getDocument()
+                guard friendDoc.exists else { continue }
+
+                var friendFriends = friendDoc.get("friends") as? [String] ?? []
+                friendFriends.removeAll { $0 == userId }
+
+                try await friendRef.updateData(["friends": friendFriends])
+                #if DEBUG
+                print("FriendDataProvider: Removed user \(userId) from friend \(friendId)'s list")
+                #endif
+            } catch {
+                #if DEBUG
+                print("FriendDataProvider: Error removing user from friend \(friendId): \(error.localizedDescription)")
+                #endif
+                // Continue with other friends even if one fails
+            }
+        }
+    }
 }

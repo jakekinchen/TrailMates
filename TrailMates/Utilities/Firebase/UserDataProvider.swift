@@ -552,4 +552,20 @@ class UserDataProvider {
         }
         userListeners.removeAll()
     }
+
+    // MARK: - Account Deletion
+
+    /// Deletes a user document from Firestore (used during account deletion)
+    func deleteUserDocument(userId: String) async throws {
+        let userRef = db.collection("users").document(userId)
+
+        do {
+            try await userRef.delete()
+            #if DEBUG
+            print("UserDataProvider: Deleted user document for \(userId)")
+            #endif
+        } catch {
+            throw AppError.from(error)
+        }
+    }
 }

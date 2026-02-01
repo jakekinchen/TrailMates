@@ -166,4 +166,113 @@ class AuthViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    /// Permanently deletes the user's account and all associated data
+    func deleteAccount() async throws {
+        guard let currentUser = Auth.auth().currentUser else {
+            throw AppError.notAuthenticated()
+        }
+
+        let userId = currentUser.uid
+        let friendIds = userManager.currentUser?.friends ?? []
+
+        #if DEBUG
+        print("🗑️ Starting account deletion for user: \(userId)")
+        #endif
+
+        // 1. Delete profile images from Storage
+        #if DEBUG
+        print("   1. Deleting profile images...")
+        #endif
+        await ImageStorageProvider.shared.deleteOldProfileImage(for: userId)
+
+        // 2. Delete notifications from RTDB
+        #if DEBUG
+        print("   2. Deleting notifications...")
+        #endif
+        do {
+            try await NotificationDataProvider.shared.deleteAllNotifications(for: userId)
+        } catch {
+            #if DEBUG
+            print("   ⚠️ Error deleting notifications: \(error.localizedDescription)")
+            #endif
+            // Continue even if this fails
+        }
+
+        // 3. Delete friend requests from RTDB
+        #if DEBUG
+        print("   3. Deleting friend requests...")
+        #endif
+        do {
+            try await FriendDataProvider.shared.deleteAllFriendRequests(for: userId)
+        } catch {
+            #if DEBUG
+            print("   ⚠️ Error deleting friend requests: \(error.localizedDescription)")
+            #endif
+        }
+
+        // 4. Delete location data from RTDB
+        #if DEBUG
+        print("   4. Deleting location data...")
+        #endif
+        do {
+            try await LocationDataProvider.shared.deleteUserLocation(userId: userId)
+        } catch {
+            #if DEBUG
+            print("   ⚠️ Error deleting location: \(error.localizedDescription)")
+            #endif
+        }
+
+        // 5. Remove user from friends' friend lists
+        #if DEBUG
+        print("   5. Removing from friends' lists...")
+        #endif
+        do {
+            try await FriendDataProvider.shared.removeUserFromAllFriendLists(userId: userId, friendIds: friendIds)
+        } catch {
+            #if DEBUG
+            print("   ⚠️ Error removing from friend lists: \(error.localizedDescription)")
+            #endif
+        }
+
+        // 6. Delete user document from Firestore
+        #if DEBUG
+        print("   6. Deleting user document...")
+        #endif
+        do {
+            try await UserDataProvider.shared.deleteUserDocument(userId: userId)
+        } catch {
+            #if DEBUG
+            print("   ⚠️ Error deleting user document: \(error.localizedDescription)")
+            #endif
+            // This is critical - rethrow if it fails
+            throw error
+        }
+
+        // 7. Delete Firebase Auth account
+        #if DEBUG
+        print("   7. Deleting Firebase Auth account...")
+        #endif
+        do {
+            try await currentUser.delete()
+        } catch {
+            #if DEBUG
+            print("   ❌ Error deleting Auth account: \(error.localizedDescription)")
+            #endif
+            throw AppError.from(error)
+        }
+
+        // 8. Clear local state
+        #if DEBUG
+        print("   8. Clearing local state...")
+        #endif
+        await MainActor.run {
+            self.isAuthenticated = false
+        }
+        await userManager.signOut()
+
+        #if DEBUG
+        print("✅ Account deletion completed successfully")
+        #endif
+    }
 }
