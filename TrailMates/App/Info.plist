@@ -24,7 +24,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>TrailMates needs camera access to take your profile photo.</string>
 	<key>NSContactsUsageDescription</key>
-	<string>TrailMates uses your contacts to help you find friends who already use the app.</string>
+	<string>TrailMates uses your contacts to find friends. With your consent, phone numbers are hashed on device and sent to TrailMates servers only for account matching.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>TrailMates uses your location in the background to share your live position with friends while you&apos;re on the trail.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

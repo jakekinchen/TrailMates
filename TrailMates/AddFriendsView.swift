@@ -47,12 +47,15 @@ struct AddFriendsView: View {
     @State private var navigationPath = NavigationPath()
     @State private var contactsAccessGranted = false
     @State private var showContactsPermissionAlert = false
+    @State private var showContactsMatchingConsentAlert = false
     @State private var showMessageComposer = false
     @State private var selectedPhoneNumber: String?
     @State private var inviteMessage = "Hey! Join me on TrailMates ATX, the best app for going on social walks around Lady Bird Lake! Download here: [App Store Link]"
+    @AppStorage("contactsMatchingConsentGranted") private var contactsMatchingConsentGranted = false
 
     // MARK: - Private
     private let messageComposeDelegate = MessageComposeDelegate()
+    private let contactsMatchingDisclosure = "TrailMates will read your contacts on this device, convert phone numbers to privacy-protecting hashes, and send only those hashes to TrailMates servers to check which contacts already have accounts. We do not upload contact names, photos, emails, or your full contact list, and we use the hashes only for friend matching."
 
     // MARK: - Body
     var body: some View {
@@ -83,6 +86,18 @@ struct AddFriendsView: View {
             .sheet(isPresented: $showMessageComposer) {
                 messageComposerSheet
             }
+            .task {
+                refreshContactsAccessStatus()
+            }
+        }
+        .alert("Share contact hashes?", isPresented: $showContactsMatchingConsentAlert) {
+            Button("Not Now", role: .cancel) { }
+            Button("I Agree") {
+                contactsMatchingConsentGranted = true
+                requestContactsAccessAndNavigate()
+            }
+        } message: {
+            Text(contactsMatchingDisclosure)
         }
         .alert("Find contacts", isPresented: $showContactsPermissionAlert) {
             Button("Cancel", role: .cancel) { }
@@ -197,24 +212,39 @@ private extension AddFriendsView {
 // MARK: - Helper Methods
 private extension AddFriendsView {
     func handleContactsAction() {
-        let store = CNContactStore()
+        refreshContactsAccessStatus()
+
+        guard contactsMatchingConsentGranted else {
+            showContactsMatchingConsentAlert = true
+            return
+        }
+
         if contactsAccessGranted {
             navigationPath.append(NavigationDestination.contacts)
         } else {
-            Task { @MainActor in
-                do {
-                    let granted = try await store.requestAccess(for: .contacts)
-                    if granted {
-                        contactsAccessGranted = true
-                        navigationPath.append(NavigationDestination.contacts)
-                    } else {
-                        showContactsPermissionAlert = true
-                    }
-                } catch {
+            requestContactsAccessAndNavigate()
+        }
+    }
+
+    func requestContactsAccessAndNavigate() {
+        let store = CNContactStore()
+        Task { @MainActor in
+            do {
+                let granted = try await store.requestAccess(for: .contacts)
+                if granted {
+                    contactsAccessGranted = true
+                    navigationPath.append(NavigationDestination.contacts)
+                } else {
                     showContactsPermissionAlert = true
                 }
+            } catch {
+                showContactsPermissionAlert = true
             }
         }
+    }
+
+    func refreshContactsAccessStatus() {
+        contactsAccessGranted = CNContactStore.authorizationStatus(for: .contacts) == .authorized
     }
 
     func openSettings() {
