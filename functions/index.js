@@ -58,6 +58,41 @@ async function updateFriendArrays(userId, friendId, shouldAdd) {
   });
 }
 
+/**
+ * Converts a Firestore user document into the public profile shape returned to
+ * signed-in clients for explicit friend lookup and invite deep links.
+ * @param {FirebaseFirestore.QueryDocumentSnapshot|
+ *   FirebaseFirestore.DocumentSnapshot} doc User document snapshot.
+ * @return {object} Public user profile payload.
+ */
+function publicUserPayload(doc) {
+  const userData = doc.data() || {};
+  const joinDate = userData.joinDate && userData.joinDate.toDate ?
+    userData.joinDate.toDate().toISOString() :
+    userData.joinDate || new Date(0).toISOString();
+
+  return {
+    id: doc.id,
+    firstName: userData.firstName || "",
+    lastName: userData.lastName || "",
+    username: userData.username || "",
+    phoneNumber: userData.phoneNumber || "",
+    joinDate,
+    isActive: userData.isActive !== false,
+    profileImageUrl: userData.profileImageUrl || null,
+    profileThumbnailUrl: userData.profileThumbnailUrl || null,
+  };
+}
+
+/**
+ * Normalizes a username for exact case-insensitive lookup.
+ * @param {string} username Username with or without @ prefix.
+ * @return {string} Normalized lookup key.
+ */
+function normalizeUsername(username) {
+  return username.trim().replace(/^@/, "").toLowerCase();
+}
+
 // Cloud Function: findUsersByPhoneNumbers
 exports.findUsersByPhoneNumbers = onCall(
     {region: "us-central1", maxInstances: 3},
@@ -105,19 +140,10 @@ exports.findUsersByPhoneNumbers = onCall(
               return;
             }
 
-            const userData = doc.data();
             matchedUserIds.add(doc.id);
 
             // Only return necessary user data for matching
-            matchedUsers.push({
-              id: doc.id,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
-              username: userData.username,
-              phoneNumber: userData.phoneNumber,
-              profileImageUrl: userData.profileImageUrl,
-              profileThumbnailUrl: userData.profileThumbnailUrl,
-            });
+            matchedUsers.push(publicUserPayload(doc));
           });
         }
 
@@ -128,6 +154,89 @@ exports.findUsersByPhoneNumbers = onCall(
         return {users: matchedUsers};
       } catch (error) {
         console.error("Error in findUsersByPhoneNumbers:", error);
+        throw new HttpsError("internal", error.message);
+      }
+    },
+);
+
+// Cloud Function: searchUsers
+exports.searchUsers = onCall(
+    {region: "us-central1", maxInstances: 3},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "The function must be called while authenticated.",
+        );
+      }
+
+      const {username, hashedPhoneNumber, userId} = request.data || {};
+      const usersRef = admin.firestore().collection("users");
+      const matchedUsers = [];
+      const matchedUserIds = new Set();
+
+      const addDoc = (doc) => {
+        if (!doc || !doc.exists || matchedUserIds.has(doc.id)) {
+          return;
+        }
+        matchedUserIds.add(doc.id);
+        matchedUsers.push(publicUserPayload(doc));
+      };
+
+      if (userId) {
+        if (typeof userId !== "string") {
+          throw new HttpsError("invalid-argument", "Invalid userId.");
+        }
+
+        const userDoc = await usersRef.doc(userId).get();
+        addDoc(userDoc);
+        return {users: matchedUsers};
+      }
+
+      const hasUsername = typeof username === "string" &&
+        normalizeUsername(username).length > 0;
+      const hasPhoneHash = typeof hashedPhoneNumber === "string" &&
+        hashedPhoneNumber.length > 0;
+
+      if (!hasUsername && !hasPhoneHash) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Provide a username or hashed phone number.",
+        );
+      }
+
+      try {
+        if (hasUsername) {
+          const usernameSearchKey = normalizeUsername(username);
+          const searchKeySnapshot = await usersRef
+              .where("usernameSearchKey", "==", usernameSearchKey)
+              .limit(5)
+              .get();
+
+          searchKeySnapshot.forEach(addDoc);
+
+          // Fallback for existing accounts saved before usernameSearchKey.
+          const exactUsername = username.trim().replace(/^@/, "");
+          const exactSnapshot = await usersRef
+              .where("username", "==", exactUsername)
+              .limit(5)
+              .get();
+
+          exactSnapshot.forEach(addDoc);
+        }
+
+        if (hasPhoneHash) {
+          const phoneSnapshot = await usersRef
+              .where("hashedPhoneNumber", "==", hashedPhoneNumber)
+              .limit(5)
+              .get();
+
+          phoneSnapshot.forEach(addDoc);
+        }
+
+        return {users: matchedUsers};
+      } catch (error) {
+        console.error("Error in searchUsers:", error);
         throw new HttpsError("internal", error.message);
       }
     },

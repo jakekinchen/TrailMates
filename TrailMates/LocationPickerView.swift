@@ -145,21 +145,29 @@ struct LocationPickerView: View {
 // MARK: - Coordinate Extensions
 extension CLLocationCoordinate2D {
     var stringRepresentation: String {
-        return "\(latitude), \(longitude)"
+        // Format to 4 decimal places (~11 meter precision)
+        return String(format: "%.4f, %.4f", latitude, longitude)
     }
 }
 
 extension Event {
     func getLocationName() -> String {
+        // First, use stored location name if available
+        if let storedName = locationName, !storedName.isEmpty {
+            return storedName
+        }
+
+        // Fall back to checking recommended locations
         let recommendedLocation = Locations.items.first {
             abs($0.coordinate.latitude - location.latitude) < 0.0001 &&
             abs($0.coordinate.longitude - location.longitude) < 0.0001
         }
-        
+
         if let recommended = recommendedLocation {
             return recommended.title
         }
-        
+
+        // Last resort: formatted coordinates
         return "Custom Location (\(location.stringRepresentation))"
     }
 }

@@ -15,17 +15,18 @@ struct Event: Codable, Identifiable, Sendable {
     var title: String
     var description: String?
     var location: CLLocationCoordinate2D
+    var locationName: String?  // Reverse-geocoded or recommended location name
     var dateTime: Date
     var hostId: String
-    
+
     // Event configuration
     var eventType: EventType
     var isPublic: Bool
     var tags: [String]
-    
+
     // Attendance tracking
     var attendeeIds: Set<String>
-    
+
     // Status
     var status: EventStatus
     

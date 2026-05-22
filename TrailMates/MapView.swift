@@ -66,9 +66,11 @@ struct MapView: View {
             NotificationsView()
         }
         .sheet(item: $selectedEvent) { event in
+            // Get the fresh event from EventViewModel to ensure up-to-date attendee data
+            let freshEvent = eventViewModel.events.first(where: { $0.id == event.id }) ?? event
             NavigationView {
                 EventDetailView(
-                    event: event,
+                    event: freshEvent,
                     eventViewModel: eventViewModel
                 )
             }

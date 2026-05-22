@@ -64,7 +64,7 @@ struct ImageCropper: View {
                             .clipShape(Circle())
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white, lineWidth: 2)
+                                    .strokeBorder(Color.white, lineWidth: 2)
                             )
                     }
                     .frame(width: diameter, height: diameter)

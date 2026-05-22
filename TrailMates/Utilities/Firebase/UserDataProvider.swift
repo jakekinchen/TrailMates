@@ -246,6 +246,7 @@ class UserDataProvider {
             "firstName": "",
             "lastName": "",
             "username": "",
+            "usernameSearchKey": "",
             "friends": [],
             "doNotDisturb": false,
             "createdEventIds": [],
@@ -316,7 +317,8 @@ class UserDataProvider {
 
         // Save user data to Firestore
         let userRef = db.collection("users").document(user.id)
-        let data = try Firestore.Encoder().encode(userData)
+        var data = try Firestore.Encoder().encode(userData)
+        data["usernameSearchKey"] = Self.normalizedUsername(userData.username)
 
         #if DEBUG
         print("UserDataProvider: Attempting to save full user data")
@@ -345,6 +347,18 @@ class UserDataProvider {
             }
         }
         return friends
+    }
+
+    func fetchUser(byUsername username: String) async -> User? {
+        do {
+            return try await searchUsers(username: username, phoneNumber: nil).first
+        } catch {
+            let appError = AppError.from(error)
+            #if DEBUG
+            print("UserDataProvider: Error fetching user by username: \(appError.errorDescription ?? "Unknown")")
+            #endif
+            return nil
+        }
     }
 
     // MARK: - Phone Number Operations
@@ -450,10 +464,7 @@ class UserDataProvider {
                 throw AppError.invalidData("Invalid response format from server")
             }
 
-            let matchedUsers = try usersData.map { userData in
-                let jsonData = try JSONSerialization.data(withJSONObject: userData)
-                return try JSONDecoder().decode(User.self, from: jsonData)
-            }
+            let matchedUsers = usersData.compactMap { callableUser(from: $0) }
 
             #if DEBUG
             print("UserDataProvider: Successfully matched \(matchedUsers.count) users")
@@ -467,6 +478,114 @@ class UserDataProvider {
             #endif
             throw appError
         }
+    }
+
+    func searchUsers(username: String?, phoneNumber: String?) async throws -> [User] {
+        let trimmedUsername = username?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedUsername: String?
+        if let trimmedUsername, trimmedUsername.hasPrefix("@") {
+            normalizedUsername = String(trimmedUsername.dropFirst())
+        } else {
+            normalizedUsername = trimmedUsername
+        }
+
+        let normalizedPhone = phoneNumber.flatMap {
+            PhoneNumberService.shared.format($0, for: .storage)
+        }
+
+        let hashedPhoneNumber = normalizedPhone.map {
+            PhoneNumberHasher.shared.hashPhoneNumber($0)
+        }
+
+        guard !(normalizedUsername?.isEmpty ?? true) || hashedPhoneNumber != nil else {
+            throw AppError.invalidInput("Enter a username or phone number.")
+        }
+
+        do {
+            let callable = functions.httpsCallable("searchUsers")
+            let result = try await withRetry(maxAttempts: 3) {
+                try await callable.call([
+                    "username": normalizedUsername ?? "",
+                    "hashedPhoneNumber": hashedPhoneNumber ?? ""
+                ])
+            }
+
+            guard let response = result.data as? [String: Any],
+                  let usersData = response["users"] as? [[String: Any]] else {
+                throw AppError.invalidData("Invalid response format from server")
+            }
+
+            return usersData.compactMap { callableUser(from: $0) }
+        } catch {
+            throw AppError.from(error)
+        }
+    }
+
+    func fetchPublicUserProfile(userId: String) async throws -> User {
+        do {
+            let callable = functions.httpsCallable("searchUsers")
+            let result = try await withRetry(maxAttempts: 3) {
+                try await callable.call(["userId": userId])
+            }
+
+            guard let response = result.data as? [String: Any],
+                  let usersData = response["users"] as? [[String: Any]],
+                  let user = usersData.compactMap({ callableUser(from: $0) }).first else {
+                throw AppError.notFound("Profile")
+            }
+
+            return user
+        } catch {
+            throw AppError.from(error)
+        }
+    }
+
+    private func callableUser(from userData: [String: Any]) -> User? {
+        guard let id = userData["id"] as? String else { return nil }
+
+        let user = User(
+            id: id,
+            firstName: userData["firstName"] as? String ?? "",
+            lastName: userData["lastName"] as? String ?? "",
+            username: userData["username"] as? String ?? "",
+            phoneNumber: userData["phoneNumber"] as? String ?? "",
+            joinDate: callableDate(from: userData["joinDate"])
+        )
+
+        user.profileImageUrl = userData["profileImageUrl"] as? String
+        user.profileThumbnailUrl = userData["profileThumbnailUrl"] as? String
+        user.isActive = userData["isActive"] as? Bool ?? user.isActive
+        user.friends = userData["friends"] as? [String] ?? user.friends
+
+        return user
+    }
+
+    private func callableDate(from value: Any?) -> Date {
+        if let timestamp = value as? Timestamp {
+            return timestamp.dateValue()
+        }
+
+        if let date = value as? Date {
+            return date
+        }
+
+        if let isoString = value as? String,
+           let date = ISO8601DateFormatter().date(from: isoString) {
+            return date
+        }
+
+        if let seconds = value as? TimeInterval {
+            return Date(timeIntervalSince1970: seconds)
+        }
+
+        if let timestampData = value as? [String: Any],
+           let seconds = timestampData["_seconds"] as? TimeInterval {
+            let nanos = timestampData["_nanoseconds"] as? TimeInterval ?? 0
+            return Date(timeIntervalSince1970: seconds + nanos / 1_000_000_000)
+        }
+
+        return Date()
     }
 
     // MARK: - Username Operations
@@ -567,5 +686,11 @@ class UserDataProvider {
         } catch {
             throw AppError.from(error)
         }
+    }
+
+    private static func normalizedUsername(_ username: String) -> String {
+        let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        let withoutPrefix = trimmed.hasPrefix("@") ? String(trimmed.dropFirst()) : trimmed
+        return withoutPrefix.lowercased()
     }
 }

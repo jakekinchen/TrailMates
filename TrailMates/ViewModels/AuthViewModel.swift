@@ -23,37 +23,51 @@ class AuthViewModel: ObservableObject {
     private let auth = Auth.auth()
     private let userManager = UserManager.shared
     
-    func sendCode() async {
+    @discardableResult
+    func sendCode() async -> Bool {
         isLoading = true
         showError = false
         
         do {
             let formattedNumber = try formatPhoneNumber(phoneNumber)
-            PhoneAuthProvider.provider()
-                .verifyPhoneNumber(formattedNumber, uiDelegate: nil) { [weak self] verificationId, error in
-                    guard let self = self else { return }
-                    
-                    Task { @MainActor in
-                        self.isLoading = false
-                        
-                        if let error = error {
-                            self.showError = true
-                            self.errorMessage = error.localizedDescription
+            return await withCheckedContinuation { continuation in
+                PhoneAuthProvider.provider()
+                    .verifyPhoneNumber(formattedNumber, uiDelegate: nil) { [weak self] verificationId, error in
+                        guard let self = self else {
+                            continuation.resume(returning: false)
                             return
                         }
-                        
-                        if let verificationId = verificationId {
+
+                        Task { @MainActor in
+                            self.isLoading = false
+
+                            if let error = error {
+                                self.showError = true
+                                self.errorMessage = error.localizedDescription
+                                continuation.resume(returning: false)
+                                return
+                            }
+
+                            guard let verificationId = verificationId else {
+                                self.showError = true
+                                self.errorMessage = "Unable to start phone verification. Please try again."
+                                continuation.resume(returning: false)
+                                return
+                            }
+
                             self.verificationId = verificationId
                             self.isVerifying = true
+                            continuation.resume(returning: true)
                         }
                     }
-                }
+            }
         } catch {
             await MainActor.run {
                 self.isLoading = false
                 self.showError = true
                 self.errorMessage = error.localizedDescription
             }
+            return false
         }
     }
     

@@ -56,21 +56,66 @@ struct TrailMatesApp: App {
         _ = TrailMatesApp.firebaseConfigured
         return AuthViewModel()
     }()
+
+    @StateObject private var deepLinkRouter = DeepLinkRouter.shared
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootAppView()
                 .environmentObject(userManager)
                 .environmentObject(authViewModel)
+                .environmentObject(deepLinkRouter)
                 .task {
                     await userManager.initializeIfNeeded()
                     // Initialize LocationManager
                     await MainActor.run {
                         LocationManager.setupShared()
                     }
+                    await deepLinkRouter.resolvePendingProfileIfPossible(userManager: userManager)
+                }
+                .onOpenURL { url in
+                    guard !Auth.auth().canHandle(url) else { return }
+                    guard deepLinkRouter.handle(url) else { return }
+
+                    Task {
+                        await deepLinkRouter.resolvePendingProfileIfPossible(userManager: userManager)
+                    }
                 }
         }
         .modelContainer(sharedModelContainer)
+    }
+}
+
+private struct RootAppView: View {
+    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var deepLinkRouter: DeepLinkRouter
+
+    var body: some View {
+        ContentView()
+            .sheet(item: $deepLinkRouter.presentedProfileUser) { user in
+                NavigationStack {
+                    FriendProfileView(user: user)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") {
+                                    deepLinkRouter.presentedProfileUser = nil
+                                }
+                            }
+                        }
+                }
+                .environmentObject(userManager)
+            }
+            .task(id: userManager.isLoggedIn) {
+                await deepLinkRouter.resolvePendingProfileIfPossible(userManager: userManager)
+            }
+            .alert("Unable to Open Profile", isPresented: Binding(
+                get: { deepLinkRouter.errorMessage != nil },
+                set: { if !$0 { deepLinkRouter.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(deepLinkRouter.errorMessage ?? "")
+            }
     }
 }
 
@@ -111,21 +156,23 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func configureNotifications(_ application: UIApplication) {
         print("Configuring push notifications...")
         UNUserNotificationCenter.current().delegate = self
+        application.registerForRemoteNotifications()
         
         Task { @MainActor [weak self] in
             do {
                 let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
                 if granted {
                     print("✅ Push notification permissions granted")
-                    application.registerForRemoteNotifications()
 
                     // Check for pending APNS token
                     self?.registerPendingAPNSTokenIfNeeded()
                 } else {
                     print("❌ Push notification permissions denied")
+                    self?.registerPendingAPNSTokenIfNeeded()
                 }
             } catch {
                 print("❌ Error requesting notification permissions: \(error)")
+                self?.registerPendingAPNSTokenIfNeeded()
             }
         }
     }
@@ -184,7 +231,24 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey : Any] = [:]
     ) -> Bool {
-        return Auth.auth().canHandle(url)
+        if Auth.auth().canHandle(url) {
+            return true
+        }
+
+        return DeepLinkRouter.shared.handle(url)
+    }
+
+    func application(
+        _ application: UIApplication,
+        continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+    ) -> Bool {
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = userActivity.webpageURL else {
+            return false
+        }
+
+        return DeepLinkRouter.shared.handle(url)
     }
 }
 

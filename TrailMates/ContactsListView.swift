@@ -310,16 +310,21 @@ private struct MatchedUserRow: View {
 // MARK: - Unmatched Contact Row
 private struct UnmatchedContactRow: View {
     let contact: CNContact
+    @EnvironmentObject private var userManager: UserManager
     @State private var showingMessageComposer = false
     @State private var messageDelegate = MessageComposeDelegate()
     @State private var showingAlert = false
-    
-    private let appStoreLink = "https://apps.apple.com/app/id123456789" // Replace with your actual App Store link
-    private let inviteMessage: String
 
-    init(contact: CNContact) {
-        self.contact = contact
-        self.inviteMessage = "Hey! Join me on TrailMates, the best app for finding walking, running, and biking buddies in Austin! Download it here: \(appStoreLink)"
+    private var inviteURL: URL {
+        guard let senderId = userManager.currentUser?.id else {
+            return TrailMatesDeepLink.appStoreFallbackURL
+        }
+
+        return TrailMatesDeepLink.inviteURL(senderId: senderId)
+    }
+
+    private var inviteMessage: String {
+        "Hey! Join me on TrailMates ATX. Add me here: \(inviteURL.absoluteString)"
     }
 
     var body: some View {

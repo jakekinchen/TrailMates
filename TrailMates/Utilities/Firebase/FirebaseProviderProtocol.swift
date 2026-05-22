@@ -57,6 +57,11 @@ protocol UserDataProviding {
     /// - Returns: The matching `User` if found, `nil` otherwise.
     func fetchUser(byPhoneNumber phoneNumber: String) async -> User?
 
+    /// Finds a user by username.
+    /// - Parameter username: The username to search, with or without a leading `@`.
+    /// - Returns: The matching `User` if found, `nil` otherwise.
+    func fetchUser(byUsername username: String) async -> User?
+
     /// Checks if a user exists with the given phone number.
     /// - Parameter phoneNumber: The phone number to check (E.164 format preferred).
     /// - Returns: `true` if a user exists, `false` otherwise.
@@ -72,6 +77,20 @@ protocol UserDataProviding {
     /// - Returns: Array of matching `User` objects.
     /// - Throws: `AppError` if the query fails.
     func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User]
+
+    /// Searches public user profiles by exact username or phone number.
+    /// - Parameters:
+    ///   - username: Optional username, with or without an `@` prefix.
+    ///   - phoneNumber: Optional phone number to normalize and hash before lookup.
+    /// - Returns: Matching public user profiles.
+    /// - Throws: `AppError` if the query fails.
+    func searchUsers(username: String?, phoneNumber: String?) async throws -> [User]
+
+    /// Fetches a public user profile for profile invite/deep-link routing.
+    /// - Parameter userId: User ID from the invite/profile link.
+    /// - Returns: The matching user profile.
+    /// - Throws: `AppError` if the profile cannot be found.
+    func fetchPublicUserProfile(userId: String) async throws -> User
 
     // MARK: - Username Operations
 

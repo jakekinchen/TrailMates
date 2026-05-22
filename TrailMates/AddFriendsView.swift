@@ -8,6 +8,7 @@ import Contacts
 import UserNotifications
 import CoreLocation
 import MessageUI
+import UIKit
 
 // MARK: - Onboarding Wrapper
 struct OnboardingAddFriendsView: View {
@@ -42,6 +43,7 @@ struct AddFriendsView: View {
     // MARK: - Environment
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userManager: UserManager
+    @StateObject private var viewModel = FriendsViewModel()
 
     // MARK: - State
     @State private var navigationPath = NavigationPath()
@@ -49,8 +51,9 @@ struct AddFriendsView: View {
     @State private var showContactsPermissionAlert = false
     @State private var showContactsMatchingConsentAlert = false
     @State private var showMessageComposer = false
+    @State private var showInviteCopiedAlert = false
     @State private var selectedPhoneNumber: String?
-    @State private var inviteMessage = "Hey! Join me on TrailMates ATX, the best app for going on social walks around Lady Bird Lake! Download here: [App Store Link]"
+    @FocusState private var isFriendLookupFocused: Bool
     @AppStorage("contactsMatchingConsentGranted") private var contactsMatchingConsentGranted = false
 
     // MARK: - Private
@@ -87,6 +90,7 @@ struct AddFriendsView: View {
                 messageComposerSheet
             }
             .task {
+                viewModel.setup(with: userManager)
                 refreshContactsAccessStatus()
             }
         }
@@ -107,6 +111,11 @@ struct AddFriendsView: View {
         } message: {
             Text("Allow access to your contacts in Settings to find friends on TrailMates.")
         }
+        .alert("Invite Link Copied", isPresented: $showInviteCopiedAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("The invite link is ready to paste into any message.")
+        }
     }
 }
 
@@ -115,22 +124,98 @@ private extension AddFriendsView {
     @ViewBuilder
     var connectionMethodsSection: some View {
         VStack(spacing: 16) {
-            Text("Connect with Friends")
+            friendLookupSection
+            secondaryActionsSection
+        }
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    var friendLookupSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Find Friends")
                 .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(Color("pine"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 10) {
+                TextField("@username or phone number", text: $viewModel.friendLookupText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.namePhonePad)
+                    .submitLabel(.search)
+                    .focused($isFriendLookupFocused)
+                    .padding(.horizontal, 14)
+                    .frame(height: 50)
+                    .background(Color("alwaysBeige"))
+                    .foregroundColor(Color("pine"))
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color("pine").opacity(0.18), lineWidth: 1)
+                    )
+                    .onSubmit {
+                        handleFriendSearch()
+                    }
+
+                Button(action: handleFriendSearch) {
+                    ZStack {
+                        if viewModel.isSearchingForFriend {
+                            ProgressView()
+                                .tint(Color("alwaysBeige"))
+                        } else {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(Color("alwaysBeige"))
+                        }
+                    }
+                    .frame(width: 50, height: 50)
+                    .background(Color("pine"))
+                    .cornerRadius(10)
+                }
+                .disabled(viewModel.isSearchingForFriend)
+                .accessibilityLabel("Search friends")
+            }
+
+            if let result = viewModel.friendLookupResult {
+                FriendLookupResultRow(
+                    user: result,
+                    isCurrentUser: viewModel.isCurrentUser(result),
+                    isFriend: viewModel.isFriend(result),
+                    requestSent: viewModel.hasSentFriendRequest(to: result),
+                    isSending: viewModel.isSendingFriendRequest
+                ) {
+                    Task {
+                        await viewModel.sendFriendRequest(to: result)
+                    }
+                }
+            }
+
+            if let message = viewModel.friendLookupMessage {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundColor(Color("pine").opacity(0.75))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding()
+        .background(Color("sage").opacity(0.14))
+        .cornerRadius(12)
+    }
+
+    @ViewBuilder
+    var secondaryActionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("More Ways")
+                .font(.headline)
                 .fontWeight(.bold)
                 .foregroundColor(Color("pine"))
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             contactsButton
             inviteButton
-
-            Text("Invite your friends to the community")
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(Color("pine"))
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal)
     }
 
     @ViewBuilder
@@ -147,7 +232,7 @@ private extension AddFriendsView {
                 Text("Add from Contacts")
                     .fontWeight(.bold)
                     .foregroundColor(Color("beige"))
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 if contactsAccessGranted {
                     Image(systemName: "chevron.right")
@@ -163,9 +248,7 @@ private extension AddFriendsView {
 
     @ViewBuilder
     var inviteButton: some View {
-        Button(action: {
-            showMessageComposer = true
-        }) {
+        Button(action: handleInviteAction) {
             HStack {
                 Image(systemName: "envelope")
                     .resizable()
@@ -177,7 +260,7 @@ private extension AddFriendsView {
                 Text("Invite Friends")
                     .fontWeight(.bold)
                     .foregroundColor(Color("alwaysBeige"))
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding()
             .background(Color("pumpkin"))
@@ -211,6 +294,36 @@ private extension AddFriendsView {
 
 // MARK: - Helper Methods
 private extension AddFriendsView {
+    var inviteURL: URL {
+        guard let senderId = userManager.currentUser?.id else {
+            return TrailMatesDeepLink.appStoreFallbackURL
+        }
+
+        return TrailMatesDeepLink.inviteURL(senderId: senderId)
+    }
+
+    var inviteMessage: String {
+        let senderName = userManager.currentUser.map { "\($0.firstName) \($0.lastName)" }
+            ?? "I"
+        return "\(senderName) invited you to TrailMates ATX. Add them here: \(inviteURL.absoluteString)"
+    }
+
+    func handleFriendSearch() {
+        isFriendLookupFocused = false
+        Task {
+            await viewModel.searchForFriend()
+        }
+    }
+
+    func handleInviteAction() {
+        if MessageComposerView.canSendText() {
+            showMessageComposer = true
+        } else {
+            UIPasteboard.general.string = inviteMessage
+            showInviteCopiedAlert = true
+        }
+    }
+
     func handleContactsAction() {
         refreshContactsAccessStatus()
 
@@ -250,6 +363,114 @@ private extension AddFriendsView {
     func openSettings() {
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
+        }
+    }
+}
+
+// MARK: - Friend Lookup Result Row
+private struct FriendLookupResultRow: View {
+    let user: User
+    let isCurrentUser: Bool
+    let isFriend: Bool
+    let requestSent: Bool
+    let isSending: Bool
+    let onAdd: () -> Void
+
+    private var buttonTitle: String {
+        if isCurrentUser { return "You" }
+        if isFriend { return "Friends" }
+        if requestSent { return "Sent" }
+        return "Add"
+    }
+
+    private var canAdd: Bool {
+        !isCurrentUser && !isFriend && !requestSent
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            FriendLookupAvatar(user: user)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("\(user.firstName) \(user.lastName)")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color("pine"))
+
+                Text("@\(user.username)")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color("pine").opacity(0.72))
+            }
+
+            Spacer(minLength: 8)
+
+            Button(action: onAdd) {
+                ZStack {
+                    if isSending && canAdd {
+                        ProgressView()
+                            .tint(Color("alwaysBeige"))
+                    } else {
+                        Text(buttonTitle)
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                }
+                .frame(minWidth: 72)
+                .padding(.vertical, 9)
+                .padding(.horizontal, 12)
+                .foregroundColor(canAdd ? Color("alwaysBeige") : Color("pine").opacity(0.72))
+                .background(canAdd ? Color("pine") : Color("sage").opacity(0.35))
+                .cornerRadius(9)
+            }
+            .disabled(!canAdd || isSending)
+        }
+        .padding(12)
+        .background(Color("alwaysBeige").opacity(0.72))
+        .cornerRadius(12)
+    }
+}
+
+private struct FriendLookupAvatar: View {
+    let user: User
+
+    private var imageURL: URL? {
+        let urlString = user.profileThumbnailUrl ?? user.profileImageUrl
+        return urlString.flatMap(URL.init(string:))
+    }
+
+    private var initials: String {
+        let firstInitial = user.firstName.prefix(1)
+        let lastInitial = user.lastName.prefix(1)
+        return "\(firstInitial)\(lastInitial)".uppercased()
+    }
+
+    var body: some View {
+        Group {
+            if let imageURL {
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    default:
+                        fallback
+                    }
+                }
+            } else {
+                fallback
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(Color("pine").opacity(0.18), lineWidth: 1))
+    }
+
+    private var fallback: some View {
+        ZStack {
+            Circle()
+                .fill(Color("sage").opacity(0.4))
+            Text(initials.isEmpty ? "?" : initials)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(Color("pine"))
         }
     }
 }

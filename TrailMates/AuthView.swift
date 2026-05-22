@@ -29,38 +29,45 @@ struct AuthView: View {
 
     // MARK: - Body
     var body: some View {
-        ZStack {
-            backgroundImage
+        GeometryReader { geometry in
+            ZStack {
+                backgroundImage(size: geometry.size)
 
-            VStack(spacing: 0) {
-                headerSection
-                    .frame(height: 250)
+                VStack(spacing: 0) {
+                    headerSection
+                        .frame(height: 250)
 
-                Spacer()
-                Spacer()
-                Spacer()
+                    Spacer()
+                    Spacer()
+                    Spacer()
 
-                authFieldsContainer
+                    authFieldsContainer
 
-                Spacer()
-                Spacer()
+                    Spacer()
+                    Spacer()
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .simultaneousGesture(TapGesture().onEnded {
             dismissKeyboard()
         })
-        .ignoresSafeArea(.keyboard)
+        .ignoresSafeArea(.keyboard, edges: .all)
     }
 }
 
 // MARK: - View Builders
 private extension AuthView {
     @ViewBuilder
-    var backgroundImage: some View {
+    func backgroundImage(size: CGSize) -> some View {
         Image("background")
             .resizable()
             .scaledToFill()
-            .edgesIgnoringSafeArea(.all)
+            .frame(width: size.width, height: size.height)
+            .clipped()
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -142,6 +149,7 @@ private extension AuthView {
                 PhoneEntryStep(
                     phoneNumber: $phoneNumber,
                     isEnabled: !authViewModel.isLoading,
+                    usesInvertedColors: showingLoginFields,
                     focusedField: $focusedField
                 )
             }
@@ -204,7 +212,7 @@ private extension AuthView {
                     .frame(maxWidth: .infinity)
             } else {
                 Text("Log In")
-                    .authButtonStyle(primary: true)
+                    .authButtonStyle(primary: !usesInvertedLoginSubmitStyle)
             }
         }
         .accessibilityIdentifier("auth_login_button")
@@ -263,11 +271,12 @@ private extension AuthView {
                     if await userManager.checkUserExists(phoneNumber: phoneNumber) {
                         print("Login - User found, proceeding with verification")
                         authViewModel.phoneNumber = phoneNumber
-                        await authViewModel.sendCode()
-                        isVerificationStage = true
-                        showingLoginFields = true
-                        showingSignupFields = false
-                        isVerificationSent = true
+                        if await authViewModel.sendCode() {
+                            isVerificationStage = true
+                            showingLoginFields = true
+                            showingSignupFields = false
+                            isVerificationSent = true
+                        }
                     } else {
                         print("Login - No user found with phone number")
                         authViewModel.showError = true
@@ -296,11 +305,12 @@ private extension AuthView {
                     }
                     authViewModel.phoneNumber = phoneNumber
                     authViewModel.isSigningUp = true
-                    await authViewModel.sendCode()
-                    isVerificationStage = true
-                    showingSignupFields = true
-                    showingLoginFields = false
-                    isVerificationSent = true
+                    if await authViewModel.sendCode() {
+                        isVerificationStage = true
+                        showingSignupFields = true
+                        showingLoginFields = false
+                        isVerificationSent = true
+                    }
                     isCheckingPhoneNumber = false
                 }
             } else {
@@ -309,12 +319,22 @@ private extension AuthView {
             }
         }
     }
+
+    var usesInvertedLoginSubmitStyle: Bool {
+        showingLoginFields && !isVerificationStage
+    }
+}
+
+private enum AuthInputColorStyle {
+    case standard
+    case inverted
 }
 
 // MARK: - PhoneEntryStep Component
 private struct PhoneEntryStep: View {
     @Binding var phoneNumber: String
     let isEnabled: Bool
+    let usesInvertedColors: Bool
     @FocusState.Binding var focusedField: AuthField?
 
     var body: some View {
@@ -325,6 +345,7 @@ private struct PhoneEntryStep: View {
             contentType: .telephoneNumber,
             isEnabled: isEnabled,
             field: .phone,
+            colorStyle: usesInvertedColors ? .inverted : .standard,
             focusedField: $focusedField
         )
     }
@@ -357,6 +378,7 @@ private struct AuthFloatingLabelTextField: View {
     let contentType: UITextContentType
     let isEnabled: Bool
     let field: AuthField
+    var colorStyle: AuthInputColorStyle = .standard
     @FocusState.Binding var focusedField: AuthField?
 
     var body: some View {
@@ -364,7 +386,7 @@ private struct AuthFloatingLabelTextField: View {
             Text(placeholder)
                 .font(.system(size: !text.isEmpty ? 10 : 16))
                 .padding(.horizontal, 8)
-                .foregroundColor(Color("alwaysBeige"))
+                .foregroundColor(foregroundColor)
                 .offset(x: 8, y: !text.isEmpty ? -16 : 0)
                 .animation(.easeInOut(duration: 0.2), value: !text.isEmpty)
                 .allowsHitTesting(false)
@@ -376,6 +398,7 @@ private struct AuthFloatingLabelTextField: View {
                 .disabled(!isEnabled)
                 .focused($focusedField, equals: field)
                 .accessibilityIdentifier(accessibilityIdentifier)
+                .tint(foregroundColor)
                 .offset(y: !text.isEmpty ? 2 : 0)
                 .onTapGesture {
                     if focusedField == field {
@@ -392,15 +415,27 @@ private struct AuthFloatingLabelTextField: View {
                 .padding(.horizontal, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color("alwaysPine"))
+                        .fill(backgroundColor)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color("alwaysBeige"), lineWidth: 1)
+                                .stroke(borderColor, lineWidth: 1)
                         )
                 )
-                .foregroundColor(Color("alwaysBeige"))
+                .foregroundColor(foregroundColor)
         }
         .padding(.top, 12)
+    }
+
+    private var foregroundColor: Color {
+        colorStyle == .inverted ? Color("alwaysPine") : Color("alwaysBeige")
+    }
+
+    private var backgroundColor: Color {
+        colorStyle == .inverted ? Color("alwaysBeige") : Color("alwaysPine")
+    }
+
+    private var borderColor: Color {
+        colorStyle == .inverted ? Color("alwaysPine") : Color("alwaysBeige")
     }
 
     private var accessibilityIdentifier: String {

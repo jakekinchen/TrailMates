@@ -255,6 +255,7 @@ private extension CreateEventView {
                     title: title,
                     description: eventDescription,
                     location: locationInfo.coordinate,
+                    locationName: locationInfo.name,
                     date: date,
                     isPublic: isPublic,
                     eventType: eventType,

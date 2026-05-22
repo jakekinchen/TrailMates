@@ -34,6 +34,7 @@ struct ProfileSetupView: View {
     @State private var username: String = ""
     @State private var profileImage: UIImage?
     @State private var originalImage: UIImage?
+    @State private var hasSelectedNewProfileImage = false
     @State private var isLoading = false
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -73,7 +74,9 @@ struct ProfileSetupView: View {
                 focusedField = nil
             }
         }
-        .onAppear(perform: setupView)
+        .task {
+            await setupView()
+        }
         .alert(isPresented: $showAlert) {
             Alert(
                 title: Text("Profile Setup"),
@@ -102,10 +105,19 @@ struct ProfileSetupView: View {
         }
         .sheet(isPresented: $showCropper) {
             if let image = originalImage {
-                ImageCropper(image: image, croppedImage: $profileImage)
+                ImageCropper(
+                    image: image,
+                    croppedImage: Binding(
+                        get: { profileImage },
+                        set: { newImage in
+                            profileImage = newImage
+                            hasSelectedNewProfileImage = newImage != nil
+                        }
+                    )
+                )
             }
         }
-        .onChange(of: originalImage) { oldValue, newValue in
+        .onChange(of: originalImage) { _, newValue in
             if newValue != nil {
                 showCropper = true
             }
@@ -154,8 +166,9 @@ private extension ProfileSetupView {
             if let image = profileImage {
                 Image(uiImage: image)
                     .resizable()
-                    .scaledToFit()
+                    .scaledToFill()
                     .frame(width: 120, height: 120)
+                    .clipped()
                     .clipShape(Circle())
                     .overlay(profileImageOverlay)
                     .contentShape(Circle())
@@ -242,7 +255,8 @@ private extension ProfileSetupView {
 
 // MARK: - ProfileSetupView Setup
 private extension ProfileSetupView {
-    func setupView() {
+    @MainActor
+    func setupView() async {
         print("\n ProfileSetupView - Setting up view")
         if let user = userManager.currentUser {
             print("Current User State:")
@@ -253,9 +267,15 @@ private extension ProfileSetupView {
             firstName = user.firstName
             lastName = user.lastName
             username = user.username
-            if let imageData = user.profileImageData {
-                profileImage = UIImage(data: imageData)
-                print("   Profile Image: \(profileImage != nil ? "Loaded" : "Failed to load")")
+            if let imageData = user.profileImageData,
+               let image = UIImage(data: imageData) {
+                profileImage = image
+                print("   Profile Image: Loaded from local data")
+            } else if let image = try? await userManager.fetchProfileImage(for: user, forceRefresh: true) {
+                profileImage = image
+                print("   Profile Image: Loaded from provider")
+            } else {
+                print("   Profile Image: Not available")
             }
         } else {
             print("No current user available during setup")
@@ -369,7 +389,7 @@ private extension ProfileSetupView {
             print("Initial profile setup detected - will force save")
         }
 
-        if let image = profileImage {
+        if hasSelectedNewProfileImage, let image = profileImage {
             print("Uploading profile image...")
             try await userManager.setProfileImage(image)
             print("Profile image uploaded")

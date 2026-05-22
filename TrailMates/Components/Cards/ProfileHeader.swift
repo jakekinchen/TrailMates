@@ -40,7 +40,7 @@ struct ProfileHeader: View {
             }
             .frame(width: 120, height: 120)
             .clipShape(Circle())
-            .overlay(Circle().stroke(Color("pine"), lineWidth: 3))
+            .overlay(Circle().strokeBorder(Color("pine"), lineWidth: 3))
             .shadow(radius: 5)
             
             VStack(spacing: 8) {

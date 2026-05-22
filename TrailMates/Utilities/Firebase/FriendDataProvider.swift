@@ -23,6 +23,10 @@ class FriendDataProvider {
     // MARK: - Friend Request Operations
 
     func sendFriendRequest(fromUserId: String, to targetUserId: String) async throws {
+        guard fromUserId != targetUserId else {
+            throw AppError.invalidInput("You cannot add yourself as a friend.")
+        }
+
         // Get Firebase UIDs for both users
         let userDoc = try await db.collection("users").document(fromUserId).getDocument()
         let targetDoc = try await db.collection("users").document(targetUserId).getDocument()
@@ -30,6 +34,11 @@ class FriendDataProvider {
         guard let userId = userDoc.get("id") as? String,
               let targetId = targetDoc.get("id") as? String else {
             throw AppError.invalidData("Could not find Firebase UIDs for users")
+        }
+
+        let existingFriends = userDoc.get("friends") as? [String] ?? []
+        guard !existingFriends.contains(targetUserId) else {
+            throw AppError.alreadyExists("Friend relationship")
         }
 
         // Verify the current user is sending the request
@@ -133,6 +142,10 @@ class FriendDataProvider {
     // MARK: - Friend Relationship Operations
 
     func addFriend(_ friendId: String, to userId: String) async throws {
+        guard friendId != userId else {
+            throw AppError.invalidInput("You cannot add yourself as a friend.")
+        }
+
         let userRef = db.collection("users").document(userId)
         let friendRef = db.collection("users").document(friendId)
 

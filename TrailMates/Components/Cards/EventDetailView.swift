@@ -44,6 +44,16 @@ struct EventDetailView: View {
         return event.hostId == currentUser.id
     }
 
+    private var eventExportTimeZone: TimeZone {
+        TimeZone.autoupdatingCurrent
+    }
+
+    private var eventEndDate: Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = eventExportTimeZone
+        return calendar.date(byAdding: .hour, value: 1, to: event.dateTime) ?? event.dateTime
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -227,16 +237,20 @@ struct EventDetailView: View {
         
         // Google Calendar option
         alert.addAction(UIAlertAction(title: "Google Calendar", style: .default) { [self] _ in
-            let title = event.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            let location = event.getLocationName().addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            let timeZone = eventExportTimeZone
+            let startDate = googleCalendarDateString(from: event.dateTime, timeZone: timeZone)
+            let endDate = googleCalendarDateString(from: eventEndDate, timeZone: timeZone)
 
-            let dateFormatter = ISO8601DateFormatter()
-            let startDate = dateFormatter.string(from: event.dateTime)
-            let endDate = dateFormatter.string(from: Calendar.current.date(byAdding: .hour, value: 1, to: event.dateTime) ?? event.dateTime)
+            var components = URLComponents(string: "https://calendar.google.com/calendar/render")
+            components?.queryItems = [
+                URLQueryItem(name: "action", value: "TEMPLATE"),
+                URLQueryItem(name: "text", value: event.title),
+                URLQueryItem(name: "dates", value: "\(startDate)/\(endDate)"),
+                URLQueryItem(name: "ctz", value: timeZone.identifier),
+                URLQueryItem(name: "location", value: event.getLocationName())
+            ]
 
-            let urlString = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=\(title)&dates=\(startDate)/\(endDate)&location=\(location)"
-
-            if let url = URL(string: urlString) {
+            if let url = components?.url {
                 UIApplication.shared.open(url)
             }
         })
@@ -258,7 +272,8 @@ struct EventDetailView: View {
         let calendarEvent = EKEvent(eventStore: store)
         calendarEvent.title = event.title
         calendarEvent.startDate = event.dateTime
-        calendarEvent.endDate = Calendar.current.date(byAdding: .hour, value: 1, to: event.dateTime) ?? event.dateTime
+        calendarEvent.endDate = eventEndDate
+        calendarEvent.timeZone = eventExportTimeZone
 
         // Set the structured location with coordinates
         let structuredLocation = EKStructuredLocation(title: event.getLocationName())
@@ -285,6 +300,15 @@ struct EventDetailView: View {
             }
             topController.present(eventViewController, animated: true)
         }
+    }
+
+    private func googleCalendarDateString(from date: Date, timeZone: TimeZone) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyyMMdd'T'HHmmss"
+        return formatter.string(from: date)
     }
     
 }

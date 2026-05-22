@@ -147,6 +147,118 @@ mocha.describe("Phone Number Functions", () => {
     });
   });
 
+  mocha.describe("searchUsers", () => {
+    mocha.it("should require authentication", async () => {
+      try {
+        await functionsMock.searchUsers.run({
+          data: {username: "testuser"},
+          auth: null,
+        });
+        assert.fail("Should have thrown an error");
+      } catch (error) {
+        assert.equal(error.code, "unauthenticated");
+      }
+    });
+
+    mocha.it("should validate input", async () => {
+      const auth = {uid: "test-user"};
+
+      try {
+        await functionsMock.searchUsers.run({data: {}, auth});
+        assert.fail("Should have thrown an error");
+      } catch (error) {
+        assert.equal(error.code, "invalid-argument");
+      }
+    });
+
+    mocha.it("should return a public profile by user id", async () => {
+      const auth = {uid: "test-user"};
+      const mockDoc = {
+        id: "sender-user",
+        exists: true,
+        data: () => ({
+          firstName: "Sender",
+          lastName: "User",
+          username: "sender",
+          phoneNumber: "+15551234567",
+          joinDate: "2026-05-22T00:00:00.000Z",
+        }),
+      };
+
+      const docStub = sinon.stub().returns({
+        get: sinon.stub().resolves(mockDoc),
+      });
+
+      firestoreStub.collection.returns({
+        doc: docStub,
+      });
+
+      const result = await functionsMock.searchUsers.run({
+        data: {userId: "sender-user"},
+        auth,
+      });
+
+      assert.equal(result.users.length, 1);
+      assert.equal(result.users[0].id, "sender-user");
+      assert.equal(result.users[0].username, "sender");
+      assert(docStub.calledWith("sender-user"));
+    });
+
+    mocha.it("should search by normalized username key", async () => {
+      const auth = {uid: "test-user"};
+      const mockDoc = {
+        id: "friend-user",
+        exists: true,
+        data: () => ({
+          firstName: "Friend",
+          lastName: "User",
+          username: "Friend_User",
+          phoneNumber: "+15557654321",
+          joinDate: "2026-05-22T00:00:00.000Z",
+        }),
+      };
+
+      const emptySnapshot = {
+        forEach: () => {},
+      };
+      const matchedSnapshot = {
+        forEach: (callback) => callback(mockDoc),
+      };
+
+      const whereStub = sinon.stub();
+      whereStub.withArgs("usernameSearchKey", "==", "friend_user")
+          .returns({
+            limit: sinon.stub().returns({
+              get: sinon.stub().resolves(matchedSnapshot),
+            }),
+          });
+      whereStub.withArgs("username", "==", "Friend_User")
+          .returns({
+            limit: sinon.stub().returns({
+              get: sinon.stub().resolves(emptySnapshot),
+            }),
+          });
+
+      firestoreStub.collection.returns({
+        where: whereStub,
+      });
+
+      const result = await functionsMock.searchUsers.run({
+        data: {username: "@Friend_User"},
+        auth,
+      });
+
+      assert.equal(result.users.length, 1);
+      assert.equal(result.users[0].id, "friend-user");
+      assert.equal(result.users[0].username, "Friend_User");
+      assert(whereStub.calledWith(
+          "usernameSearchKey",
+          "==",
+          "friend_user",
+      ));
+    });
+  });
+
   mocha.describe("checkUserExists", () => {
     mocha.it("should validate input", async () => {
       try {

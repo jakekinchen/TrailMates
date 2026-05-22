@@ -419,6 +419,28 @@ class UserManager: ObservableObject {
         return await userProvider.fetchUser(byPhoneNumber: phoneNumber)
     }
 
+    func searchUsers(usernameOrPhone query: String) async throws -> [User] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else {
+            throw AppError.invalidInput("Enter a username or phone number.")
+        }
+
+        let digitCount = trimmedQuery.filter { $0.isNumber }.count
+        let phoneNumber = digitCount >= 7 ? trimmedQuery : nil
+        let username = phoneNumber == nil ? trimmedQuery : nil
+
+        let users = try await userProvider.searchUsers(
+            username: username,
+            phoneNumber: phoneNumber
+        )
+
+        return users.filter { $0.id != currentUser?.id }
+    }
+
+    func fetchPublicUserProfile(userId: String) async throws -> User {
+        try await userProvider.fetchPublicUserProfile(userId: userId)
+    }
+
     func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User] {
         do {
             return try await userProvider.findUsersByPhoneNumbers(phoneNumbers)

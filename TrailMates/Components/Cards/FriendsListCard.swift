@@ -23,19 +23,24 @@ struct FriendsListCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Friends on the Trail")
-                    .font(.system(size: 18))
-                    .foregroundColor(Color("pine"))
-                Spacer()
-                Button(action: {
-                    showAddFriends = true
-                }) {
+            Button {
+                showAddFriends = true
+            } label: {
+                HStack {
+                    Text("Friends on the Trail")
+                        .font(.system(size: 18))
+                        .foregroundColor(Color("pine"))
+                    Spacer()
                     Image(systemName: "person.badge.plus")
                         .foregroundColor(Color("pine"))
                         .font(.system(size: 20))
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Friends on the Trail")
+            .accessibilityHint("Opens add friends")
             
             Divider()
             

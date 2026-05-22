@@ -94,6 +94,7 @@ class EventViewModel: ObservableObject {
         title: String,
         description: String?,
         location: CLLocationCoordinate2D,
+        locationName: String? = nil,
         date: Date,
         isPublic: Bool,
         eventType: Event.EventType = .walk,
@@ -108,6 +109,7 @@ class EventViewModel: ObservableObject {
             title: title,
             description: description,
             location: location,
+            locationName: locationName,
             dateTime: date,
             hostId: user.id,
             eventType: eventType,
@@ -127,24 +129,42 @@ class EventViewModel: ObservableObject {
     
     /// Allows a user to attend an event
     func attendEvent(userId: String, eventId: String) async throws {
+        // Optimistically update local state first for immediate UI feedback
+        if let index = events.firstIndex(where: { $0.id == eventId }) {
+            events[index].attendeeIds.insert(userId)
+        }
+
         guard var event = await eventProvider.fetchEvent(by: eventId) else {
+            // Revert optimistic update on error
+            if let index = events.firstIndex(where: { $0.id == eventId }) {
+                events[index].attendeeIds.remove(userId)
+            }
             throw EventError.eventNotFound
         }
 
         event.attendeeIds.insert(userId)
         try await eventProvider.saveEvent(event)
-        await loadEvents()
+        // No need to reload - local state is already correct
     }
 
     /// Allows a user to leave an event
     func leaveEvent(userId: String, eventId: String) async throws {
+        // Optimistically update local state first for immediate UI feedback
+        if let index = events.firstIndex(where: { $0.id == eventId }) {
+            events[index].attendeeIds.remove(userId)
+        }
+
         guard var event = await eventProvider.fetchEvent(by: eventId) else {
+            // Revert optimistic update on error
+            if let index = events.firstIndex(where: { $0.id == eventId }) {
+                events[index].attendeeIds.insert(userId)
+            }
             throw EventError.eventNotFound
         }
 
         event.attendeeIds.remove(userId)
         try await eventProvider.saveEvent(event)
-        await loadEvents()
+        // No need to reload - local state is already correct
     }
 
     /// Cancels an event if the requester is the host
