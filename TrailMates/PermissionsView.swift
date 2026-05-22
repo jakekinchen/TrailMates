@@ -4,87 +4,150 @@ import CoreLocation
 import UserNotifications
 
 struct PermissionsView: View {
+    private enum PermissionStep: Int, CaseIterable, Hashable {
+        case notifications
+        case location
+
+        var title: String {
+            switch self {
+            case .notifications:
+                return "Stay in the loop"
+            case .location:
+                return "Share your trail location"
+            }
+        }
+
+        var message: String {
+            switch self {
+            case .notifications:
+                return "We'll let you know when friends invite you for a walk or are nearby on the trail."
+            case .location:
+                return "This helps friends find you on the trail, even if TrailMates is in the background."
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .notifications:
+                return "bell.badge.fill"
+            case .location:
+                return "location.fill"
+            }
+        }
+
+        var progressLabel: String {
+            "Step \(rawValue + 1) of \(Self.allCases.count)"
+        }
+    }
+
     @StateObject private var locationManager: LocationManager
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var isRequestingPermissions = false
+    @State private var currentStep: PermissionStep = .notifications
     let onComplete: () -> Void
-    
+
     init(onComplete: @escaping () -> Void) {
         self.onComplete = onComplete
-        // Initialize LocationManager with UserManager.shared
         _locationManager = StateObject(wrappedValue: LocationManager(userManager: UserManager.shared))
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color("beige").ignoresSafeArea()
-                
-                VStack(spacing: 30) {
-                    Text("Permissions")
-                        .font(.title)
-                        .foregroundColor(Color("pine"))
-                        .padding(.top, 40)
-                    
-                    VStack(alignment: .leading, spacing: 20) {
-                        PermissionCard(
-                            title: "Location Access",
-                            description: "TrailMates needs background location access to alert friends when you're on the trail and help coordinate meetups.",
-                            iconName: "location.fill",
-                            status: locationPermissionStatus
-                        )
-                        
-                        PermissionCard(
-                            title: "Push Notifications",
-                            description: "Get notified when your friends are nearby on the trail or when they invite you for a walk.",
-                            iconName: "bell.fill",
-                            status: notificationPermissionStatus
-                        )
-                    }
-                    .padding(.horizontal)
-                    
+
+                VStack(spacing: 0) {
+                    permissionProgress
+
                     Spacer()
-                    
-                    VStack(spacing: 15) {
-                        Button(action: {
-                            Task {
-                                await requestPermissions()
-                            }
-                        }) {
-                            Text("Continue")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color("pumpkin"))
-                                .cornerRadius(10)
-                        }
-                    }
-                    .padding()
+
+                    permissionContent(for: currentStep)
+                        .padding(.horizontal, AppSpacing.xxl)
+
+                    Spacer()
+
+                    continueButton
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.bottom, AppSpacing.xxl)
                 }
             }
             .navigationBarHidden(true)
             .onAppear {
-                checkNotificationStatus()
+                Task {
+                    await checkNotificationStatus()
+                }
             }
         }
     }
-    
-    private var locationPermissionStatus: PermissionStatus {
-        switch locationManager.authorizationStatus {
-        case CLAuthorizationStatus.authorizedAlways:
-            return .granted
-        case CLAuthorizationStatus.authorizedWhenInUse:
-            return .partial
-        case CLAuthorizationStatus.denied, CLAuthorizationStatus.restricted:
-            return .denied
-        case CLAuthorizationStatus.notDetermined:
-            return .notRequested
-        @unknown default:
-            return .notRequested
+
+    private var permissionProgress: some View {
+        VStack(spacing: AppSpacing.md) {
+            Text(currentStep.progressLabel)
+                .font(AppTypography.labelPrimary)
+                .foregroundColor(Color("alwaysSage"))
+
+            HStack(spacing: AppSpacing.sm) {
+                ForEach(PermissionStep.allCases, id: \.self) { step in
+                    Capsule()
+                        .fill(step.rawValue <= currentStep.rawValue ? Color("pumpkin") : Color("alwaysSage").opacity(0.25))
+                        .frame(width: step == currentStep ? 28 : 10, height: 6)
+                        .animation(.easeInOut(duration: 0.2), value: currentStep)
+                }
+            }
+        }
+        .padding(.top, AppSpacing.xxxl)
+    }
+
+    private func permissionContent(for step: PermissionStep) -> some View {
+        VStack(spacing: AppSpacing.xxl) {
+            Image(systemName: step.iconName)
+                .font(.system(size: 52, weight: .semibold))
+                .foregroundColor(Color("pumpkin"))
+                .frame(width: 96, height: 96)
+                .background(Color.white.opacity(0.75))
+                .clipShape(Circle())
+
+            VStack(spacing: AppSpacing.md) {
+                Text(step.title)
+                    .font(AppTypography.titleLarge)
+                    .foregroundColor(Color("pine"))
+                    .multilineTextAlignment(.center)
+
+                Text(step.message)
+                    .font(AppTypography.bodyPrimary)
+                    .foregroundColor(Color("alwaysSage"))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
-    
+
+    private var continueButton: some View {
+        Button {
+            Task {
+                await continueFromCurrentStep()
+            }
+        } label: {
+            HStack(spacing: AppSpacing.sm) {
+                if isRequestingPermissions {
+                    ProgressView()
+                        .tint(.white)
+                }
+
+                Text("Continue")
+                    .font(AppTypography.buttonLarge)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: AppSpacing.buttonHeight)
+            .background(Color("pumpkin"))
+            .cornerRadius(AppSpacing.cornerRadiusSmall)
+        }
+        .disabled(isRequestingPermissions)
+        .opacity(isRequestingPermissions ? 0.75 : 1)
+    }
+
     private var notificationPermissionStatus: PermissionStatus {
         switch notificationStatus {
         case .authorized:
@@ -101,25 +164,55 @@ struct PermissionsView: View {
             return .notRequested
         }
     }
-    
-    private func checkNotificationStatus() {
-        Task { @MainActor in
-            let settings = await UNUserNotificationCenter.current().notificationSettings()
-            notificationStatus = settings.authorizationStatus
-        }
+
+    @MainActor
+    private func checkNotificationStatus() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        notificationStatus = settings.authorizationStatus
     }
-    
-    private func requestPermissions() async {
+
+    @MainActor
+    private func continueFromCurrentStep() async {
         guard !isRequestingPermissions else { return }
         isRequestingPermissions = true
         defer { isRequestingPermissions = false }
 
+        switch currentStep {
+        case .notifications:
+            await requestNotificationPermission()
+            currentStep = .location
+        case .location:
+            await requestLocationPermission()
+            onComplete()
+        }
+    }
+
+    @MainActor
+    private func requestNotificationPermission() async {
+        guard notificationPermissionStatus == .notRequested else { return }
+
         _ = try? await UNUserNotificationCenter.current()
             .requestAuthorization(options: [.alert, .sound, .badge])
-        await MainActor.run { checkNotificationStatus() }
+        await checkNotificationStatus()
+    }
 
-        _ = await locationManager.requestLocationPermission()
+    @MainActor
+    private func requestLocationPermission() async {
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            let status = await locationManager.requestLocationPermission()
+            if status == .authorizedWhenInUse {
+                _ = await locationManager.requestAlwaysAuthorization()
+            }
+        case .authorizedWhenInUse:
+            _ = await locationManager.requestAlwaysAuthorization()
+        default:
+            break
+        }
+    }
+}
 
-        await MainActor.run { onComplete() }
+#Preview {
+    PermissionsView {
     }
 }
