@@ -184,5 +184,72 @@ let mockContainer = FirebaseProviderContainer(
 **Available protocols**: `UserDataProviding`, `EventDataProviding`, `FriendDataProviding`, `ImageStorageProviding`, `LandmarkDataProviding`, `LocationDataProviding`, `NotificationDataProviding`
 
 ## Build Commands
-- Build: `xcodebuild -scheme TrailMates -destination 'platform=iOS Simulator,name=iPhone 15'`
-- Test: `xcodebuild test -scheme TrailMates -destination 'platform=iOS Simulator,name=iPhone 15'`
+
+**Simulator Build:**
+```bash
+xcodebuild -project TrailMatesATX.xcodeproj -scheme TrailMatesATX \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+```
+
+**Run Tests:**
+```bash
+xcodebuild -project TrailMatesATX.xcodeproj -scheme TrailMatesATX \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+```
+
+## App Store Archive & Distribution
+
+Signing credentials are stored in `signing/`. See `signing/README.md` for details.
+
+**Key Info:**
+- Team ID: `BN58T9KR6C`
+- Bundle ID: `com.bridges.trailmatesatx`
+- Signing Identity: `Apple Distribution: Jake Kinchen (BN58T9KR6C)`
+- Profile: `TrailMates AppStore`
+
+### Archive (Command Line)
+
+```bash
+# 1. Ensure signing identity is in Keychain
+security find-identity -v -p codesigning | grep "Apple Distribution"
+
+# 2. Archive with automatic signing
+xcodebuild clean archive \
+  -project TrailMatesATX.xcodeproj \
+  -scheme TrailMatesATX \
+  -configuration Release \
+  -archivePath build/TrailMatesATX.xcarchive \
+  -allowProvisioningUpdates \
+  DEVELOPMENT_TEAM="BN58T9KR6C"
+
+# 3. Export for App Store
+xcodebuild -exportArchive \
+  -archivePath build/TrailMatesATX.xcarchive \
+  -exportOptionsPlist signing/ExportOptions.plist \
+  -exportPath build/export \
+  -allowProvisioningUpdates
+
+# 4. Upload to App Store Connect
+xcrun altool --upload-app \
+  -f build/export/TrailMatesATX.ipa \
+  -t ios \
+  -u "jakekinchen@gmail.com" \
+  -p "@keychain:AC_PASSWORD"
+```
+
+### Archive (Xcode)
+
+1. Product → Archive
+2. Window → Organizer
+3. Select archive → Distribute App
+4. Select "App Store Connect" → Upload
+
+### Encryption Compliance
+
+The app uses only standard Apple/iOS encryption (HTTPS/TLS) and is marked as exempt:
+- `ITSAppUsesNonExemptEncryption` = `NO` in Info.plist
+
+### Distribution Restrictions
+
+France distribution is excluded in App Store Connect (not in code). Configure this in:
+App Store Connect → App → Pricing and Availability → Availability

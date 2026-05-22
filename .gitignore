@@ -64,6 +64,17 @@ fastlane/test_output
 TrailMates/App/GoogleService-Info.plist
 **/GoogleService-Info.plist
 
+# -----------------------
+# Code Signing Credentials
+# -----------------------
+# Private keys and .p12 files are sensitive - NEVER commit
+signing/*.key
+signing/*.p12
+# These are safe to commit but kept local for simplicity
+# signing/*.cer
+# signing/*.pem
+# signing/*.mobileprovision
+
 # Local tooling
 .claude/
 # External skills repo

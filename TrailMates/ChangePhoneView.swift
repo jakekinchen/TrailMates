@@ -186,9 +186,10 @@ private extension ChangePhoneView {
                     return
                 }
                 authViewModel.phoneNumber = rawNumber
-                await authViewModel.sendCode()
-                withAnimation {
-                    isVerificationSent = true
+                if await authViewModel.sendCode() {
+                    withAnimation {
+                        isVerificationSent = true
+                    }
                 }
             }
         }) {
@@ -209,9 +210,10 @@ private extension ChangePhoneView {
             Task {
                 let rawNumber = newPhoneNumber.filter { $0.isNumber }
                 authViewModel.phoneNumber = rawNumber
-                await authViewModel.sendCode()
-                withAnimation {
-                    isVerificationSent = true
+                if await authViewModel.sendCode() {
+                    withAnimation {
+                        isVerificationSent = true
+                    }
                 }
             }
         }) {

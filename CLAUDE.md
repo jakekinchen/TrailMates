@@ -180,3 +180,57 @@ let mockContainer = FirebaseProviderContainer(
 ```
 
 **Available protocols**: `UserDataProviding`, `EventDataProviding`, `FriendDataProviding`, `ImageStorageProviding`, `LandmarkDataProviding`, `LocationDataProviding`, `NotificationDataProviding`
+
+## Build Commands
+
+**Simulator Build:**
+```bash
+xcodebuild -project TrailMatesATX.xcodeproj -scheme TrailMatesATX \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+```
+
+**Run Tests:**
+```bash
+xcodebuild -project TrailMatesATX.xcodeproj -scheme TrailMatesATX \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+```
+
+## App Store Archive & Distribution
+
+Signing credentials are stored in `signing/`. See `signing/README.md` for credential management.
+
+**Key Info:**
+- Team ID: `BN58T9KR6C`
+- Bundle ID: `com.bridges.trailmatesatx`
+- Signing Identity: `Apple Distribution: Jake Kinchen (BN58T9KR6C)`
+
+### Archive via Command Line
+
+```bash
+# 1. Archive
+xcodebuild clean archive \
+  -project TrailMatesATX.xcodeproj \
+  -scheme TrailMatesATX \
+  -configuration Release \
+  -archivePath build/TrailMatesATX.xcarchive \
+  -allowProvisioningUpdates \
+  DEVELOPMENT_TEAM="BN58T9KR6C"
+
+# 2. Export for App Store
+xcodebuild -exportArchive \
+  -archivePath build/TrailMatesATX.xcarchive \
+  -exportOptionsPlist signing/ExportOptions.plist \
+  -exportPath build/export \
+  -allowProvisioningUpdates
+```
+
+### Archive via Xcode
+
+1. Product → Archive
+2. Window → Organizer → Select archive → Distribute App
+3. Select "App Store Connect" → Upload
+
+### Encryption & Distribution
+
+- **Encryption**: Uses only standard Apple encryption (HTTPS/TLS). `ITSAppUsesNonExemptEncryption = NO` in Info.plist
+- **France exclusion**: Configured in App Store Connect → Pricing and Availability
