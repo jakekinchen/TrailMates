@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // MARK: - Field Type
 enum AuthField: Hashable {
@@ -31,11 +32,11 @@ struct AuthView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                backgroundImage(size: geometry.size)
+                backgroundImage(geometry: geometry)
 
                 VStack(spacing: 0) {
                     headerSection
-                        .frame(height: 250)
+                        .frame(height: 250, alignment: .top)
 
                     Spacer()
                     Spacer()
@@ -60,14 +61,32 @@ struct AuthView: View {
 // MARK: - View Builders
 private extension AuthView {
     @ViewBuilder
-    func backgroundImage(size: CGSize) -> some View {
-        Image("background")
-            .resizable()
-            .scaledToFill()
-            .frame(width: size.width, height: size.height)
-            .clipped()
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
+    func backgroundImage(geometry: GeometryProxy) -> some View {
+        let safeAreaInsets = geometry.safeAreaInsets
+        let fullSize = CGSize(
+            width: geometry.size.width + safeAreaInsets.leading + safeAreaInsets.trailing,
+            height: max(
+                geometry.size.height + safeAreaInsets.top + safeAreaInsets.bottom,
+                UIScreen.main.bounds.height
+            )
+        )
+        let safeAreaOffset = CGSize(
+            width: (safeAreaInsets.trailing - safeAreaInsets.leading) / 2,
+            height: (safeAreaInsets.bottom - safeAreaInsets.top) / 2
+        )
+
+        ZStack {
+            Color("alwaysPine")
+
+            Image("background")
+                .resizable()
+                .scaledToFill()
+        }
+        .frame(width: fullSize.width, height: fullSize.height)
+        .offset(x: safeAreaOffset.width, y: safeAreaOffset.height)
+        .clipped()
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -75,7 +94,7 @@ private extension AuthView {
         VStack(spacing: 0) {
             headerWithBackButton
                 .frame(height: 60)
-                .padding(.top, 110)
+                .padding(.top, authHeaderTopPadding)
 
             Circle()
                 .fill(Color("pumpkin"))
@@ -88,7 +107,7 @@ private extension AuthView {
     var headerWithBackButton: some View {
         ZStack {
             HStack {
-                if showingLoginFields || showingSignupFields {
+                if isShowingAuthFields {
                     backButton
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
@@ -111,6 +130,22 @@ private extension AuthView {
                 .offset(x: 8)
         }
         .accessibilityIdentifier("auth_back_button")
+    }
+
+    var isShowingAuthFields: Bool {
+        showingLoginFields || showingSignupFields
+    }
+
+    var authHeaderTopPadding: CGFloat {
+        isShowingAuthFields ? 64 : 110
+    }
+
+    var isPhoneSubmissionInProgress: Bool {
+        isCheckingPhoneNumber || authViewModel.isLoading
+    }
+
+    var phoneSubmissionLoadingTitle: String {
+        "Sending..."
     }
 
     @ViewBuilder
@@ -148,8 +183,8 @@ private extension AuthView {
             } else {
                 PhoneEntryStep(
                     phoneNumber: $phoneNumber,
-                    isEnabled: !authViewModel.isLoading,
-                    usesInvertedColors: showingLoginFields,
+                    isEnabled: !isPhoneSubmissionInProgress,
+                    usesInvertedColors: true,
                     focusedField: $focusedField
                 )
             }
@@ -196,27 +231,29 @@ private extension AuthView {
                 await authViewModel.verifyCode()
             }
         }) {
-            Text("Verify")
-                .authButtonStyle(primary: true)
+            AuthSubmitButtonContent(
+                title: "Verify",
+                loadingTitle: "Verifying...",
+                isLoading: authViewModel.isLoading,
+                primary: true
+            )
         }
         .accessibilityIdentifier("auth_verify_button")
-        .disabled(verificationCode.isEmpty)
+        .disabled(verificationCode.isEmpty || authViewModel.isLoading)
     }
 
     @ViewBuilder
     var loginButton: some View {
         Button(action: handleLogin) {
-            if isCheckingPhoneNumber {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Color("alwaysBeige")))
-                    .frame(maxWidth: .infinity)
-            } else {
-                Text("Log In")
-                    .authButtonStyle(primary: !usesInvertedLoginSubmitStyle)
-            }
+            AuthSubmitButtonContent(
+                title: "Log In",
+                loadingTitle: phoneSubmissionLoadingTitle,
+                isLoading: isCheckingPhoneNumber,
+                primary: true
+            )
         }
         .accessibilityIdentifier("auth_login_button")
-        .disabled(isCheckingPhoneNumber)
+        .disabled(isPhoneSubmissionInProgress)
         .opacity(!showingSignupFields ? 1 : 0)
         .animation(.easeOut(duration: 0.1), value: showingSignupFields)
     }
@@ -224,17 +261,15 @@ private extension AuthView {
     @ViewBuilder
     var signupButton: some View {
         Button(action: handleSignup) {
-            if isCheckingPhoneNumber {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Color("alwaysBeige")))
-                    .frame(maxWidth: .infinity)
-            } else {
-                Text("Sign Up")
-                    .authButtonStyle(primary: false)
-            }
+            AuthSubmitButtonContent(
+                title: "Sign Up",
+                loadingTitle: phoneSubmissionLoadingTitle,
+                isLoading: isCheckingPhoneNumber,
+                primary: showingSignupFields || isCheckingPhoneNumber
+            )
         }
         .accessibilityIdentifier("auth_signup_button")
-        .disabled(isCheckingPhoneNumber)
+        .disabled(isPhoneSubmissionInProgress)
         .opacity(!showingLoginFields ? 1 : 0)
         .animation(.easeOut(duration: 0.1), value: showingLoginFields)
     }
@@ -318,10 +353,6 @@ private extension AuthView {
                 showingLoginFields = false
             }
         }
-    }
-
-    var usesInvertedLoginSubmitStyle: Bool {
-        showingLoginFields && !isVerificationStage
     }
 }
 
@@ -485,6 +516,43 @@ private struct AuthInputFormattingModifier: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+// MARK: - AuthSubmitButtonContent
+private struct AuthSubmitButtonContent: View {
+    let title: String
+    let loadingTitle: String
+    let isLoading: Bool
+    let primary: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if isLoading {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .controlSize(.small)
+                    .tint(foregroundColor)
+            }
+
+            Text(isLoading ? loadingTitle : title)
+                .font(.system(size: 16, weight: .bold))
+        }
+        .foregroundColor(foregroundColor)
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(backgroundColor)
+        .cornerRadius(25)
+        .animation(.easeInOut(duration: 0.16), value: isLoading)
+        .accessibilityLabel(isLoading ? loadingTitle : title)
+    }
+
+    private var foregroundColor: Color {
+        primary ? Color("alwaysBeige") : Color("pumpkin")
+    }
+
+    private var backgroundColor: Color {
+        primary ? Color("pumpkin") : Color("alwaysBeige")
     }
 }
 

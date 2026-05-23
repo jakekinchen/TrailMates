@@ -139,39 +139,26 @@ private extension AddFriendsView {
                 .foregroundColor(Color("pine"))
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 10) {
-                TextField("@username or phone number", text: $viewModel.friendLookupText)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.namePhonePad)
-                    .submitLabel(.search)
-                    .focused($isFriendLookupFocused)
-                    .padding(.horizontal, 14)
-                    .frame(height: 50)
-                    .background(Color("alwaysBeige"))
-                    .foregroundColor(Color("pine"))
-                    .cornerRadius(10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color("pine").opacity(0.18), lineWidth: 1)
-                    )
-                    .onSubmit {
-                        handleFriendSearch()
-                    }
+            HStack(alignment: .bottom, spacing: 10) {
+                FriendLookupTextField(
+                    text: $viewModel.friendLookupText,
+                    isFocused: $isFriendLookupFocused,
+                    onSubmit: handleFriendSearch
+                )
 
                 Button(action: handleFriendSearch) {
                     ZStack {
                         if viewModel.isSearchingForFriend {
                             ProgressView()
-                                .tint(Color("alwaysBeige"))
+                                .tint(AppColors.textOnAccent)
                         } else {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(Color("alwaysBeige"))
+                                .foregroundColor(AppColors.textOnAccent)
                         }
                     }
                     .frame(width: 50, height: 50)
-                    .background(Color("pine"))
+                    .background(AppColors.buttonPrimary)
                     .cornerRadius(10)
                 }
                 .disabled(viewModel.isSearchingForFriend)
@@ -364,6 +351,49 @@ private extension AddFriendsView {
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }
+    }
+}
+
+// MARK: - Friend Lookup Text Field
+private struct FriendLookupTextField: View {
+    @Binding var text: String
+    @FocusState.Binding var isFocused: Bool
+    let onSubmit: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Text("Username or Phone Number")
+                .font(.system(size: text.isEmpty ? 16 : 10, weight: .medium))
+                .padding(.horizontal, 8)
+                .foregroundColor(AppColors.textOnAccent)
+                .offset(x: 8, y: text.isEmpty ? 0 : -16)
+                .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
+                .allowsHitTesting(false)
+                .zIndex(1)
+
+            TextField("", text: $text)
+                .font(.system(size: 16, weight: .medium))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.namePhonePad)
+                .submitLabel(.search)
+                .focused($isFocused)
+                .tint(AppColors.pumpkin)
+                .foregroundColor(AppColors.textOnAccent)
+                .offset(y: text.isEmpty ? 0 : 2)
+                .padding(.vertical, 16)
+                .padding(.horizontal, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(AppColors.alwaysPine)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isFocused ? AppColors.borderFocused : AppColors.alwaysBeige, lineWidth: 1)
+                        )
+                )
+                .onSubmit(onSubmit)
+        }
+        .padding(.top, 12)
     }
 }
 
