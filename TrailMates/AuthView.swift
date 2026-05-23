@@ -93,7 +93,7 @@ private extension AuthView {
     var headerSection: some View {
         VStack(spacing: 0) {
             headerWithBackButton
-                .frame(height: 60)
+                .frame(height: authTitleRowHeight)
                 .padding(.top, authHeaderTopPadding)
 
             Circle()
@@ -137,7 +137,11 @@ private extension AuthView {
     }
 
     var authHeaderTopPadding: CGFloat {
-        isShowingAuthFields ? 64 : 110
+        isShowingAuthFields ? 64 : 110 - authTitleRowHeight
+    }
+
+    var authTitleRowHeight: CGFloat {
+        60
     }
 
     var isPhoneSubmissionInProgress: Bool {
