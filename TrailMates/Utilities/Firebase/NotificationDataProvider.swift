@@ -14,6 +14,10 @@ class NotificationDataProvider {
     private lazy var rtdb = Database.database().reference()
     private lazy var auth = Auth.auth()
 
+    // MARK: - Observer State
+    private var notificationsHandle: DatabaseHandle?
+    private var notificationsRef: DatabaseReference?
+
     private init() {
         print("NotificationDataProvider initialized")
     }
@@ -21,7 +25,9 @@ class NotificationDataProvider {
     // MARK: - Notification Send Operations
 
     func sendNotification(to userId: String, type: NotificationType, fromUserId: String, content: String, relatedEventId: String? = nil) async throws {
-        let notificationRef = rtdb.child("notifications")
+        guard self.auth.currentUser != nil else { throw AppError.notAuthenticated() }
+
+        let notificationRef = rtdb.child(FirestoreConstants.RTDBPaths.notifications)
             .child(userId)
             .child(UUID().uuidString)
 
@@ -37,7 +43,7 @@ class NotificationDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             notificationRef.setValue(notificationData) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     continuation.resume()
                 }
@@ -47,8 +53,8 @@ class NotificationDataProvider {
 
     // MARK: - Notification Observation
 
-    func observeNotifications(for userId: String, completion: @escaping ([TrailNotification]) -> Void) {
-        guard let currentUser = Auth.auth().currentUser else {
+    func observeNotifications(for userId: String, completion: @escaping @Sendable ([TrailNotification]) -> Void) {
+        guard let currentUser = self.auth.currentUser else {
             #if DEBUG
             print("NotificationDataProvider: No authenticated user for notifications")
             #endif
@@ -56,14 +62,15 @@ class NotificationDataProvider {
             return
         }
 
-        let notificationsRef = rtdb.child("notifications").child(currentUser.uid)
+        let ref = rtdb.child(FirestoreConstants.RTDBPaths.notifications).child(currentUser.uid)
+        self.notificationsRef = ref
 
-        notificationsRef.observe(.value) { [weak self] snapshot in
+        let handle = ref.observe(.value) { [weak self] snapshot in
             guard let self = self else { return }
             var notifications: [TrailNotification] = []
 
             for child in snapshot.children {
-                let childSnapshot = child as! DataSnapshot
+                guard let childSnapshot = child as? DataSnapshot else { continue }
                 guard let data = childSnapshot.value as? [String: Any],
                       let typeStr = data["type"] as? String,
                       let type = NotificationType(rawValue: typeStr),
@@ -90,8 +97,19 @@ class NotificationDataProvider {
                 notifications.append(notification)
             }
 
-            completion(notifications.sorted { $0.timestamp > $1.timestamp })
+            Task { @MainActor in
+                completion(notifications.sorted { $0.timestamp > $1.timestamp })
+            }
         }
+        self.notificationsHandle = handle
+    }
+
+    func stopObservingNotifications() {
+        if let handle = notificationsHandle {
+            notificationsRef?.removeObserver(withHandle: handle)
+        }
+        notificationsHandle = nil
+        notificationsRef = nil
     }
 
     // MARK: - Notification Fetch Operations
@@ -103,11 +121,11 @@ class NotificationDataProvider {
                 return
             }
 
-            let notificationsRef = rtdb.child("notifications").child(id)
+            let notificationsRef = rtdb.child(FirestoreConstants.RTDBPaths.notifications).child(id)
 
             notificationsRef.getData { error, snapshot in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                     return
                 }
 
@@ -115,7 +133,7 @@ class NotificationDataProvider {
 
                 if let snapshot = snapshot {
                     for child in snapshot.children {
-                        let childSnapshot = child as! DataSnapshot
+                        guard let childSnapshot = child as? DataSnapshot else { continue }
                         guard let data = childSnapshot.value as? [String: Any],
                               let typeStr = data["type"] as? String,
                               let type = NotificationType(rawValue: typeStr),
@@ -151,14 +169,14 @@ class NotificationDataProvider {
     // MARK: - Notification Update Operations
 
     func markNotificationAsRead(id: String, notificationId: String) async throws {
-        let notificationRef = rtdb.child("notifications")
+        let notificationRef = rtdb.child(FirestoreConstants.RTDBPaths.notifications)
             .child(id)
             .child(notificationId)
 
         return try await withCheckedThrowingContinuation { continuation in
             notificationRef.updateChildValues(["read": true]) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     continuation.resume()
                 }
@@ -167,14 +185,14 @@ class NotificationDataProvider {
     }
 
     func deleteNotification(id: String, notificationId: String) async throws {
-        let notificationRef = rtdb.child("notifications")
+        let notificationRef = rtdb.child(FirestoreConstants.RTDBPaths.notifications)
             .child(id)
             .child(notificationId)
 
         return try await withCheckedThrowingContinuation { continuation in
             notificationRef.removeValue { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     continuation.resume()
                 }
@@ -184,12 +202,12 @@ class NotificationDataProvider {
 
     /// Deletes all notifications for a user (used during account deletion)
     func deleteAllNotifications(for userId: String) async throws {
-        let notificationsRef = rtdb.child("notifications").child(userId)
+        let notificationsRef = rtdb.child(FirestoreConstants.RTDBPaths.notifications).child(userId)
 
         return try await withCheckedThrowingContinuation { continuation in
             notificationsRef.removeValue { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     #if DEBUG
                     print("NotificationDataProvider: Deleted all notifications for user \(userId)")

@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import FirebaseFirestore
 import UIKit
 
 // MARK: - Firebase Provider Protocols
@@ -115,7 +116,7 @@ protocol UserDataProviding {
     /// - Parameters:
     ///   - id: The user ID to observe.
     ///   - onChange: Callback invoked when the user data changes.
-    func observeUser(id: String, onChange: @escaping (User?) -> Void)
+    func observeUser(id: String, onChange: @escaping @Sendable (User?) -> Void)
 
     /// Stops observing a specific user.
     /// - Parameter id: The user ID to stop observing.
@@ -123,6 +124,13 @@ protocol UserDataProviding {
 
     /// Stops all active user observations.
     func stopObservingAllUsers()
+
+    // MARK: - Account Deletion
+
+    /// Deletes a user document from Firestore (used during account deletion).
+    /// - Parameter userId: The user's ID.
+    /// - Throws: `AppError` if the deletion fails.
+    func deleteUserDocument(userId: String) async throws
 }
 
 /// Protocol for event-related Firebase operations.
@@ -246,13 +254,27 @@ protocol FriendDataProviding {
     /// - Throws: `AppError` if removing the friend fails.
     func removeFriend(_ friendId: String, from userId: String) async throws
 
+    // MARK: - Account Deletion
+
+    /// Deletes all friend requests for a user (used during account deletion).
+    /// - Parameter userId: The user's ID.
+    /// - Throws: `AppError` if the deletion fails.
+    func deleteAllFriendRequests(for userId: String) async throws
+
+    /// Removes a user from all their friends' friend lists (used during account deletion).
+    /// - Parameters:
+    ///   - userId: The user's ID.
+    ///   - friendIds: Array of friend user IDs to update.
+    /// - Throws: `AppError` if the removal fails.
+    func removeUserFromAllFriendLists(userId: String, friendIds: [String]) async throws
+
     // MARK: - Friend Request Observation
 
     /// Observes incoming friend requests for a user in real-time.
     /// - Parameters:
     ///   - userId: The user ID to observe requests for.
     ///   - completion: Callback invoked when friend requests change.
-    func observeFriendRequests(for userId: String, completion: @escaping ([FriendRequest]) -> Void)
+    func observeFriendRequests(for userId: String, completion: @escaping @Sendable ([FriendRequest]) -> Void)
 }
 
 /// Protocol for image storage operations.
@@ -361,7 +383,7 @@ protocol LocationDataProviding {
     /// - Parameters:
     ///   - userId: The user ID to observe.
     ///   - completion: Callback invoked when location changes.
-    func observeUserLocation(userId: String, completion: @escaping (CLLocationCoordinate2D?) -> Void)
+    func observeUserLocation(userId: String, completion: @escaping @Sendable (CLLocationCoordinate2D?) -> Void)
 
     /// Stops observing a specific user's location.
     /// - Parameter userId: The user ID to stop observing.
@@ -369,6 +391,13 @@ protocol LocationDataProviding {
 
     /// Stops all active location observations.
     func stopObservingAllLocations()
+
+    // MARK: - Account Deletion
+
+    /// Deletes a user's location data (used during account deletion).
+    /// - Parameter userId: The user's ID.
+    /// - Throws: `AppError` if the deletion fails.
+    func deleteUserLocation(userId: String) async throws
 }
 
 /// Protocol for notification-related Firebase operations.
@@ -395,7 +424,7 @@ protocol NotificationDataProviding {
     /// - Parameters:
     ///   - userId: The user ID to observe notifications for.
     ///   - completion: Callback invoked when notifications change.
-    func observeNotifications(for userId: String, completion: @escaping ([TrailNotification]) -> Void)
+    func observeNotifications(for userId: String, completion: @escaping @Sendable ([TrailNotification]) -> Void)
 
     // MARK: - Fetch Operations
 
@@ -422,6 +451,13 @@ protocol NotificationDataProviding {
     ///   - notificationId: The specific notification ID.
     /// - Throws: `AppError` if the deletion fails.
     func deleteNotification(id: String, notificationId: String) async throws
+
+    // MARK: - Account Deletion
+
+    /// Deletes all notifications for a user (used during account deletion).
+    /// - Parameter userId: The user's ID.
+    /// - Throws: `AppError` if the deletion fails.
+    func deleteAllNotifications(for userId: String) async throws
 }
 
 // MARK: - Protocol Conformance Extensions
@@ -471,6 +507,11 @@ final class FirebaseProviderContainer {
 
     /// Default initializer using production singletons
     private init() {
+        // Configure Firestore settings once for all providers
+        let settings = FirestoreSettings()
+        settings.cacheSettings = PersistentCacheSettings()
+        Firestore.firestore().settings = settings
+
         self.userProvider = UserDataProvider.shared
         self.eventProvider = EventDataProvider.shared
         self.friendProvider = FriendDataProvider.shared

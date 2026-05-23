@@ -43,7 +43,6 @@ class FirebaseDataProvider {
         #endif
         return functions
     }()
-    let functionURL = URL(string: "https://us-central1-trailmates-atx.cloudfunctions.net/checkUserExists")!
     private lazy var rtdb = Database.database().reference()
     private lazy var storage = Storage.storage().reference()
     private lazy var auth = Auth.auth()
@@ -63,10 +62,8 @@ class FirebaseDataProvider {
         db = Firestore.firestore()
         auth = Auth.auth()
 
-        // Configure Firestore settings
-        let settings = FirestoreSettings()
-        settings.cacheSettings = PersistentCacheSettings()
-        db.settings = settings
+        // Firestore settings (persistence, cache) are configured centrally
+        // in FirebaseProviderContainer.init() to avoid duplicate configuration.
 
         // Store auth listener to prevent it from being deallocated
         authStateListener = auth.addStateDidChangeListener { (auth, user) in
@@ -97,23 +94,10 @@ class FirebaseDataProvider {
     }
     
     deinit {
-        // Remove memory warning observer (this is safe from nonisolated context)
-        if let observer = memoryWarningObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-
-        // Use Task to call MainActor-isolated methods from nonisolated deinit context
-        // Capture the listener handle before entering the Task
-        let listener = authStateListener
-        Task { @MainActor [weak self] in
-            // Remove auth listener when provider is deallocated
-            if let listener = listener {
-                Auth.auth().removeStateDidChangeListener(listener)
-            }
-
-            // Clean up all active listeners
-            self?.removeAllListeners()
-        }
+        // Singleton — this instance is never deallocated, so no cleanup is needed.
+        // Accessing @MainActor-isolated properties (memoryWarningObserver,
+        // authStateListener) from a nonisolated deinit is a compiler error in
+        // Swift 6, and [weak self] would always be nil during deallocation anyway.
     }
     
     private func removeAllListeners() {
@@ -196,7 +180,7 @@ class FirebaseDataProvider {
     }
 
     @available(*, deprecated, message: "Use UserDataProvider.shared.observeUser() instead")
-    func observeUser(id: String, onChange: @escaping (User?) -> Void) {
+    func observeUser(id: String, onChange: @escaping @Sendable (User?) -> Void) {
         userProvider.observeUser(id: id, onChange: onChange)
     }
 
@@ -335,14 +319,14 @@ class FirebaseDataProvider {
     }
 
     @available(*, deprecated, message: "Use LocationDataProvider.shared.observeUserLocation() instead")
-    func observeUserLocation(userId: String, completion: @escaping (CLLocationCoordinate2D?) -> Void) {
+    func observeUserLocation(userId: String, completion: @escaping @Sendable (CLLocationCoordinate2D?) -> Void) {
         locationProvider.observeUserLocation(userId: userId, completion: completion)
     }
     
     // MARK: - Friend Requests Observation (Deprecated - use FriendDataProvider.shared instead)
 
     @available(*, deprecated, message: "Use FriendDataProvider.shared.observeFriendRequests() instead")
-    func observeFriendRequests(for userId: String, completion: @escaping ([FriendRequest]) -> Void) {
+    func observeFriendRequests(for userId: String, completion: @escaping @Sendable ([FriendRequest]) -> Void) {
         friendProvider.observeFriendRequests(for: userId, completion: completion)
     }
 
@@ -360,23 +344,8 @@ class FirebaseDataProvider {
     }
 
     @available(*, deprecated, message: "Use NotificationDataProvider.shared.observeNotifications() instead")
-    func observeNotifications(for userId: String, completion: @escaping ([TrailNotification]) -> Void) {
+    func observeNotifications(for userId: String, completion: @escaping @Sendable ([TrailNotification]) -> Void) {
         notificationProvider.observeNotifications(for: userId, completion: completion)
-    }
-
-    private func getTitleForNotificationType(_ type: NotificationType) -> String {
-        switch type {
-        case .friendRequest:
-            return "New Friend Request"
-        case .friendAccepted:
-            return "Friend Request Accepted"
-        case .eventInvite:
-            return "New Event Invitation"
-        case .eventUpdate:
-            return "Event Update"
-        case .general:
-            return "Notification"
-        }
     }
 
     @available(*, deprecated, message: "Use NotificationDataProvider.shared.markNotificationAsRead() instead")
@@ -392,27 +361,6 @@ class FirebaseDataProvider {
     @available(*, deprecated, message: "Use NotificationDataProvider.shared.deleteNotification() instead")
     func deleteNotification(id: String, notificationId: String) async throws {
         try await notificationProvider.deleteNotification(id: id, notificationId: notificationId)
-    }
-    
-    enum ValidationError: LocalizedError {
-        case emptyField(String)
-        case missingRequiredFields(String)
-        case invalidUrl(String)
-        case failedToDownloadImage(String)
-        case userNotAuthenticated(String)
-        case invalidData(String)
-        
-        var errorDescription: String? {
-            switch self {
-            case .emptyField(let message),
-                    .missingRequiredFields(let message),
-                    .invalidUrl(let message),
-                    .failedToDownloadImage(let message),
-                    .userNotAuthenticated(let message),
-                    .invalidData(let message):
-                return message
-            }
-        }
     }
     
     func stopObservingUser() {

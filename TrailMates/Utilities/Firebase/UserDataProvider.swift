@@ -49,25 +49,23 @@ class UserDataProvider {
     }()
     private lazy var auth = Auth.auth()
 
+    /// Image storage provider for profile image operations.
+    /// Accessed via a stored property to avoid scattering direct singleton
+    /// references throughout method bodies.
+    private let imageProvider: ImageStorageProvider = .shared
+
     /// Active Firestore listeners keyed by user ID for cleanup
     private var userListeners = [String: ListenerRegistration]()
 
     private init() {
-        // Configure Firestore settings with offline persistence
-        let settings = FirestoreSettings()
-        settings.cacheSettings = PersistentCacheSettings()
-        db.settings = settings
-
+        // Firestore settings (persistence, cache) are configured centrally
+        // in FirebaseProviderContainer.init() to avoid duplicate configuration.
         print("UserDataProvider initialized")
     }
 
-    deinit {
-        // Clean up all user listeners
-        userListeners.forEach { _, listener in
-            listener.remove()
-        }
-        userListeners.removeAll()
-    }
+    // No deinit needed: UserDataProvider is a singleton (static let shared)
+    // and will never be deallocated. Listener cleanup is handled by
+    // stopObservingUser(id:) and stopObservingAllUsers().
 
     // MARK: - Current User Operations
 
@@ -86,7 +84,7 @@ class UserDataProvider {
         }
 
         do {
-            let document = try await db.collection("users").document(currentUser.uid).getDocument()
+            let document = try await db.collection(FirestoreConstants.Collections.users).document(currentUser.uid).getDocument()
             guard document.exists else {
                 #if DEBUG
                 print("UserDataProvider: No user document found for Firebase UID")
@@ -101,7 +99,7 @@ class UserDataProvider {
                 #if DEBUG
                 print("Warning: Stored ID mismatch with document ID - auto-correcting")
                 #endif
-                try await db.collection("users").document(document.documentID).updateData([
+                try await db.collection(FirestoreConstants.Collections.users).document(document.documentID).updateData([
                     "id": document.documentID
                 ])
                 user.id = document.documentID
@@ -134,7 +132,7 @@ class UserDataProvider {
 
             // Use retry logic for network fetch
             let document = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("users").document(id).getDocument()
+                try await self.db.collection(FirestoreConstants.Collections.users).document(id).getDocument()
             }
 
             guard document.exists else {
@@ -152,7 +150,7 @@ class UserDataProvider {
                 print("Warning: Stored ID mismatch with document ID")
                 #endif
                 user.id = document.documentID
-                try? await db.collection("users").document(id).updateData([
+                try? await db.collection(FirestoreConstants.Collections.users).document(id).updateData([
                     "id": document.documentID
                 ])
             }
@@ -160,7 +158,7 @@ class UserDataProvider {
             // Handle profile image according to hierarchy rules
             if let imageUrl = user.profileImageUrl {
                 do {
-                    user.profileImage = try await ImageStorageProvider.shared.downloadProfileImage(from: imageUrl)
+                    user.profileImage = try await imageProvider.downloadProfileImage(from: imageUrl)
                     #if DEBUG
                     print("UserDataProvider: Loaded profile image from remote URL")
                     #endif
@@ -171,7 +169,7 @@ class UserDataProvider {
                     user.profileImageUrl = nil
                     user.profileThumbnailUrl = nil
 
-                    try? await db.collection("users").document(id).updateData([
+                    try? await db.collection(FirestoreConstants.Collections.users).document(id).updateData([
                         "profileImageUrl": FieldValue.delete(),
                         "profileThumbnailUrl": FieldValue.delete()
                     ])
@@ -182,7 +180,7 @@ class UserDataProvider {
                     user.profileImageUrl = nil
                     user.profileThumbnailUrl = nil
 
-                    try? await db.collection("users").document(id).updateData([
+                    try? await db.collection(FirestoreConstants.Collections.users).document(id).updateData([
                         "profileImageUrl": FieldValue.delete(),
                         "profileThumbnailUrl": FieldValue.delete()
                     ])
@@ -203,7 +201,7 @@ class UserDataProvider {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("users").getDocuments()
+                try await self.db.collection(FirestoreConstants.Collections.users).getDocuments()
             }
             return snapshot.documents.compactMap { try? $0.data(as: User.self) }
         } catch {
@@ -229,7 +227,7 @@ class UserDataProvider {
             throw AppError.invalidData("User ID must match Firebase Auth UID")
         }
 
-        let userRef = db.collection("users").document(user.id)
+        let userRef = db.collection(FirestoreConstants.Collections.users).document(user.id)
 
         // First check if document already exists
         let docSnapshot = try await userRef.getDocument()
@@ -301,10 +299,10 @@ class UserDataProvider {
             print("UserDataProvider: Profile image found, uploading...")
             #endif
             // Delete old profile images
-            await ImageStorageProvider.shared.deleteOldProfileImage(for: user.id)
+            await imageProvider.deleteOldProfileImage(for: user.id)
 
             // Upload new image and get URLs
-            let urls = try await ImageStorageProvider.shared.uploadProfileImage(image, for: user.id)
+            let urls = try await imageProvider.uploadProfileImage(image, for: user.id)
             #if DEBUG
             print("UserDataProvider: Profile image uploaded successfully")
             #endif
@@ -316,7 +314,7 @@ class UserDataProvider {
         }
 
         // Save user data to Firestore
-        let userRef = db.collection("users").document(user.id)
+        let userRef = db.collection(FirestoreConstants.Collections.users).document(user.id)
         var data = try Firestore.Encoder().encode(userData)
         data["usernameSearchKey"] = Self.normalizedUsername(userData.username)
 
@@ -379,7 +377,7 @@ class UserDataProvider {
 
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("users")
+                try await self.db.collection(FirestoreConstants.Collections.users)
                     .whereField("hashedPhoneNumber", isEqualTo: hashedNumber)
                     .limit(to: 1)
                     .getDocuments()
@@ -414,7 +412,7 @@ class UserDataProvider {
         // Also send E.164 format for legacy user lookup
         let e164Number = PhoneNumberService.shared.format(phoneNumber, for: .storage)
 
-        let function = functions.httpsCallable("checkUserExists")
+        let function = functions.httpsCallable(FirestoreConstants.Functions.checkUserExists)
         do {
             // Use retry logic for cloud function call
             let result = try await withRetry(maxAttempts: 3) {
@@ -437,7 +435,7 @@ class UserDataProvider {
     }
 
     func ensureUserDocument() async throws {
-        let callable = functions.httpsCallable("ensureUserDocument")
+        let callable = functions.httpsCallable(FirestoreConstants.Functions.ensureUserDocument)
 
         do {
             _ = try await withRetry(maxAttempts: 3) {
@@ -452,7 +450,7 @@ class UserDataProvider {
         let hashedNumbers = phoneNumbers.map { PhoneNumberHasher.shared.hashPhoneNumber($0) }
 
         do {
-            let callable = functions.httpsCallable("findUsersByPhoneNumbers")
+            let callable = functions.httpsCallable(FirestoreConstants.Functions.findUsersByPhoneNumbers)
 
             // Use retry logic for cloud function call
             let result = try await withRetry(maxAttempts: 3) {
@@ -503,7 +501,7 @@ class UserDataProvider {
         }
 
         do {
-            let callable = functions.httpsCallable("searchUsers")
+            let callable = functions.httpsCallable(FirestoreConstants.Functions.searchUsers)
             let result = try await withRetry(maxAttempts: 3) {
                 try await callable.call([
                     "username": normalizedUsername ?? "",
@@ -524,7 +522,7 @@ class UserDataProvider {
 
     func fetchPublicUserProfile(userId: String) async throws -> User {
         do {
-            let callable = functions.httpsCallable("searchUsers")
+            let callable = functions.httpsCallable(FirestoreConstants.Functions.searchUsers)
             let result = try await withRetry(maxAttempts: 3) {
                 try await callable.call(["userId": userId])
             }
@@ -598,7 +596,7 @@ class UserDataProvider {
         do {
             // Use retry logic for cloud function call
             let result = try await withRetry(maxAttempts: 3) {
-                try await self.functions.httpsCallable("checkUsernameTaken")
+                try await self.functions.httpsCallable(FirestoreConstants.Functions.checkUsernameTaken)
                     .call([
                         "username": username,
                         "excludeUserId": excludingUserId ?? ""
@@ -620,19 +618,19 @@ class UserDataProvider {
 
     // MARK: - User Observation
 
-    func observeUser(id: String, onChange: @escaping (User?) -> Void) {
+    func observeUser(id: String, onChange: @escaping @Sendable (User?) -> Void) {
         // Remove existing listener if any
         stopObservingUser(id: id)
 
         // Create new listener
-        let listener = db.collection("users").document(id)
+        let listener = db.collection(FirestoreConstants.Collections.users).document(id)
             .addSnapshotListener { documentSnapshot, error in
                 guard let document = documentSnapshot else {
                     let appError = error.map { AppError.from($0) } ?? AppError.unknown()
                     #if DEBUG
                     print("UserDataProvider: Error fetching document: \(appError.errorDescription ?? "Unknown")")
                     #endif
-                    onChange(nil)
+                    Task { @MainActor in onChange(nil) }
                     return
                 }
 
@@ -640,19 +638,19 @@ class UserDataProvider {
                     #if DEBUG
                     print("UserDataProvider: Document does not exist")
                     #endif
-                    onChange(nil)
+                    Task { @MainActor in onChange(nil) }
                     return
                 }
 
                 do {
                     let user = try document.data(as: User.self)
-                    onChange(user)
+                    Task { @MainActor in onChange(user) }
                 } catch {
                     let appError = AppError.from(error)
                     #if DEBUG
                     print("UserDataProvider: Error decoding user: \(appError.errorDescription ?? "Unknown")")
                     #endif
-                    onChange(nil)
+                    Task { @MainActor in onChange(nil) }
                 }
             }
 
@@ -676,7 +674,7 @@ class UserDataProvider {
 
     /// Deletes a user document from Firestore (used during account deletion)
     func deleteUserDocument(userId: String) async throws {
-        let userRef = db.collection("users").document(userId)
+        let userRef = db.collection(FirestoreConstants.Collections.users).document(userId)
 
         do {
             try await userRef.delete()

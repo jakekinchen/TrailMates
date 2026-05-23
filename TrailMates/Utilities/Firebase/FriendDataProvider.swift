@@ -16,6 +16,10 @@ class FriendDataProvider {
     private lazy var rtdb = Database.database().reference()
     private lazy var auth = Auth.auth()
 
+    // MARK: - Observer State
+    private var friendRequestsHandle: DatabaseHandle?
+    private var friendRequestsRef: DatabaseReference?
+
     private init() {
         print("FriendDataProvider initialized")
     }
@@ -28,8 +32,8 @@ class FriendDataProvider {
         }
 
         // Get Firebase UIDs for both users
-        let userDoc = try await db.collection("users").document(fromUserId).getDocument()
-        let targetDoc = try await db.collection("users").document(targetUserId).getDocument()
+        let userDoc = try await db.collection(FirestoreConstants.Collections.users).document(fromUserId).getDocument()
+        let targetDoc = try await db.collection(FirestoreConstants.Collections.users).document(targetUserId).getDocument()
 
         guard let userId = userDoc.get("id") as? String,
               let targetId = targetDoc.get("id") as? String else {
@@ -42,13 +46,13 @@ class FriendDataProvider {
         }
 
         // Verify the current user is sending the request
-        guard let currentUser = Auth.auth().currentUser,
+        guard let currentUser = auth.currentUser,
               currentUser.uid == userId else {
             throw AppError.notAuthenticated("Cannot send request on behalf of another user")
         }
 
         let requestId = UUID().uuidString
-        let requestRef = rtdb.child("friend_requests")
+        let requestRef = rtdb.child(FirestoreConstants.RTDBPaths.friendRequests)
             .child(targetId)
             .child(requestId)
 
@@ -61,7 +65,7 @@ class FriendDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             requestRef.setValue(requestData) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     continuation.resume()
                 }
@@ -71,7 +75,7 @@ class FriendDataProvider {
 
     func acceptFriendRequest(requestId: String, userId: String, friendId: String) async throws {
         // Get Firebase UID for the accepting user (for RTDB operations)
-        let userDoc = try await db.collection("users").document(userId).getDocument()
+        let userDoc = try await db.collection(FirestoreConstants.Collections.users).document(userId).getDocument()
         guard let firebaseUid = userDoc.get("id") as? String else {
             throw AppError.invalidData("Could not find Firebase UID for user")
         }
@@ -82,14 +86,14 @@ class FriendDataProvider {
 
         // Clean up friend request and notification in RTDB using Firebase UID
         let updates: [String: Any?] = [
-            "friend_requests/\(firebaseUid)/\(requestId)": nil,
-            "notifications/\(firebaseUid)/\(requestId)": nil
+            "\(FirestoreConstants.RTDBPaths.friendRequests)/\(firebaseUid)/\(requestId)": nil,
+            "\(FirestoreConstants.RTDBPaths.notifications)/\(firebaseUid)/\(requestId)": nil
         ]
 
         return try await withCheckedThrowingContinuation { continuation in
             rtdb.updateChildValues(updates as [AnyHashable : Any]) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     continuation.resume()
                 }
@@ -98,20 +102,20 @@ class FriendDataProvider {
     }
 
     func rejectFriendRequest(requestId: String) async throws {
-        guard let currentUser = Auth.auth().currentUser else {
+        guard let currentUser = auth.currentUser else {
             throw AppError.notAuthenticated()
         }
 
         // Remove friend request and its notification from RTDB
         let updates: [String: Any?] = [
-            "friend_requests/\(currentUser.uid)/\(requestId)": nil,
-            "notifications/\(currentUser.uid)/\(requestId)": nil
+            "\(FirestoreConstants.RTDBPaths.friendRequests)/\(currentUser.uid)/\(requestId)": nil,
+            "\(FirestoreConstants.RTDBPaths.notifications)/\(currentUser.uid)/\(requestId)": nil
         ]
 
         return try await withCheckedThrowingContinuation { continuation in
             rtdb.updateChildValues(updates as [AnyHashable : Any]) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     continuation.resume()
                 }
@@ -120,18 +124,18 @@ class FriendDataProvider {
     }
 
     func updateFriendRequestStatus(requestId: String, targetUserId: String, status: FriendRequestStatus) async throws {
-        guard let currentUser = Auth.auth().currentUser else {
+        guard let currentUser = auth.currentUser else {
             throw AppError.notAuthenticated()
         }
 
-        let requestRef = rtdb.child("friend_requests")
+        let requestRef = rtdb.child(FirestoreConstants.RTDBPaths.friendRequests)
             .child(currentUser.uid)
             .child(requestId)
 
         return try await withCheckedThrowingContinuation { continuation in
             requestRef.updateChildValues(["status": status.rawValue]) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     continuation.resume()
                 }
@@ -146,8 +150,8 @@ class FriendDataProvider {
             throw AppError.invalidInput("You cannot add yourself as a friend.")
         }
 
-        let userRef = db.collection("users").document(userId)
-        let friendRef = db.collection("users").document(friendId)
+        let userRef = db.collection(FirestoreConstants.Collections.users).document(userId)
+        let friendRef = db.collection(FirestoreConstants.Collections.users).document(friendId)
 
         _ = try await db.runTransaction { transaction, errorPointer in
             let userDoc: DocumentSnapshot
@@ -182,8 +186,8 @@ class FriendDataProvider {
     }
 
     func removeFriend(_ friendId: String, from userId: String) async throws {
-        let userRef = db.collection("users").document(userId)
-        let friendRef = db.collection("users").document(friendId)
+        let userRef = db.collection(FirestoreConstants.Collections.users).document(userId)
+        let friendRef = db.collection(FirestoreConstants.Collections.users).document(friendId)
 
         _ = try await db.runTransaction { transaction, errorPointer in
             let userDoc: DocumentSnapshot
@@ -215,8 +219,8 @@ class FriendDataProvider {
 
     // MARK: - Friend Request Observation
 
-    func observeFriendRequests(for userId: String, completion: @escaping ([FriendRequest]) -> Void) {
-        guard let currentUser = Auth.auth().currentUser else {
+    func observeFriendRequests(for userId: String, completion: @escaping @Sendable ([FriendRequest]) -> Void) {
+        guard let currentUser = auth.currentUser else {
             #if DEBUG
             print("FriendDataProvider: No authenticated user for friend requests")
             #endif
@@ -224,9 +228,13 @@ class FriendDataProvider {
             return
         }
 
-        let requestsRef = rtdb.child("friend_requests").child(currentUser.uid)
+        // Clean up any existing observer before setting up a new one
+        stopObservingFriendRequests()
 
-        requestsRef.observe(.value, with: { snapshot in
+        let requestsRef = rtdb.child(FirestoreConstants.RTDBPaths.friendRequests).child(currentUser.uid)
+        friendRequestsRef = requestsRef
+
+        friendRequestsHandle = requestsRef.observe(.value, with: { snapshot in
             var requests: [FriendRequest] = []
 
             for child in snapshot.children {
@@ -247,20 +255,30 @@ class FriendDataProvider {
                 requests.append(request)
             }
 
-            completion(requests)
+            Task { @MainActor in
+                completion(requests)
+            }
         })
+    }
+
+    func stopObservingFriendRequests() {
+        if let handle = friendRequestsHandle {
+            friendRequestsRef?.removeObserver(withHandle: handle)
+        }
+        friendRequestsHandle = nil
+        friendRequestsRef = nil
     }
 
     // MARK: - Account Deletion Operations
 
     /// Deletes all friend requests for a user (used during account deletion)
     func deleteAllFriendRequests(for userId: String) async throws {
-        let requestsRef = rtdb.child("friend_requests").child(userId)
+        let requestsRef = rtdb.child(FirestoreConstants.RTDBPaths.friendRequests).child(userId)
 
         return try await withCheckedThrowingContinuation { continuation in
             requestsRef.removeValue { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     #if DEBUG
                     print("FriendDataProvider: Deleted all friend requests for user \(userId)")
@@ -274,7 +292,7 @@ class FriendDataProvider {
     /// Removes a user from all their friends' friend lists (used during account deletion)
     func removeUserFromAllFriendLists(userId: String, friendIds: [String]) async throws {
         for friendId in friendIds {
-            let friendRef = db.collection("users").document(friendId)
+            let friendRef = db.collection(FirestoreConstants.Collections.users).document(friendId)
 
             do {
                 let friendDoc = try await friendRef.getDocument()

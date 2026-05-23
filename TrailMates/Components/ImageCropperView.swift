@@ -3,7 +3,7 @@ import SwiftUI
 struct ImageCropper: View {
     let image: UIImage
     @Binding var croppedImage: UIImage?
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
     
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
@@ -68,12 +68,14 @@ struct ImageCropper: View {
                             )
                     }
                     .frame(width: diameter, height: diameter)
+                    .accessibilityLabel("Crop area")
+                    .accessibilityHint("Pinch to zoom and drag to reposition the image")
                     
                     Spacer()
                     
                     HStack(spacing: 20) {
                         Button(action: {
-                            presentationMode.wrappedValue.dismiss()
+                            dismiss()
                         }) {
                             Text("Cancel")
                                 .foregroundColor(.white)
@@ -82,7 +84,7 @@ struct ImageCropper: View {
                         
                         Button(action: {
                             cropImage(diameter: diameter)
-                            presentationMode.wrappedValue.dismiss()
+                            dismiss()
                         }) {
                             Text("Choose")
                                 .foregroundColor(.white)

@@ -21,16 +21,13 @@ class LocationDataProvider {
     private var activeListeners: [String: DatabaseHandle] = [:]
 
     private init() {
+        #if DEBUG
         print("LocationDataProvider initialized")
+        #endif
     }
 
-    deinit {
-        // Clean up all active listeners
-        // Use Task to call MainActor-isolated method from nonisolated deinit context
-        Task { @MainActor [weak self] in
-            self?.removeAllListeners()
-        }
-    }
+    // Note: LocationDataProvider is a singleton and should never be deallocated.
+    // Cleanup is handled by removeAllListeners() called explicitly when needed.
 
     private func removeAllListeners() {
         activeListeners.forEach { path, handle in
@@ -43,7 +40,7 @@ class LocationDataProvider {
 
     func updateUserLocation(userId: String, location: CLLocationCoordinate2D) async throws {
         // 1. Verify the current user is updating their own location
-        guard let currentUser = Auth.auth().currentUser else {
+        guard let currentUser = self.auth.currentUser else {
             throw AppError.notAuthenticated()
         }
 
@@ -55,16 +52,20 @@ class LocationDataProvider {
         // 3. Get fresh ID token to ensure auth is valid
         let token = try await currentUser.getIDToken()
 
+        #if DEBUG
         print("\nFirebase Location Debug:")
         print("1. Auth Check:")
         print("   - UID: \(currentUser.uid)")
         print("   - Token valid: \(token.prefix(10))...")
         print("   - Provider: \(currentUser.providerID)")
         print("   - Anonymous: \(currentUser.isAnonymous)")
+        #endif
 
         // 4. Reference the user's location node in RTDB
-        let locationRef = rtdb.child("locations").child(currentUser.uid)
+        let locationRef = rtdb.child(FirestoreConstants.RTDBPaths.locations).child(currentUser.uid)
+        #if DEBUG
         print("   - Path: \(locationRef.url)")
+        #endif
 
         // 5. Verify database connection
         let connectedRef = rtdb.child(".info/connected")
@@ -73,8 +74,10 @@ class LocationDataProvider {
                 continuation.resume(returning: snapshot.value as? Bool ?? false)
             }
         }
+        #if DEBUG
         print("2. Connection Check:")
         print("   - Connected: \(isConnected)")
+        #endif
 
         // 6. Write location data to RTDB
         return try await withCheckedThrowingContinuation { continuation in
@@ -85,17 +88,23 @@ class LocationDataProvider {
                 "lastUpdated": ServerValue.timestamp()
             ]
 
+            #if DEBUG
             print("3. Data Validation:")
             print("   - Fields: \(locationData.keys.sorted().joined(separator: ", "))")
             print("   - Location: (\(location.latitude), \(location.longitude))")
+            #endif
 
             locationRef.setValue(locationData) { error, _ in
                 if let error = error {
+                    #if DEBUG
                     print("4. Write Result: Failed")
                     print("   - Error: \(error.localizedDescription)")
-                    continuation.resume(throwing: error)
+                    #endif
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
+                    #if DEBUG
                     print("4. Write Result: Success")
+                    #endif
                     continuation.resume()
                 }
             }
@@ -104,18 +113,21 @@ class LocationDataProvider {
 
     // MARK: - Location Observation
 
-    func observeUserLocation(userId: String, completion: @escaping (CLLocationCoordinate2D?) -> Void) {
+    func observeUserLocation(userId: String, completion: @escaping @Sendable (CLLocationCoordinate2D?) -> Void) {
         // First get the Firebase UID for the target user
         Task {
             // Fetch the user document to get their Firebase UID
-            if let userDoc = try? await db.collection("users").document(userId).getDocument(),
+            if let userDoc = try? await db.collection(FirestoreConstants.Collections.users).document(userId).getDocument(),
                let id = userDoc.get("id") as? String {
-                let path = "locations/\(id)"
+                let path = "\(FirestoreConstants.RTDBPaths.locations)/\(id)"
+                // Use userId (Firestore doc ID) as the listener key so
+                // stopObservingUserLocation can find it without re-resolving.
+                let listenerKey = "\(FirestoreConstants.RTDBPaths.locations)/\(userId)"
 
                 // Remove existing listener if any
-                if let existingHandle = activeListeners[path] {
+                if let existingHandle = activeListeners[listenerKey] {
                     rtdb.child(path).removeObserver(withHandle: existingHandle)
-                    activeListeners.removeValue(forKey: path)
+                    activeListeners.removeValue(forKey: listenerKey)
                 }
 
                 // Add new listener
@@ -123,15 +135,19 @@ class LocationDataProvider {
                     guard let locationData = snapshot.value as? [String: Any],
                           let latitude = locationData["latitude"] as? Double,
                           let longitude = locationData["longitude"] as? Double else {
-                        completion(nil)
+                        Task { @MainActor in
+                            completion(nil)
+                        }
                         return
                     }
 
                     let location = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                    completion(location)
+                    Task { @MainActor in
+                        completion(location)
+                    }
                 }
 
-                activeListeners[path] = handle
+                activeListeners[listenerKey] = handle
             } else {
                 #if DEBUG
                 print("LocationDataProvider: Could not find Firebase UID for user \(userId)")
@@ -142,7 +158,7 @@ class LocationDataProvider {
     }
 
     func stopObservingUserLocation(userId: String) {
-        let path = "locations/\(userId)"
+        let path = "\(FirestoreConstants.RTDBPaths.locations)/\(userId)"
         if let handle = activeListeners[path] {
             rtdb.child(path).removeObserver(withHandle: handle)
             activeListeners.removeValue(forKey: path)
@@ -155,12 +171,12 @@ class LocationDataProvider {
 
     /// Deletes a user's location data (used during account deletion)
     func deleteUserLocation(userId: String) async throws {
-        let locationRef = rtdb.child("locations").child(userId)
+        let locationRef = rtdb.child(FirestoreConstants.RTDBPaths.locations).child(userId)
 
         return try await withCheckedThrowingContinuation { continuation in
             locationRef.removeValue { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: AppError.from(error))
                 } else {
                     #if DEBUG
                     print("LocationDataProvider: Deleted location data for user \(userId)")

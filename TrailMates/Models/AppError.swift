@@ -269,6 +269,9 @@ func withRetry<T>(
             print("Retry attempt \(attempt)/\(maxAttempts) after error: \(error.localizedDescription)")
             #endif
 
+            // Check for cancellation before retrying
+            try Task.checkCancellation()
+
             // Wait with exponential backoff before retrying
             try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             delay *= 2 // Exponential backoff

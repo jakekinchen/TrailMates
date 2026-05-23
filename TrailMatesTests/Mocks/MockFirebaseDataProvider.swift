@@ -283,7 +283,7 @@ actor MockFirebaseDataProvider {
 
     // MARK: - Observer Methods (No-ops for testing)
 
-    func observeUser(id: String, onChange: @escaping (User?) -> Void) {
+    func observeUser(id: String, onChange: @escaping @Sendable (User?) -> Void) {
         // Immediately call with current user for testing
         onChange(users[id])
     }
