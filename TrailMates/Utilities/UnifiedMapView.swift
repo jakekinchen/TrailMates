@@ -101,6 +101,7 @@ struct UnifiedMapView: UIViewRepresentable {
 
 // MARK: - MapCoordinator
 extension UnifiedMapView {
+    @MainActor
     class MapCoordinator: NSObject, MKMapViewDelegate {
             private var shouldIgnoreRegionChanges = false
             private var isRegionChangeFromUserInteraction = false

@@ -8,52 +8,49 @@ struct ProfileView: View {
     @State private var isLoading = false
     
     var body: some View {
-        ZStack {
-            Color("beige").ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 16) {
-                    if let user = userManager.currentUser {
-                        ProfileHeader(user: user, actionButton: AnyView(
-                            Button(action: { showEditProfile = true }) {
-                                Text("Edit Profile")
-                                    .font(.system(.body, design: .rounded))
-                                    .fontWeight(.medium)
-                                    .foregroundColor(Color("beige"))
-                                    .padding(.horizontal, 24)
-                                    .padding(.vertical, 12)
-                                    .background(Color("pine"))
-                                    .cornerRadius(25)
-                            }
-                        ))
-                    } else {
-                        ProgressView()
-                            .frame(width: 120, height: 120)
-                    }
-                    
-                    // Stats Section - uses .equatable() to prevent unnecessary re-renders
-                    if let stats = userStats {
-                        StatsSection(stats: stats)
-                            .equatable()
-                    } else {
-                        // Show placeholder stats while loading
-                        StatsSection(stats: UserStats(
-                            joinDate: "Loading...",
-                            landmarkCompletion: 0,
-                            friendCount: 0,
-                            hostedEventCount: 0,
-                            attendedEventCount: 0
-                        ))
-                        .equatable()
-                        .redacted(reason: .placeholder)
-                        .shimmering()
-                    }
+        ScrollView {
+            VStack(spacing: 16) {
+                if let user = userManager.currentUser {
+                    ProfileHeader(user: user, actionButton: AnyView(
+                        Button(action: { showEditProfile = true }) {
+                            Text("Edit Profile")
+                                .font(.system(.body, design: .rounded))
+                                .fontWeight(.medium)
+                                .foregroundColor(Color("beige"))
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(Color("pine"))
+                                .cornerRadius(25)
+                        }
+                    ))
+                } else {
+                    ProgressView()
+                        .frame(width: 120, height: 120)
                 }
-                .padding()
-                .frame(maxWidth: 600)
-                .frame(maxWidth: .infinity)
+
+                // Stats Section - uses .equatable() to prevent unnecessary re-renders
+                if let stats = userStats {
+                    StatsSection(stats: stats)
+                        .equatable()
+                } else {
+                    // Show placeholder stats while loading
+                    StatsSection(stats: UserStats(
+                        joinDate: "Loading...",
+                        landmarkCompletion: 0,
+                        friendCount: 0,
+                        hostedEventCount: 0,
+                        attendedEventCount: 0
+                    ))
+                    .equatable()
+                    .redacted(reason: .placeholder)
+                    .shimmering()
+                }
             }
+            .padding()
+            .frame(maxWidth: 600)
+            .frame(maxWidth: .infinity)
         }
+        .themedBackground()
         .withDefaultNavigation(
             title: "Profile",
             rightButtonIcon: "gear",
@@ -149,22 +146,7 @@ struct StatCard: View {
             colorScheme == .dark ? Color.white.opacity(0.2) : Color("sage").opacity(0.2)
         )
         .cornerRadius(16)
-    }
-}
-
-struct UserStats: Codable, Equatable {
-    let joinDate: String
-    let landmarkCompletion: Int
-    let friendCount: Int
-    let hostedEventCount: Int
-    let attendedEventCount: Int
-
-    enum CodingKeys: String, CodingKey {
-        case joinDate
-        case landmarkCompletion
-        case friendCount
-        case hostedEventCount
-        case attendedEventCount
+        .accessibilityElement(children: .combine)
     }
 }
 

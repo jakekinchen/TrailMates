@@ -2,27 +2,10 @@ import SwiftUI
 import PhotosUI
 import Combine
 
-// MARK: - ProfileValidationError
-enum ProfileValidationError: LocalizedError {
-    case missingRequiredFields(String)
-    case invalidField(String)
-    case noCurrentUser
-
-    var errorDescription: String? {
-        switch self {
-        case .missingRequiredFields(let message),
-             .invalidField(let message):
-            return message
-        case .noCurrentUser:
-            return "No current user found. Please try logging in again."
-        }
-    }
-}
-
 // MARK: - ProfileSetupView
 struct ProfileSetupView: View {
     // MARK: - Environment
-    @Environment(\.presentationMode) private var presentationMode
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var userManager: UserManager
 
     // MARK: - Constants
@@ -77,28 +60,21 @@ struct ProfileSetupView: View {
         .task {
             await setupView()
         }
-        .alert(isPresented: $showAlert) {
-            Alert(
-                title: Text("Profile Setup"),
-                message: Text(alertMessage),
-                dismissButton: .default(Text("OK"))
-            )
+        .alert("Profile Setup", isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
         }
-        .actionSheet(isPresented: $showActionSheet) {
-            ActionSheet(
-                title: Text("Select Profile Picture"),
-                buttons: [
-                    .default(Text("Take a Photo")) {
-                        imagePickerSourceType = .camera
-                        showImagePicker = true
-                    },
-                    .default(Text("Choose from Library")) {
-                        imagePickerSourceType = .photoLibrary
-                        showImagePicker = true
-                    },
-                    .cancel()
-                ]
-            )
+        .confirmationDialog("Select Profile Picture", isPresented: $showActionSheet) {
+            Button("Take a Photo") {
+                imagePickerSourceType = .camera
+                showImagePicker = true
+            }
+            Button("Choose from Library") {
+                imagePickerSourceType = .photoLibrary
+                showImagePicker = true
+            }
+            Button("Cancel", role: .cancel) { }
         }
         .sheet(isPresented: $showImagePicker) {
             ProfileImagePicker(selectedImage: $originalImage, sourceType: imagePickerSourceType)
@@ -141,7 +117,7 @@ private extension ProfileSetupView {
         if !isEditMode {
             HStack {
                 Button(action: {
-                    presentationMode.wrappedValue.dismiss()
+                    dismiss()
                 }) {
                     Image(systemName: "arrow.left")
                         .foregroundColor(Color("pine"))
@@ -184,6 +160,8 @@ private extension ProfileSetupView {
             }
         }
         .onTapGesture { showActionSheet = true }
+        .accessibilityLabel("Choose profile photo")
+        .accessibilityHint("Double tap to select a profile photo")
         .padding(.top, 20)
     }
 
@@ -200,25 +178,27 @@ private extension ProfileSetupView {
 
     var textFieldsView: some View {
         VStack(spacing: 15) {
-            ProfileFloatingLabelTextField(
+            FloatingLabelTextField(
                 placeholder: "First Name",
                 text: $firstName,
                 textContentType: .givenName,
+                colorStyle: .standard,
                 field: .firstName,
                 focusedField: $focusedField
             )
-            ProfileFloatingLabelTextField(
+            FloatingLabelTextField(
                 placeholder: "Last Name",
                 text: $lastName,
                 textContentType: .familyName,
+                colorStyle: .standard,
                 field: .lastName,
                 focusedField: $focusedField
             )
-            ProfileFloatingLabelTextField(
+            FloatingLabelTextField(
                 placeholder: "Username",
                 text: $username,
-                textContentType: nil,
                 autocapitalization: .none,
+                colorStyle: .standard,
                 field: .username,
                 focusedField: $focusedField
             )
@@ -257,12 +237,16 @@ private extension ProfileSetupView {
 private extension ProfileSetupView {
     @MainActor
     func setupView() async {
+        #if DEBUG
         print("\n ProfileSetupView - Setting up view")
+        #endif
         if let user = userManager.currentUser {
+            #if DEBUG
             print("Current User State:")
             print("   First Name: '\(user.firstName)'")
             print("   Last Name: '\(user.lastName)'")
             print("   Username: '\(user.username)'")
+            #endif
 
             firstName = user.firstName
             lastName = user.lastName
@@ -270,15 +254,23 @@ private extension ProfileSetupView {
             if let imageData = user.profileImageData,
                let image = UIImage(data: imageData) {
                 profileImage = image
+                #if DEBUG
                 print("   Profile Image: Loaded from local data")
+                #endif
             } else if let image = try? await userManager.fetchProfileImage(for: user, forceRefresh: true) {
                 profileImage = image
+                #if DEBUG
                 print("   Profile Image: Loaded from provider")
+                #endif
             } else {
+                #if DEBUG
                 print("   Profile Image: Not available")
+                #endif
             }
         } else {
+            #if DEBUG
             print("No current user available during setup")
+            #endif
         }
     }
 }
@@ -286,57 +278,77 @@ private extension ProfileSetupView {
 // MARK: - ProfileSetupView Save Profile
 private extension ProfileSetupView {
     func saveProfile() async throws {
+        #if DEBUG
         print("\n ProfileSetupView - Starting Save Profile")
         print("Current State Variables:")
         print("   First Name: '\(firstName)'")
         print("   Last Name: '\(lastName)'")
         print("   Username: '\(username)'")
         print("   Has Profile Image: \(profileImage != nil)")
+        #endif
 
         isLoading = true
         defer { isLoading = false }
 
+        #if DEBUG
         print("\n Validating Inputs...")
+        #endif
         guard await validateInputs() else {
+            #if DEBUG
             print("Input validation failed")
+            #endif
             return
         }
+        #if DEBUG
         print("Input validation passed")
+        #endif
 
+        #if DEBUG
         print("\n Updating User Profile...")
+        #endif
         try await updateUserProfile()
+        #if DEBUG
         print("User profile updated")
+        #endif
 
         if isEditMode {
-            presentationMode.wrappedValue.dismiss()
+            dismiss()
         } else {
             userManager.persistUserSession()
         }
     }
 
     func validateInputs() async -> Bool {
+        #if DEBUG
         print("\n Validating Profile Inputs")
         print("Current Values:")
         print("   First Name: '\(firstName)'")
         print("   Last Name: '\(lastName)'")
         print("   Username: '\(username)'")
+        #endif
 
         guard !firstName.isEmpty else {
+            #if DEBUG
             print("First name is empty")
+            #endif
             alertMessage = "Please enter a first name."
             showAlert = true
             return false
         }
 
         guard !lastName.isEmpty else {
+            #if DEBUG
             print("Last name is empty")
+            #endif
             alertMessage = "Please enter a last name."
             showAlert = true
             return false
         }
 
         guard !username.isEmpty else {
+            #if DEBUG
             print("Username is empty")
+            #endif
             alertMessage = "Please enter a username."
             showAlert = true
             return false
@@ -344,37 +356,49 @@ private extension ProfileSetupView {
 
         let usernameRegex = "^[a-zA-Z0-9_]{1,20}$"
         guard username.range(of: usernameRegex, options: .regularExpression) != nil else {
+            #if DEBUG
             print("Username format invalid")
+            #endif
             alertMessage = "Username can only contain letters, numbers, and underscores, and must be between 1-20 characters."
             showAlert = true
             return false
         }
 
         if await userManager.isUsernameTaken(username) {
+            #if DEBUG
             print("Username is already taken")
+            #endif
             alertMessage = "This username is already taken. Please choose another."
             showAlert = true
             return false
         }
 
+        #if DEBUG
         print("All validations passed")
+        #endif
         return true
     }
 
     func updateUserProfile() async throws {
+        #if DEBUG
         print("\n Updating User Profile")
+        #endif
         guard let oldUser = userManager.currentUser else {
+            #if DEBUG
             print("Error: No current user available")
+            #endif
             alertMessage = "Error: No user found. Please try logging in again."
             showAlert = true
-            throw ProfileValidationError.noCurrentUser
+            throw AppError.notAuthenticated()
         }
 
+        #if DEBUG
         print("Current User Before Update:")
         print("   ID: \(oldUser.id)")
         print("   First Name: '\(oldUser.firstName)'")
         print("   Last Name: '\(oldUser.lastName)'")
         print("   Username: '\(oldUser.username)'")
+        #endif
 
         let wasProfileIncomplete = oldUser.firstName.isEmpty ||
                                   oldUser.lastName.isEmpty ||
@@ -385,34 +409,45 @@ private extension ProfileSetupView {
         user.lastName = lastName
         user.username = username
 
+        #if DEBUG
         if wasProfileIncomplete {
             print("Initial profile setup detected - will force save")
         }
+        #endif
 
         if hasSelectedNewProfileImage, let image = profileImage {
+            #if DEBUG
             print("Uploading profile image...")
+            #endif
             try await userManager.setProfileImage(image)
+            #if DEBUG
             print("Profile image uploaded")
+            #endif
         }
 
+        #if DEBUG
         print("Updated User State:")
         print("   First Name: '\(user.firstName)'")
         print("   Last Name: '\(user.lastName)'")
         print("   Username: '\(user.username)'")
-
         print("\n Saving updated user...")
+        #endif
         if wasProfileIncomplete {
             try await userManager.saveInitialProfile(updatedUser: user)
         } else {
             try await userManager.saveProfile(updatedUser: user)
         }
+        #if DEBUG
         print("User saved successfully")
+        #endif
 
         if let updatedUser = userManager.currentUser {
+            #if DEBUG
             print("\nUpdating local state with saved user:")
             print("   First Name: '\(updatedUser.firstName)'")
             print("   Last Name: '\(updatedUser.lastName)'")
             print("   Username: '\(updatedUser.username)'")
+            #endif
 
             firstName = updatedUser.firstName
             lastName = updatedUser.lastName
@@ -420,85 +455,11 @@ private extension ProfileSetupView {
 
             if let image = try? await userManager.fetchProfileImage(for: updatedUser, forceRefresh: true) {
                 profileImage = image
+                #if DEBUG
                 print("Profile image refreshed")
+                #endif
             }
         }
-    }
-}
-
-// MARK: - ProfileFloatingLabelTextField
-struct ProfileFloatingLabelTextField: View {
-    // MARK: - Dependencies
-    let placeholder: String
-    @Binding var text: String
-    var textContentType: UITextContentType?
-    var keyboardType: UIKeyboardType = .default
-    var contentType: UITextContentType?
-    var isEnabled: Bool = true
-    var autocapitalization: UITextAutocapitalizationType = .sentences
-    var field: ProfileSetupView.Field
-    @FocusState.Binding var focusedField: ProfileSetupView.Field?
-
-    // MARK: - Styling
-    var backgroundColor: Color = Color("beige")
-    var foregroundColor: Color = Color("pine")
-    var borderColor: Color = Color("pine")
-    var labelColor: Color = Color("pine")
-    var backgroundOpacity: Double = 1.0
-
-    // MARK: - State
-    @State private var isAnimated = false
-
-    // MARK: - Body
-    var body: some View {
-        ZStack(alignment: .leading) {
-            backgroundRectangle
-            floatingLabel
-            textField
-        }
-        .frame(height: 56)
-        .onChange(of: text) { oldValue, newValue in
-            withAnimation {
-                isAnimated = !newValue.isEmpty
-            }
-        }
-        .onAppear {
-            isAnimated = !text.isEmpty
-        }
-    }
-}
-
-// MARK: - ProfileFloatingLabelTextField View Builders
-private extension ProfileFloatingLabelTextField {
-    var backgroundRectangle: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .fill(backgroundColor.opacity(backgroundOpacity))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(borderColor, lineWidth: 2)
-            )
-    }
-
-    var floatingLabel: some View {
-        Text(placeholder)
-            .font(.custom("SF Pro", size: isAnimated ? 12 : 16))
-            .foregroundColor(labelColor.opacity(0.8))
-            .offset(y: isAnimated ? -14 : 0)
-            .offset(x: isAnimated ? 10 : 10)
-            .animation(.spring(response: 0.2), value: isAnimated)
-    }
-
-    var textField: some View {
-        TextField("", text: $text)
-            .textContentType(textContentType)
-            .keyboardType(keyboardType)
-            .autocapitalization(autocapitalization)
-            .disabled(!isEnabled)
-            .focused($focusedField, equals: field)
-            .font(.custom("SF Pro", size: 16))
-            .foregroundColor(foregroundColor)
-            .padding(.horizontal, 12)
-            .padding(.top, isAnimated ? 8 : 0)
     }
 }
 
@@ -509,7 +470,7 @@ struct ProfileImagePicker: UIViewControllerRepresentable {
     var sourceType: UIImagePickerController.SourceType
 
     // MARK: - Environment
-    @Environment(\.presentationMode) private var presentationMode
+    @Environment(\.dismiss) private var dismiss
 
     // MARK: - UIViewControllerRepresentable
     func makeUIViewController(context: Context) -> UIImagePickerController {
@@ -547,11 +508,11 @@ struct ProfileImagePicker: UIViewControllerRepresentable {
             if let image = info[.originalImage] as? UIImage {
                 parent.selectedImage = image
             }
-            parent.presentationMode.wrappedValue.dismiss()
+            parent.dismiss()
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.presentationMode.wrappedValue.dismiss()
+            parent.dismiss()
         }
     }
 }

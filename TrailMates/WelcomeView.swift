@@ -96,6 +96,7 @@ struct WelcomeView: View {
                             .cornerRadius(15)
                             .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
                     }
+                    .accessibilityHint("Double tap to begin setting up your profile")
                     .padding(.horizontal, 30)
                     .padding(.bottom, 40)
                 }

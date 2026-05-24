@@ -15,9 +15,7 @@ struct ContactsListView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color("beige").ignoresSafeArea()
-
+        Group {
             if viewModel.contacts.isEmpty {
                 EmptyContactsView()
             } else {
@@ -89,6 +87,7 @@ struct ContactsListView: View {
                 }
             }
         }
+        .themedBackground()
         .onTapGesture {
             focusedField = nil
         }
@@ -178,21 +177,6 @@ private struct MatchedUsersSection: View {
     }
 }
 
-private struct SectionHeader: View {
-    let title: String
-
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.headline)
-                .foregroundColor(Color("pine"))
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-            Spacer()
-        }
-        .background(Color("beige").opacity(0.95))
-    }
-}
 
 // MARK: - Matched User Row
 private struct MatchedUserRow: View {
@@ -200,8 +184,6 @@ private struct MatchedUserRow: View {
     @Binding var matchedUsers: [ContactsListViewModel.MatchedContact]
     @EnvironmentObject var userManager: UserManager
 
-    @State private var profileImage: UIImage?
-    @State private var isLoadingImage = false
     @State private var isProcessing = false
     @State private var error: Error?
 
@@ -210,7 +192,8 @@ private struct MatchedUserRow: View {
         NavigationLink(destination: FriendProfileView(user: matchedContact.user)) {
             HStack(spacing: 12) {
                 // Profile Image
-                profileImageView
+                UserAvatarView(user: matchedContact.user, size: 50)
+                    .overlay(Circle().stroke(userManager.isFriend(matchedContact.user.id) ? Color.green : Color.gray, lineWidth: 2))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(matchedContact.contact.givenName) \(matchedContact.contact.familyName)")
@@ -249,35 +232,11 @@ private struct MatchedUserRow: View {
             .padding(.horizontal)
             .background(Color("beige").opacity(0.1))
         }
-        .task {
-            await loadProfileImageIfNeeded()
-        }
         .alert("Error", isPresented: .constant(error != nil), presenting: error) { _ in
             Button("OK") { error = nil }
         } message: { error in
             Text(error.localizedDescription)
         }
-    }
-
-    @ViewBuilder
-    private var profileImageView: some View {
-        
-        Group{
-            if let image = profileImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else if isLoadingImage {
-                ProgressView()
-            } else {
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .foregroundColor(.gray)
-            }
-        }
-        .frame(width: 50, height: 50)
-        .clipShape(Circle())
-        .overlay(Circle().stroke(userManager.isFriend(matchedContact.user.id) ? Color.green : Color.gray, lineWidth: 2))
     }
 
     private func sendFriendRequest() async {
@@ -295,88 +254,4 @@ private struct MatchedUserRow: View {
         }
     }
 
-    private func loadProfileImageIfNeeded() async {
-        isLoadingImage = true
-        defer { isLoadingImage = false }
-
-        do {
-            profileImage = try await userManager.fetchProfileImage(for: matchedContact.user, preferredSize: .thumbnail)
-        } catch {
-            print("Error loading profile image: \(error)")
-        }
-    }
-}
-
-// MARK: - Unmatched Contact Row
-private struct UnmatchedContactRow: View {
-    let contact: CNContact
-    @EnvironmentObject private var userManager: UserManager
-    @State private var showingMessageComposer = false
-    @State private var messageDelegate = MessageComposeDelegate()
-    @State private var showingAlert = false
-
-    private var inviteURL: URL {
-        guard let senderId = userManager.currentUser?.id else {
-            return TrailMatesDeepLink.appStoreFallbackURL
-        }
-
-        return TrailMatesDeepLink.inviteURL(senderId: senderId)
-    }
-
-    private var inviteMessage: String {
-        "Hey! Join me on TrailMates ATX. Add me here: \(inviteURL.absoluteString)"
-    }
-
-    var body: some View {
-        HStack {
-            Text("\(contact.givenName) \(contact.familyName)")
-                .foregroundColor(Color("pine"))
-            Spacer()
-            Button("Add") {
-                if MessageComposerView.canSendText() {
-                    showingMessageComposer = true
-                } else {
-                    showingAlert = true
-                }
-            }
-            .foregroundColor(Color("beige"))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color("pine"))
-            .cornerRadius(8)
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal)
-        .sheet(isPresented: $showingMessageComposer) {
-            if let phoneNumber = contact.phoneNumbers.first?.value.stringValue {
-                MessageComposerView(
-                    recipients: [phoneNumber],
-                    messageBody: inviteMessage,
-                    delegate: messageDelegate
-                )
-            }
-        }
-        .alert("Cannot Send Messages", isPresented: $showingAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("Your device is not configured to send messages.")
-        }
-        .contextMenu {
-            if let phoneNumber = contact.phoneNumbers.first?.value.stringValue {
-                Button {
-                    UIPasteboard.general.string = inviteMessage
-                    if let url = URL(string: "sms:\(phoneNumber)") {
-                        UIApplication.shared.open(url)
-                    }
-                } label: {
-                    Label("Send SMS", systemImage: "message.fill")
-                }
-            }
-            Button {
-                UIPasteboard.general.string = inviteMessage
-            } label: {
-                Label("Copy Invite Message", systemImage: "doc.on.doc")
-            }
-        }
-    }
 }

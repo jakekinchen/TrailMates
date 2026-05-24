@@ -17,13 +17,7 @@ struct EventsView: View {
     @State private var showOnlyMyEvents = false
     
     // MARK: - Event Filtering and Grouping
-    
-    struct EventGroup: Identifiable {
-        let id = UUID()
-        let title: String
-        let events: [Event]
-    }
-    
+
     private func getFilteredEvents() -> [Event] {
             guard let currentUser = userManager.currentUser else { return [] }
             return eventViewModel.getFilteredEvents(
@@ -88,17 +82,6 @@ struct EventsView: View {
         }
     }
         
-        private func makeGroupHeader(_ title: String) -> some View {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(Color("pine"))
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                Spacer()
-            }
-            .background(Color("beige"))
-        }
         
     private func makeEventsList(_ groups: [EventGroup]) -> some View {
         LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
@@ -126,7 +109,7 @@ struct EventsView: View {
                             makeEventRow(event)
                         }
                     } header: {
-                        makeGroupHeader(group.title)
+                        SectionHeader(title: group.title)
                     }
                 }
             }
@@ -135,32 +118,29 @@ struct EventsView: View {
     }
         
         var body: some View {
-            ZStack {
-                Color("beige").ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Segment Control
-                    Picker("View", selection: $activeSegment) {
-                        Text("My Circle").tag("circle")
-                        Text("Explore").tag("explore")
-                        Text("My Events").tag("myEvents")
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .padding()
-                    
-                    
-                    ScrollView {
-                        let filteredEvents = getFilteredEvents()
-                        let groupedEvents = eventViewModel.groupEvents(filteredEvents)
-                        makeEventsList(groupedEvents)
-                    }
+            VStack(spacing: 0) {
+                // Segment Control
+                Picker("View", selection: $activeSegment) {
+                    Text("My Circle").tag("circle")
+                    Text("Explore").tag("explore")
+                    Text("My Events").tag("myEvents")
                 }
-                .withDefaultNavigation(
-                    title: navigationTitle,
-                    rightButtonIcon: "plus.circle.fill",
-                    rightButtonAction: { showCreateEvent = true }
-                )
+                .pickerStyle(SegmentedPickerStyle())
+                .padding()
+
+
+                ScrollView {
+                    let filteredEvents = getFilteredEvents()
+                    let groupedEvents = eventViewModel.groupEvents(filteredEvents)
+                    makeEventsList(groupedEvents)
+                }
             }
+            .withDefaultNavigation(
+                title: navigationTitle,
+                rightButtonIcon: "plus.circle.fill",
+                rightButtonAction: { showCreateEvent = true }
+            )
+            .themedBackground()
             .sheet(isPresented: $showCreateEvent) {
                 if let user = userManager.currentUser {
                     CreateEventView(eventViewModel: eventViewModel, user: user)
@@ -169,7 +149,7 @@ struct EventsView: View {
             .sheet(item: $selectedEvent) { event in
                 // Get the fresh event from EventViewModel to ensure up-to-date attendee data
                 let freshEvent = eventViewModel.events.first(where: { $0.id == event.id }) ?? event
-                NavigationView {
+                NavigationStack {
                     EventDetailView(
                         event: freshEvent,
                         eventViewModel: eventViewModel
@@ -192,15 +172,4 @@ struct EventsView: View {
             }
         }
     
-    private func sectionHeader(title: String) -> some View {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(Color("pine"))
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                Spacer()
-            }
-        
-        }
 }

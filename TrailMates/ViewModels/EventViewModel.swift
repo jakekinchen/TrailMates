@@ -1,11 +1,28 @@
 import SwiftUI
-import Combine
+
 import CoreLocation
+
+// MARK: - EventGroup
+
+/// Groups events by date section for display in lists.
+/// Shared across MapView and EventsView.
+struct EventGroup: Identifiable {
+    let id = UUID()
+    let title: String
+    let events: [Event]
+}
 
 @MainActor
 class EventViewModel: ObservableObject {
     // MARK: - Singleton
     static let shared = EventViewModel()
+
+    // MARK: - Cached Formatters
+    private static let sectionDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMMM d"
+        return formatter
+    }()
     
     // MARK: - Published Properties
     @Published private(set) var events: [Event] = []
@@ -14,18 +31,12 @@ class EventViewModel: ObservableObject {
     
     // MARK: - Private Properties
     private let eventProvider = EventDataProvider.shared
-    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
     private init() {
-        setupSubscriptions()
         Task { await loadEvents() }
     }
-    
-    // MARK: - Private Methods
-    private func setupSubscriptions() {
-        // Add any Combine subscriptions here
-    }
+
     // MARK: - Public Methods
     
     /// Asynchronously loads all events from the data provider
@@ -37,7 +48,7 @@ class EventViewModel: ObservableObject {
     }
     
     /// Groups events by their date sections
-    func groupEvents(_ events: [Event]) -> [EventsView.EventGroup] {
+    func groupEvents(_ events: [Event]) -> [EventGroup] {
         let calendar = Calendar.current
         let now = Date()
         
@@ -75,9 +86,7 @@ class EventViewModel: ObservableObject {
             } else if sectionDate < now {
                 title = "Past"
             } else {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE, MMMM d"
-                title = formatter.string(from: sectionDate)
+                title = Self.sectionDateFormatter.string(from: sectionDate)
             }
             
             groupedEvents.append((sectionDate: sectionDate, title: title, events: events))
@@ -85,7 +94,7 @@ class EventViewModel: ObservableObject {
         
         return groupedEvents
             .sorted { $0.sectionDate < $1.sectionDate }
-            .map { EventsView.EventGroup(title: $0.title, events: $0.events) }
+            .map { EventGroup(title: $0.title, events: $0.events) }
     }
     
     /// Creates a new event
@@ -139,7 +148,7 @@ class EventViewModel: ObservableObject {
             if let index = events.firstIndex(where: { $0.id == eventId }) {
                 events[index].attendeeIds.remove(userId)
             }
-            throw EventError.eventNotFound
+            throw AppError.notFound("Event")
         }
 
         event.attendeeIds.insert(userId)
@@ -159,7 +168,7 @@ class EventViewModel: ObservableObject {
             if let index = events.firstIndex(where: { $0.id == eventId }) {
                 events[index].attendeeIds.insert(userId)
             }
-            throw EventError.eventNotFound
+            throw AppError.notFound("Event")
         }
 
         event.attendeeIds.remove(userId)
@@ -170,11 +179,11 @@ class EventViewModel: ObservableObject {
     /// Cancels an event if the requester is the host
     func cancelEvent(eventId: String, hostId: String) async throws -> Bool {
         guard let event = await eventProvider.fetchEvent(by: eventId) else {
-            throw EventError.eventNotFound
+            throw AppError.notFound("Event")
         }
 
         guard event.hostId == hostId else {
-            throw EventError.unauthorized
+            throw AppError.unauthorized()
         }
 
         try await eventProvider.deleteEvent(eventId)
@@ -182,6 +191,78 @@ class EventViewModel: ObservableObject {
         return true
     }
     
+    /// Groups events into date-based sections (Today, Tomorrow, This Week, etc.)
+    /// Used by MapView's bottom sheet to display events in chronological groups.
+    func getEventGroups(from events: [Event]) -> [EventGroup] {
+        let calendar = Calendar.current
+        let sortedEvents = events.sorted { $0.dateTime < $1.dateTime }
+        var groups: [EventGroup] = []
+
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let nextWeek = calendar.date(byAdding: .day, value: 7, to: today)!
+        let nextMonth = calendar.date(byAdding: .month, value: 1, to: today)!
+
+        // Helper function to check if date is in same day
+        func isInSameDay(_ date1: Date, _ date2: Date) -> Bool {
+            calendar.isDate(date1, inSameDayAs: date2)
+        }
+
+        // Today's events
+        let todayEvents = sortedEvents.filter { isInSameDay($0.dateTime, Date()) }
+        if !todayEvents.isEmpty {
+            groups.append(EventGroup(title: "Today", events: todayEvents))
+        }
+
+        // Tomorrow's events
+        let tomorrowEvents = sortedEvents.filter { isInSameDay($0.dateTime, tomorrow) }
+        if !tomorrowEvents.isEmpty {
+            groups.append(EventGroup(title: "Tomorrow", events: tomorrowEvents))
+        }
+
+        // This week's events (excluding tomorrow)
+        let thisWeekEvents = sortedEvents.filter { event in
+            let isAfterTomorrow = event.dateTime > tomorrow
+            let isBeforeNextWeek = event.dateTime < nextWeek
+            let isNotTomorrow = !isInSameDay(event.dateTime, tomorrow)
+            return isAfterTomorrow && isBeforeNextWeek && isNotTomorrow
+        }
+        if !thisWeekEvents.isEmpty {
+            groups.append(EventGroup(title: "This Week", events: thisWeekEvents))
+        }
+
+        // Next week's events
+        let nextWeekEvents = sortedEvents.filter { event in
+            let isAfterNextWeek = event.dateTime >= nextWeek
+            let isBeforeNextMonth = event.dateTime < nextMonth
+            return isAfterNextWeek && isBeforeNextMonth
+        }
+        if !nextWeekEvents.isEmpty {
+            groups.append(EventGroup(title: "Next Week", events: nextWeekEvents))
+        }
+
+        // Next month's events
+        let nextMonthEvents = sortedEvents.filter { $0.dateTime >= nextMonth }
+        if !nextMonthEvents.isEmpty {
+            groups.append(EventGroup(title: "Next Month", events: nextMonthEvents))
+        }
+
+        return groups
+    }
+
+    /// Returns events the user is participating in (as host or attendee) that are upcoming or active.
+    func getUserEvents(for userId: String) -> [Event] {
+        // First filter events by user participation
+        let userParticipatedEvents = events.filter { event in
+            event.hostId == userId || event.attendeeIds.contains(userId)
+        }
+
+        // Then filter by event status
+        return userParticipatedEvents.filter { event in
+            event.status == .upcoming || event.status == .active
+        }
+    }
+
     /// Filters events based on user preferences and active segment
     func getFilteredEvents(for user: User, activeSegment: String, showOnlyMyEvents: Bool) -> [Event] {
         let filteredEvents = showOnlyMyEvents ?
@@ -201,34 +282,6 @@ class EventViewModel: ObservableObject {
             }
         default:
             return []
-        }
-    }
-}
-
-// MARK: - Error Types
-extension EventViewModel {
-    /// Event-specific errors that map to AppError for consistent handling
-    enum EventError: LocalizedError {
-        case eventNotFound
-        case unauthorized
-
-        var errorDescription: String? {
-            switch self {
-            case .eventNotFound:
-                return "Event not found"
-            case .unauthorized:
-                return "You are not authorized to perform this action"
-            }
-        }
-
-        /// Convert to AppError for consistent error handling
-        var asAppError: AppError {
-            switch self {
-            case .eventNotFound:
-                return .notFound("Event")
-            case .unauthorized:
-                return .unauthorized()
-            }
         }
     }
 }

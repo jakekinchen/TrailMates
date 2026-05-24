@@ -35,10 +35,6 @@ class UserManager: ObservableObject {
     private let locationProvider = LocationDataProvider.shared
     private let friendProvider = FriendDataProvider.shared
 
-    // Legacy provider (deprecated - use sub-providers instead)
-    @available(*, deprecated, message: "Use specific sub-providers instead")
-    private let dataProvider = FirebaseDataProvider.shared
-
     private var locationManager: LocationManager?
     private var cancellables = Set<AnyCancellable>()
     private var hasInitialized = false
@@ -69,7 +65,9 @@ class UserManager: ObservableObject {
     func initializeIfNeeded() async {
         guard !hasInitialized else { return }
 
+        #if DEBUG
         print("👤 Starting UserManager initialization")
+        #endif
         setupObservers()
 
         if isUITesting {
@@ -79,18 +77,20 @@ class UserManager: ObservableObject {
         // First try to load from persistence
         if checkPersistedUser() {
             hasInitialized = true
+            #if DEBUG
             print("👤 User loaded from persistence")
+            #endif
             return
         }
 
         // If not persisted, fetch from Firebase
         if let user = await userProvider.fetchCurrentUser() {
-            await MainActor.run {
-                self.currentUser = user
-                self.isLoggedIn = true
-                self.persistUserSession()
-            }
+            self.currentUser = user
+            self.isLoggedIn = true
+            self.persistUserSession()
+            #if DEBUG
             print("👤 User fetched from Firebase: \(user.firstName) \(user.lastName)")
+            #endif
         } else {
             // Self-heal legacy accounts where an Auth session exists but the
             // Firestore user doc isn't keyed by the Auth UID.
@@ -106,23 +106,25 @@ class UserManager: ObservableObject {
             }
 
             if let user = await userProvider.fetchCurrentUser() {
-                await MainActor.run {
-                    self.currentUser = user
-                    self.isLoggedIn = true
-                    self.persistUserSession()
-                }
+                self.currentUser = user
+                self.isLoggedIn = true
+                self.persistUserSession()
+                #if DEBUG
                 print("👤 User fetched from Firebase after ensure: \(user.firstName) \(user.lastName)")
+                #endif
             } else {
+                #if DEBUG
                 print("❌ No user found in Firebase")
-                await MainActor.run {
-                    self.isLoggedIn = false
-                    self.currentUser = nil
-                }
+                #endif
+                self.isLoggedIn = false
+                self.currentUser = nil
             }
         }
 
         hasInitialized = true
+        #if DEBUG
         print("👤 UserManager initialization completed")
+        #endif
     }
 
     private func resetSessionForUITesting() {
@@ -171,53 +173,10 @@ class UserManager: ObservableObject {
     }
     
     deinit {
-        // Cancel publishers (this is safe as it's not actor-isolated)
-        cancellables.forEach { $0.cancel() }
-
-        // Use Task to call MainActor-isolated method from nonisolated deinit context
-        // Capture the userId before entering the Task
-        let userId = currentUserId
-        Task { @MainActor in
-            if let userId = userId {
-                UserDataProvider.shared.stopObservingUser(id: userId)
-            }
-        }
-    }
-    
-    // MARK: - Initialize User
-    func initializeUserIfNeeded() async {
-        guard !hasInitialized else { return }
-
-        print("👤 Starting UserManager initialization")
-        setupObservers()
-
-        // First try to load from persistence
-        if checkPersistedUser() {
-            hasInitialized = true
-            print("👤 User loaded from persistence")
-            return
-        }
-
-        // If not persisted, fetch from Firebase
-        if let user = await userProvider.fetchCurrentUser() {
-            await MainActor.run {
-                self.currentUser = user
-                self.currentUserId = user.id  // Track the ID
-                self.isLoggedIn = true
-                self.persistUserSession()
-            }
-            print("👤 User fetched from Firebase: \(user.firstName) \(user.lastName)")
-        } else {
-            print("❌ No user found in Firebase")
-            await MainActor.run {
-                self.isLoggedIn = false
-                self.currentUser = nil
-                self.currentUserId = nil  // Clear the ID
-            }
-        }
-
-        hasInitialized = true
-        print("👤 UserManager initialization completed")
+        // deinit is nonisolated and cannot safely access @MainActor-isolated
+        // properties (cancellables, currentUserId). Since UserManager is a
+        // singleton it should never be deallocated; any cleanup is handled by
+        // the explicit cleanup() method or signOut() instead.
     }
     
     private func checkPersistedUser() -> Bool {
@@ -240,29 +199,41 @@ class UserManager: ObservableObject {
     
     // MARK: - Persist User Session
     func persistUserSession() {
+        #if DEBUG
         print("💾 Persisting user session")
+        #endif
         if let user = currentUser {
             if let userData = try? JSONEncoder().encode(user) {
+                #if DEBUG
                 print("   - Saving user data:")
                 print("     • First Name: '\(user.firstName)'")
                 print("     • Last Name: '\(user.lastName)'")
                 print("     • Username: '\(user.username)'")
+                #endif
                 UserDefaults.standard.set(userData, forKey: "currentUser")
                 UserDefaults.standard.set(Date(), forKey: "lastUserRefreshTime")
+                #if DEBUG
                 print("   - User data saved successfully")
+                #endif
             } else {
+                #if DEBUG
                 print("❌ Failed to encode user data")
+                #endif
             }
         } else {
+            #if DEBUG
             print("⚠️ No current user to persist")
+            #endif
         }
-        
+
         UserDefaults.standard.set(isLoggedIn, forKey: "isLoggedIn")
         UserDefaults.standard.set(isWelcomeComplete, forKey: "isWelcomeComplete")
         UserDefaults.standard.set(isPermissionsGranted, forKey: "isPermissionsGranted")
         UserDefaults.standard.set(hasAddedFriends, forKey: "hasAddedFriends")
         UserDefaults.standard.set(isOnboardingComplete, forKey: "isOnboardingComplete")
+        #if DEBUG
         print("   - Session flags saved")
+        #endif
     }
 
     private func loadPersistedUserSession() {
@@ -289,68 +260,84 @@ class UserManager: ObservableObject {
 
     // MARK: - Logout
     func signOut() async {
+        #if DEBUG
         print("🔄 Starting comprehensive sign out process")
+        #endif
 
         // 1. Sign out from Firebase Auth
         do {
             try Auth.auth().signOut()
+            #if DEBUG
             print("✅ Firebase Auth sign out successful")
+            #endif
         } catch {
+            #if DEBUG
             print("⚠️ Firebase Auth sign out error: \(error)")
+            #endif
             // Continue with cleanup even if Firebase sign out fails
         }
 
         // 2. Clean up Firebase listeners
         if let userId = currentUser?.id {
             userProvider.stopObservingUser(id: userId)
+            #if DEBUG
             print("✅ Stopped Firebase user observers")
+            #endif
         }
 
         // 3. Stop location updates
         locationManager?.manager.stopUpdatingLocation()
+        #if DEBUG
         print("✅ Stopped location updates")
+        #endif
 
         // 4. Clear all local state
-        await MainActor.run {
-            currentUser = nil
-            currentUserId = nil
-            isLoggedIn = false
-            isOnboardingComplete = false
-            isWelcomeComplete = false
-            isPermissionsGranted = false
-            hasAddedFriends = false
-            print("✅ Cleared local state")
-        }
+        currentUser = nil
+        currentUserId = nil
+        isLoggedIn = false
+        isOnboardingComplete = false
+        isWelcomeComplete = false
+        isPermissionsGranted = false
+        hasAddedFriends = false
+        #if DEBUG
+        print("✅ Cleared local state")
+        #endif
 
         // 5. Clear persisted data
         clearPersistedUserSession()
+        #if DEBUG
         print("✅ Cleared persisted session data")
 
         print("✅ Sign out process completed")
+        #endif
     }
 
     func refreshUserData() async {
         guard let userId = currentUser?.id else { return }
 
         userProvider.observeUser(id: userId) { [weak self] updatedUser in
-            guard let self = self else { return }
-            if let user = updatedUser {
-                // Don't overwrite valid profile data with stale/empty data from Firebase
-                // This can happen due to Firebase read/write replication delays
-                let currentHasProfile = !(self.currentUser?.firstName.isEmpty ?? true) &&
-                                       !(self.currentUser?.lastName.isEmpty ?? true) &&
-                                       !(self.currentUser?.username.isEmpty ?? true)
-                let fetchedHasProfile = !user.firstName.isEmpty &&
-                                       !user.lastName.isEmpty &&
-                                       !user.username.isEmpty
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                if let user = updatedUser {
+                    // Don't overwrite valid profile data with stale/empty data from Firebase
+                    // This can happen due to Firebase read/write replication delays
+                    let currentHasProfile = !(self.currentUser?.firstName.isEmpty ?? true) &&
+                                           !(self.currentUser?.lastName.isEmpty ?? true) &&
+                                           !(self.currentUser?.username.isEmpty ?? true)
+                    let fetchedHasProfile = !user.firstName.isEmpty &&
+                                           !user.lastName.isEmpty &&
+                                           !user.username.isEmpty
 
-                if currentHasProfile && !fetchedHasProfile {
-                    print("⚠️ refreshUserData: Ignoring stale Firebase data with empty profile fields")
-                    return
+                    if currentHasProfile && !fetchedHasProfile {
+                        #if DEBUG
+                        print("⚠️ refreshUserData: Ignoring stale Firebase data with empty profile fields")
+                        #endif
+                        return
+                    }
+
+                    self.currentUser = user
+                    self.persistUserSession()
                 }
-
-                self.currentUser = user
-                self.persistUserSession()
             }
         }
     }
@@ -453,12 +440,6 @@ class UserManager: ObservableObject {
         }
     }
     
-    /// Normalizes a phone number by stripping non-digit characters.
-    /// Delegates to PhoneNumberService for consistent behavior.
-    func normalizePhoneNumber(_ phoneNumber: String) -> String {
-        return PhoneNumberService.shared.format(phoneNumber, for: .digitsOnly) ?? ""
-    }
-    
     func createNewUser(phoneNumber: String, id: String) async throws {
         #if DEBUG
         print("Starting signup process for phone: \(phoneNumber)")
@@ -479,7 +460,9 @@ class UserManager: ObservableObject {
             joinDate: Date()
         )
 
+        #if DEBUG
         print("Created initial user object with ID: \(initialUser.id)")
+        #endif
 
         do {
             #if DEBUG
@@ -490,12 +473,10 @@ class UserManager: ObservableObject {
             print("Initial user saved successfully")
             #endif
 
-            await MainActor.run {
-                self.currentUser = initialUser
-                self.currentUserId = initialUser.id
-                self.isLoggedIn = true
-                self.persistUserSession()
-            }
+            self.currentUser = initialUser
+            self.currentUserId = initialUser.id
+            self.isLoggedIn = true
+            self.persistUserSession()
             #if DEBUG
             print("User session persisted with minimal data")
             #endif
@@ -520,17 +501,23 @@ class UserManager: ObservableObject {
 
     // MARK: - Save Profile
     func saveProfile(updatedUser: User) async throws {
+        #if DEBUG
         print("🔄 Starting profile save process")
         print("   Input User State:")
         print("   - ID: \(updatedUser.id)")
         print("   - First Name: '\(updatedUser.firstName)'")
         print("   - Last Name: '\(updatedUser.lastName)'")
         print("   - Username: '\(updatedUser.username)'")
+        #endif
 
         do {
+            #if DEBUG
             print("📤 Attempting to save user to Firebase")
+            #endif
             try await userProvider.saveUser(updatedUser)
+            #if DEBUG
             print("✅ User saved successfully to Firebase")
+            #endif
 
             // Ensure the in-memory reference is the same user we just saved.
             // Avoid re-assigning the same instance (which can create redundant update loops).
@@ -542,10 +529,12 @@ class UserManager: ObservableObject {
             self.currentUserId = updatedUser.id
             self.persistUserSession()
 
+            #if DEBUG
             print("✅ Profile save process completed")
             print("   - First Name: '\(updatedUser.firstName)'")
             print("   - Last Name: '\(updatedUser.lastName)'")
             print("   - Username: '\(updatedUser.username)'")
+            #endif
         } catch {
             let appError = AppError.from(error)
             #if DEBUG
@@ -576,7 +565,9 @@ class UserManager: ObservableObject {
         
         // Sync with Firestore
         try await saveProfile(updatedUser: user)
+        #if DEBUG
         print("✅ Event attendance synced with Firestore: \(eventId)")
+        #endif
     }
 
     func leaveEvent(_ eventId: String) async throws {
@@ -589,7 +580,9 @@ class UserManager: ObservableObject {
             
             // Sync with Firestore
             try await saveProfile(updatedUser: user)
+            #if DEBUG
             print("✅ Event departure synced with Firestore: \(eventId)")
+            #endif
         }
     }
 
@@ -626,6 +619,12 @@ class UserManager: ObservableObject {
     }
     
     // MARK: - Stats Management
+    private static let joinDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter
+    }()
+
     func getUserStats(for userId: String) async -> UserStats? {
         // First fetch the user
         guard let user = await userProvider.fetchUser(by: userId) else { return nil }
@@ -635,11 +634,8 @@ class UserManager: ObservableObject {
             ? Int((Double(user.visitedLandmarkIds.count) / Double(totalLandmarks)) * 100)
             : 0
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-
         return UserStats(
-            joinDate: formatter.string(from: user.joinDate),
+            joinDate: Self.joinDateFormatter.string(from: user.joinDate),
             landmarkCompletion: landmarkCompletion,
             friendCount: user.friends.count,
             hostedEventCount: user.createdEventIds.count,
@@ -668,19 +664,25 @@ class UserManager: ObservableObject {
     // MARK: - Location Management
     func updateLocation(_ location: CLLocationCoordinate2D) async {
         guard isLoggedIn, let userId = currentUser?.id else {
+            #if DEBUG
             print("UserManager: Location update skipped - user not logged in or no user ID")
+            #endif
             return
         }
-        
+
         // Skip location updates if profile setup is not complete
         guard isOnboardingComplete else {
+            #if DEBUG
             print("UserManager: Location update skipped - profile setup not complete")
+            #endif
             return
         }
-        
+
         // Skip location updates if user hasn't completed their profile
         guard let user = currentUser, !user.firstName.isEmpty, !user.lastName.isEmpty, !user.username.isEmpty else {
+            #if DEBUG
             print("UserManager: Location update skipped - profile information incomplete")
+            #endif
             return
         }
         
@@ -756,7 +758,9 @@ class UserManager: ObservableObject {
                                    !refreshedUser.username.isEmpty
 
             if currentHasProfile && !fetchedHasProfile {
+                #if DEBUG
                 print("⚠️ refreshUserInBackground: Ignoring stale Firebase data with empty profile fields")
+                #endif
                 return
             }
 
@@ -827,7 +831,9 @@ class UserManager: ObservableObject {
     }
 
     func checkUserExists(phoneNumber: String) async -> Bool {
+        #if DEBUG
         print("Checking if user exists with phone number: \(phoneNumber)")
+        #endif
         return await userProvider.checkUserExists(phoneNumber: phoneNumber)
     }
 
@@ -862,72 +868,61 @@ class UserManager: ObservableObject {
 //            throw ValidationError.invalidData("No account found with this phone number")
 //        }
 
+        #if DEBUG
         print("User found, logging in")
-        await MainActor.run {
-            self.currentUser = existingUser
-            self.currentUserId = existingUser.id
-            self.isLoggedIn = true
-            self.persistUserSession()
-        }
+        #endif
+        self.currentUser = existingUser
+        self.currentUserId = existingUser.id
+        self.isLoggedIn = true
+        self.persistUserSession()
+        #if DEBUG
         print("User logged in successfully")
+        #endif
     }
 
     // MARK: - Initial Profile Setup
     func saveInitialProfile(updatedUser: User) async throws {
+        #if DEBUG
         print("🔄 Starting initial profile save process")
         print("   Input User State:")
         print("   - ID: \(updatedUser.id)")
         print("   - First Name: '\(updatedUser.firstName)'")
         print("   - Last Name: '\(updatedUser.lastName)'")
         print("   - Username: '\(updatedUser.username)'")
+        #endif
 
         do {
+            #if DEBUG
             print("📤 Forcing save to Firebase for initial setup")
+            #endif
             try await userProvider.saveUser(updatedUser)
+            #if DEBUG
             print("✅ User saved successfully to Firebase")
+            #endif
 
             // Force SwiftUI to detect the change by explicitly notifying
             // (User is a class, so setting the same reference doesn't trigger @Published)
+            #if DEBUG
             print("✅ Setting current user to saved user")
+            #endif
             objectWillChange.send()
             self.currentUser = updatedUser
             self.persistUserSession()
+            #if DEBUG
             print("✅ Initial profile save completed")
             print("   - First Name: '\(updatedUser.firstName)'")
             print("   - Last Name: '\(updatedUser.lastName)'")
             print("   - Username: '\(updatedUser.username)'")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ Error saving initial profile: \(error.localizedDescription)")
             print("   Detailed error: \(error)")
+            #endif
             throw error
         }
     }
 
     // Add property to track last location log time
     private var lastLocationLogTime: Date?
-}
-
-// MARK: - Profile Image Types
-extension UserManager {
-    enum ProfileImageSize {
-        case full
-        case thumbnail
-    }
-    
-    enum ProfileImageError: LocalizedError {
-        case invalidUrl
-        case downloadFailed
-        case invalidData
-        
-        var errorDescription: String? {
-            switch self {
-            case .invalidUrl:
-                return "Invalid profile image URL"
-            case .downloadFailed:
-                return "Failed to download profile image"
-            case .invalidData:
-                return "Invalid image data received"
-            }
-        }
-    }
 }

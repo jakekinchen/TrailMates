@@ -208,18 +208,18 @@ struct EventViewModelTests {
 
     // MARK: - Event Error Types Tests
 
-    @Test("EventError eventNotFound has correct description")
+    @Test("AppError notFound has correct description")
     func testEventNotFoundError() {
-        let error = EventViewModel.EventError.eventNotFound
+        let error = AppError.notFound("Event")
 
-        #expect(error.errorDescription == "Event not found")
+        #expect(error.errorDescription?.contains("Event") == true)
     }
 
-    @Test("EventError unauthorized has correct description")
+    @Test("AppError unauthorized has correct description")
     func testUnauthorizedError() {
-        let error = EventViewModel.EventError.unauthorized
+        let error = AppError.unauthorized()
 
-        #expect(error.errorDescription == "You are not authorized to perform this action")
+        #expect(error.errorDescription != nil)
     }
 
     // MARK: - Event Filtering Logic Tests

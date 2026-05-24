@@ -14,28 +14,22 @@ struct UserManagerTests {
 
     @Test("Normalizes phone number by removing non-numeric characters")
     func testNormalizePhoneNumberRemovesFormatting() {
-        let userManager = UserManager.shared
-
         let formatted = "+1 (555) 123-4567"
-        let normalized = userManager.normalizePhoneNumber(formatted)
+        let normalized = PhoneNumberService.shared.format(formatted, for: .digitsOnly) ?? ""
 
         #expect(normalized == "15551234567")
     }
 
     @Test("Normalizes already clean phone number")
     func testNormalizePhoneNumberWithCleanInput() {
-        let userManager = UserManager.shared
-
         let clean = "15551234567"
-        let normalized = userManager.normalizePhoneNumber(clean)
+        let normalized = PhoneNumberService.shared.format(clean, for: .digitsOnly) ?? ""
 
         #expect(normalized == "15551234567")
     }
 
     @Test("Normalizes phone number with various formats")
     func testNormalizePhoneNumberVariousFormats() {
-        let userManager = UserManager.shared
-
         let testCases = [
             ("+1 (555) 123-4567", "15551234567"),
             ("555-123-4567", "5551234567"),
@@ -45,17 +39,15 @@ struct UserManagerTests {
         ]
 
         for (input, expected) in testCases {
-            let normalized = userManager.normalizePhoneNumber(input)
+            let normalized = PhoneNumberService.shared.format(input, for: .digitsOnly) ?? ""
             #expect(normalized == expected, "Failed for input: \(input)")
         }
     }
 
     @Test("Normalizes empty phone number")
     func testNormalizeEmptyPhoneNumber() {
-        let userManager = UserManager.shared
-
         let empty = ""
-        let normalized = userManager.normalizePhoneNumber(empty)
+        let normalized = PhoneNumberService.shared.format(empty, for: .digitsOnly) ?? ""
 
         #expect(normalized == "")
     }
@@ -659,8 +651,6 @@ struct EdgeCaseTests {
 
     @Test("normalizePhoneNumber handles international formats")
     func testNormalizeInternationalPhoneNumbers() {
-        let userManager = UserManager.shared
-
         let testCases = [
             ("+44 20 7123 4567", "442071234567"),  // UK
             ("+81 3-1234-5678", "81312345678"),     // Japan
@@ -668,25 +658,21 @@ struct EdgeCaseTests {
         ]
 
         for (input, expected) in testCases {
-            let normalized = userManager.normalizePhoneNumber(input)
+            let normalized = PhoneNumberService.shared.format(input, for: .digitsOnly) ?? ""
             #expect(normalized == expected, "Failed for input: \(input)")
         }
     }
 
     @Test("normalizePhoneNumber handles phone with only special characters")
     func testNormalizePhoneNumberOnlySpecialChars() {
-        let userManager = UserManager.shared
-
-        let result = userManager.normalizePhoneNumber("+-().")
+        let result = PhoneNumberService.shared.format("+-().", for: .digitsOnly) ?? ""
         #expect(result == "")
     }
 
     @Test("normalizePhoneNumber handles very long numbers")
     func testNormalizePhoneNumberLong() {
-        let userManager = UserManager.shared
-
         let longNumber = "+1234567890123456789"
-        let normalized = userManager.normalizePhoneNumber(longNumber)
+        let normalized = PhoneNumberService.shared.format(longNumber, for: .digitsOnly) ?? ""
         #expect(normalized == "1234567890123456789")
     }
 

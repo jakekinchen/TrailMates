@@ -16,4 +16,28 @@ extension View {
             self
         }
     }
+
+    func themedBackground() -> some View {
+        modifier(ThemedBackgroundModifier())
+    }
+}
+
+struct ThemedBackgroundModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var overlayColor: Color {
+        switch colorScheme {
+        case .dark: return Color.black.opacity(0.4)
+        default: return Color.white.opacity(0.4)
+        }
+    }
+
+    func body(content: Content) -> some View {
+        ZStack {
+            Color("beige").ignoresSafeArea()
+            content
+                .scrollContentBackground(.hidden)
+                .background(overlayColor)
+        }
+    }
 }

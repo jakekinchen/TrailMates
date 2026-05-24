@@ -76,7 +76,6 @@ function publicUserPayload(doc) {
     firstName: userData.firstName || "",
     lastName: userData.lastName || "",
     username: userData.username || "",
-    phoneNumber: userData.phoneNumber || "",
     joinDate,
     isActive: userData.isActive !== false,
     profileImageUrl: userData.profileImageUrl || null,
@@ -269,7 +268,7 @@ exports.checkUsernameTaken = onCall(
         const snapshot = await admin
             .firestore()
             .collection("users")
-            .where("username", "==", username)
+            .where("usernameSearchKey", "==", username.toLowerCase())
             .get();
 
         // 3. Return true/false
@@ -292,6 +291,10 @@ exports.checkUsernameTaken = onCall(
 exports.checkUserExists = onCall(
     {region: "us-central1", maxInstances: 3},
     async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Authentication required.");
+      }
+
       const {hashedPhoneNumber, phoneNumberE164} = request.data;
       if (!hashedPhoneNumber && !phoneNumberE164) {
         throw new HttpsError(

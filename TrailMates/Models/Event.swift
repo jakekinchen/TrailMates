@@ -48,11 +48,15 @@ extension Event {
         return dateTime > Date()
     }
 
-    func formattedDate() -> String {
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return formatter.string(from: dateTime)
+        return formatter
+    }()
+
+    func formattedDate() -> String {
+        return Self.dateFormatter.string(from: dateTime)
     }
     
     

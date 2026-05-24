@@ -53,24 +53,21 @@ struct PermissionsView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color("beige").ignoresSafeArea()
+            VStack(spacing: 0) {
+                permissionProgress
 
-                VStack(spacing: 0) {
-                    permissionProgress
+                Spacer()
 
-                    Spacer()
+                permissionContent(for: currentStep)
+                    .padding(.horizontal, AppSpacing.xxl)
 
-                    permissionContent(for: currentStep)
-                        .padding(.horizontal, AppSpacing.xxl)
+                Spacer()
 
-                    Spacer()
-
-                    continueButton
-                        .padding(.horizontal, AppSpacing.lg)
-                        .padding(.bottom, AppSpacing.xxl)
-                }
+                continueButton
+                    .padding(.horizontal, AppSpacing.lg)
+                    .padding(.bottom, AppSpacing.xxl)
             }
+            .themedBackground()
             .navigationBarHidden(true)
             .onAppear {
                 Task {

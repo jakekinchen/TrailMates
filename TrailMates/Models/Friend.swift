@@ -25,6 +25,15 @@ protocol FriendRepresentable {
     var location: CLLocationCoordinate2D? { get }
 }
 
+// MARK: - FriendRepresentable Default Implementations
+extension FriendRepresentable {
+    var initials: String {
+        let first = firstName.prefix(1)
+        let last = lastName.prefix(1)
+        return "\(first)\(last)".uppercased()
+    }
+}
+
 // MARK: - User Extension for Friend Functionality
 extension User: FriendRepresentable {
 
@@ -51,12 +60,8 @@ struct FriendViewModel: Identifiable {
     var isActive: Bool { friend.isActive }
     var location: CLLocationCoordinate2D? { friend.location }
     
-    // Additional view-specific computed properties
-    var initials: String {
-        let firstInitial = firstName.prefix(1)
-        let lastInitial = lastName.prefix(1)
-        return "\(firstInitial)\(lastInitial)".uppercased()
-    }
+    // Delegate to FriendRepresentable default implementation
+    var initials: String { friend.initials }
     
     var statusColor: Color {
         if doNotDisturb {

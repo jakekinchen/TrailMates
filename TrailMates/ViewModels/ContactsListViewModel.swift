@@ -98,7 +98,7 @@ class ContactsListViewModel: ObservableObject {
             self.matchedUsers = newMatches
             checkContactsAccess()
             
-        } catch let error as ValidationError {
+        } catch let error as AppError {
             print("❌ Validation error: \(error.localizedDescription)")
             self.error = error
         } catch {

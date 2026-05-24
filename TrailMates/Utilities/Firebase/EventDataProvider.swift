@@ -13,11 +13,8 @@ class EventDataProvider {
     private lazy var db = Firestore.firestore()
 
     private init() {
-        // Configure Firestore settings if not already configured
-        let settings = FirestoreSettings()
-        settings.cacheSettings = PersistentCacheSettings()
-        db.settings = settings
-
+        // Firestore settings (persistence, cache) are configured centrally
+        // in FirebaseProviderContainer.init() to avoid duplicate configuration.
         print("EventDataProvider initialized")
     }
 
@@ -27,7 +24,7 @@ class EventDataProvider {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("events").getDocuments()
+                try await self.db.collection(FirestoreConstants.Collections.events).getDocuments()
             }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
         } catch {
@@ -43,7 +40,7 @@ class EventDataProvider {
         do {
             // Use retry logic for network fetch
             let document = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("events").document(id).getDocument()
+                try await self.db.collection(FirestoreConstants.Collections.events).document(id).getDocument()
             }
             return try document.data(as: Event.self)
         } catch {
@@ -56,13 +53,13 @@ class EventDataProvider {
     }
 
     func saveEvent(_ event: Event) async throws {
-        let eventRef = db.collection("events").document(event.id)
+        let eventRef = db.collection(FirestoreConstants.Collections.events).document(event.id)
         let data = try Firestore.Encoder().encode(event)
         try await eventRef.setData(data)
     }
 
     func deleteEvent(_ eventId: String) async throws {
-        try await db.collection("events").document(eventId).delete()
+        try await db.collection(FirestoreConstants.Collections.events).document(eventId).delete()
     }
 
     func updateEventStatus(_ event: Event) async -> Event {
@@ -81,7 +78,7 @@ class EventDataProvider {
 
     /// Generate a new event reference with DocumentReference type (for internal use)
     func generateNewEventReference() -> (reference: DocumentReference, id: String) {
-        let eventRef = db.collection("events").document()
+        let eventRef = db.collection(FirestoreConstants.Collections.events).document()
         return (eventRef, eventRef.documentID)
     }
 
@@ -98,8 +95,8 @@ class EventDataProvider {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("events")
-                    .whereField("creatorId", isEqualTo: userId)
+                try await self.db.collection(FirestoreConstants.Collections.events)
+                    .whereField("hostId", isEqualTo: userId)
                     .getDocuments()
             }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
@@ -114,11 +111,10 @@ class EventDataProvider {
 
     func fetchCircleEvents(for userId: String, friendIds: [String]) async -> [Event] {
         do {
-            let friendIdsStrings = friendIds.map { $0 }
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("events")
-                    .whereField("creatorId", in: [userId] + friendIdsStrings)
+                try await self.db.collection(FirestoreConstants.Collections.events)
+                    .whereField("hostId", in: [userId] + friendIds)
                     .getDocuments()
             }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
@@ -135,7 +131,7 @@ class EventDataProvider {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("events")
+                try await self.db.collection(FirestoreConstants.Collections.events)
                     .whereField("isPublic", isEqualTo: true)
                     .getDocuments()
             }
@@ -154,7 +150,7 @@ class EventDataProvider {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("events")
+                try await self.db.collection(FirestoreConstants.Collections.events)
                     .whereField("attendeeIds", arrayContains: userId)
                     .getDocuments()
             }
@@ -173,9 +169,9 @@ class EventDataProvider {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("events")
-                    .whereField("startTime", isGreaterThanOrEqualTo: startDate)
-                    .whereField("startTime", isLessThanOrEqualTo: endDate)
+                try await self.db.collection(FirestoreConstants.Collections.events)
+                    .whereField("dateTime", isGreaterThanOrEqualTo: startDate)
+                    .whereField("dateTime", isLessThanOrEqualTo: endDate)
                     .getDocuments()
             }
             return snapshot.documents.compactMap { try? $0.data(as: Event.self) }

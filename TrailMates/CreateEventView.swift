@@ -76,7 +76,9 @@ struct CreateEventView: View {
             Text(alertMessage)
         }
         .onChange(of: selectedLocationInfo) { oldValue, newValue in
+            #if DEBUG
             print("CreateEventView: Location changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
+            #endif
         }
     }
 }
@@ -205,7 +207,9 @@ private extension CreateEventView {
             .transition(.opacity)
             .animation(.easeInOut, value: showLocationPicker)
             .onDisappear {
+                #if DEBUG
                 print("LocationPickerView disappeared with location: \(String(describing: selectedLocationInfo))")
+                #endif
             }
     }
 }
@@ -229,24 +233,32 @@ private extension CreateEventView {
     }
 
     func createEvent() {
+        #if DEBUG
         print("Create Event button tapped")
+        #endif
 
         guard validateInput() else {
+            #if DEBUG
             print("Input validation failed")
+            #endif
             return
         }
 
         guard let locationInfo = selectedLocationInfo else {
+            #if DEBUG
             print("No location selected")
+            #endif
             alertMessage = "Please select a location"
             showAlert = true
             return
         }
 
+        #if DEBUG
         print("All validation passed, attempting to create event")
         print("Location: \(locationInfo.coordinate)")
         print("Title: \(title)")
         print("Date: \(date)")
+        #endif
 
         Task {
             do {
@@ -262,13 +274,17 @@ private extension CreateEventView {
                     tags: Array(selectedTags)
                 )
 
+                #if DEBUG
                 print("Event created successfully")
+                #endif
 
                 await MainActor.run {
                     dismiss()
                 }
             } catch {
+                #if DEBUG
                 print("Error creating event: \(error)")
+                #endif
                 await MainActor.run {
                     alertMessage = "Failed to create event: \(error.localizedDescription)"
                     showAlert = true
@@ -288,7 +304,9 @@ private extension CreateEventView {
 
     func handleLocationSelection() {
         showLocationPicker = true
+        #if DEBUG
         print("Location picker presented with current location: \(String(describing: selectedLocationInfo))")
+        #endif
     }
 
     func dismissKeyboard() {
@@ -379,7 +397,9 @@ private struct LocationSelector: View {
                     Text(selectedLocationInfo?.name ?? "Select Location")
                         .foregroundColor(selectedLocationInfo == nil ? .gray : Color("pine"))
                         .onAppear {
+                            #if DEBUG
                             print("LocationSelector appeared with location: \(String(describing: selectedLocationInfo))")
+                            #endif
                         }
 
                     if let location = selectedLocationInfo {
@@ -484,7 +504,9 @@ extension LocationPickerView {
                 return components.isEmpty ? "Selected Location" : components.joined(separator: ", ")
             }
         } catch {
+            #if DEBUG
             print("Reverse geocoding error: \(error.localizedDescription)")
+            #endif
         }
 
         return "Selected Location"

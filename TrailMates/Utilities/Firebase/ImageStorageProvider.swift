@@ -63,8 +63,8 @@ class ImageStorageProvider {
             throw AppError.imageProcessingFailed("Failed to convert image to JPEG data")
         }
 
-        let fullSizeRef = storage.reference(withPath: "profile_images/\(userId)/full.jpg")
-        let thumbnailRef = storage.reference(withPath: "profile_images/\(userId)/thumbnail.jpg")
+        let fullSizeRef = storage.reference(withPath: "\(FirestoreConstants.StoragePaths.profileImages)/\(userId)/full.jpg")
+        let thumbnailRef = storage.reference(withPath: "\(FirestoreConstants.StoragePaths.profileImages)/\(userId)/thumbnail.jpg")
 
         // Create metadata for proper content type handling
         let metadata = StorageMetadata()
@@ -102,7 +102,7 @@ class ImageStorageProvider {
     ///
     /// - Parameter userId: The user's unique identifier
     func deleteOldProfileImage(for userId: String) async {
-        let profileImagesRef = storage.reference(withPath: "profile_images/\(userId)")
+        let profileImagesRef = storage.reference(withPath: "\(FirestoreConstants.StoragePaths.profileImages)/\(userId)")
 
         do {
             let result = try await profileImagesRef.listAll()

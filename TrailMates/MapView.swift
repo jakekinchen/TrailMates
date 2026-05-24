@@ -8,7 +8,7 @@ extension Color {
 // MARK: - Main Map View
 struct MapView: View {
     @EnvironmentObject var userManager: UserManager
-    @StateObject private var eventViewModel = EventViewModel.shared
+    @ObservedObject private var eventViewModel = EventViewModel.shared
     @State private var friends: [User] = []
     @State private var isBottomSheetOpen = false
     @State private var activeSegment = "friends"
@@ -68,7 +68,7 @@ struct MapView: View {
         .sheet(item: $selectedEvent) { event in
             // Get the fresh event from EventViewModel to ensure up-to-date attendee data
             let freshEvent = eventViewModel.events.first(where: { $0.id == event.id }) ?? event
-            NavigationView {
+            NavigationStack {
                 EventDetailView(
                     event: freshEvent,
                     eventViewModel: eventViewModel
@@ -131,69 +131,6 @@ struct MapView: View {
         }
     }
     
-    struct EventGroup: Identifiable {
-        let id = UUID()
-        let title: String
-        let events: [Event]
-    }
-    
-    func getEventGroups(from events: [Event]) -> [EventGroup] {
-        let calendar = Calendar.current
-        let sortedEvents = events.sorted { $0.dateTime < $1.dateTime }
-        var groups: [EventGroup] = []
-        
-        let today = calendar.startOfDay(for: Date())
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
-        let nextWeek = calendar.date(byAdding: .day, value: 7, to: today)!
-        let nextMonth = calendar.date(byAdding: .month, value: 1, to: today)!
-        
-        // Helper function to check if date is in same day
-        func isInSameDay(_ date1: Date, _ date2: Date) -> Bool {
-            calendar.isDate(date1, inSameDayAs: date2)
-        }
-        
-        // Today's events
-        let todayEvents = sortedEvents.filter { isInSameDay($0.dateTime, Date()) }
-        if !todayEvents.isEmpty {
-            groups.append(EventGroup(title: "Today", events: todayEvents))
-        }
-        
-        // Tomorrow's events
-        let tomorrowEvents = sortedEvents.filter { isInSameDay($0.dateTime, tomorrow) }
-        if !tomorrowEvents.isEmpty {
-            groups.append(EventGroup(title: "Tomorrow", events: tomorrowEvents))
-        }
-        
-        // This week's events (excluding tomorrow)
-        let thisWeekEvents = sortedEvents.filter { event in
-            let isAfterTomorrow = event.dateTime > tomorrow
-            let isBeforeNextWeek = event.dateTime < nextWeek
-            let isNotTomorrow = !isInSameDay(event.dateTime, tomorrow)
-            return isAfterTomorrow && isBeforeNextWeek && isNotTomorrow
-        }
-        if !thisWeekEvents.isEmpty {
-            groups.append(EventGroup(title: "This Week", events: thisWeekEvents))
-        }
-        
-        // Next week's events
-        let nextWeekEvents = sortedEvents.filter { event in
-            let isAfterNextWeek = event.dateTime >= nextWeek
-            let isBeforeNextMonth = event.dateTime < nextMonth
-            return isAfterNextWeek && isBeforeNextMonth
-        }
-        if !nextWeekEvents.isEmpty {
-            groups.append(EventGroup(title: "Next Week", events: nextWeekEvents))
-        }
-        
-        // Next month's events
-        let nextMonthEvents = sortedEvents.filter { $0.dateTime >= nextMonth }
-        if !nextMonthEvents.isEmpty {
-            groups.append(EventGroup(title: "Next Month", events: nextMonthEvents))
-        }
-        
-        return groups
-    }
-    
     // MARK: - Bottom Sheet Content
     private var bottomSheetContent: some View {
         VStack(spacing: 0) {
@@ -248,12 +185,12 @@ struct MapView: View {
     // MARK: - Events List View
     // MARK: - Events List View
     private var eventsList: some View {
-        let userEvents = getUserEvents()
-        let eventGroups = getEventGroups(from: userEvents)
+        let userEvents = currentUser.map { eventViewModel.getUserEvents(for: $0.id) } ?? []
+        let eventGroups = eventViewModel.getEventGroups(from: userEvents)
         
         return LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
             ForEach(eventGroups) { group in
-                Section(header: sectionHeader(title: group.title)) {
+                Section(header: SectionHeader(title: group.title)) {
                     ForEach(group.events) { event in
                         EventRowView(
                             event: event,
@@ -285,47 +222,6 @@ struct MapView: View {
             await eventViewModel.loadEvents()
         }
     }
-    
-    
-    private func getUserEvents() -> [Event] {
-        guard let currentUser = currentUser else { return [] }
-        
-        // First filter events by user participation
-        let userParticipatedEvents = eventViewModel.events.filter { event in
-            event.hostId == currentUser.id || event.attendeeIds.contains(currentUser.id)
-        }
-        
-        // Then filter by event status
-        return userParticipatedEvents.filter { event in
-            event.status == .upcoming || event.status == .active
-        }
-    }
-    
-    private func sectionHeader(title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.headline)
-                .foregroundColor(Color("pine"))
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-            Spacer()
-        }
-       // .background(
-            // Use background modifier with clear color to create a hit testing area
-            // but maintain visual transparency
-           // Color("beige")
-       // )
-        .overlay(
-            // Add a subtle bottom border to visually separate sections
-            // without relying on background opacity
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(Color("pine").opacity(0.1)),
-            alignment: .bottom
-        )
-    }
-    
-    
     }
 struct FriendsSection: View {
     //let title: String
@@ -336,18 +232,7 @@ struct FriendsSection: View {
             
             ForEach(friends) { friend in
                 HStack {
-                    if let imageData = friend.profileImageData,
-                       let uiImage = UIImage(data: imageData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                    } else {
-                        Image("defaultProfilePic")
-                            .resizable()
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                    }
+                    UserAvatarView(user: friend, size: 40)
                     VStack(alignment: .leading) {
                         Text("\(friend.firstName) \(friend.lastName)")
                             .foregroundColor(Color("pine"))

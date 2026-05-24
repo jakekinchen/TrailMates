@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var userManager: UserManager
-    @StateObject private var eventViewModel = EventViewModel.shared
+    @ObservedObject private var eventViewModel = EventViewModel.shared
     @State private var selectedTab = 0
     @State private var showCreateEvent = false
     @State private var showEventDetails = false
@@ -88,32 +88,7 @@ struct HomeView: View {
             break
         }
     }
-    
-    private func configureTabBarAppearance() {
-        let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-        
-        let itemAppearance = UITabBarItemAppearance()
-        let pineColor = UIColor(named: "pine") ?? .green
-        let unfocusedColor = pineColor.withAlphaComponent(0.4)
-        
-        // Normal (unselected) state
-        itemAppearance.normal.iconColor = unfocusedColor
-        itemAppearance.normal.titleTextAttributes = [.foregroundColor: unfocusedColor]
-        
-        // Selected state
-        itemAppearance.selected.iconColor = pineColor
-        itemAppearance.selected.titleTextAttributes = [.foregroundColor: pineColor]
-        
-        appearance.stackedLayoutAppearance = itemAppearance
-        appearance.inlineLayoutAppearance = itemAppearance
-        appearance.compactInlineLayoutAppearance = itemAppearance
-        
-        UITabBar.appearance().standardAppearance = appearance
-        if #available(iOS 15.0, *) {
-            UITabBar.appearance().scrollEdgeAppearance = appearance
-        }
-    }
+
 }
 
 // Refresh indicator view

@@ -97,6 +97,8 @@ struct EventDetailView: View {
                 }
                 .frame(height: 200)
                 .cornerRadius(12)
+                .accessibilityLabel("Map preview")
+                .accessibilityHint("Double tap to open in Maps")
                 .onTapGesture {
                     openInMaps(coordinate: event.location)
                 }
@@ -302,12 +304,17 @@ struct EventDetailView: View {
         }
     }
 
-    private func googleCalendarDateString(from date: Date, timeZone: TimeZone) -> String {
+    private static let googleCalendarFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = timeZone
         formatter.dateFormat = "yyyyMMdd'T'HHmmss"
+        return formatter
+    }()
+
+    private func googleCalendarDateString(from date: Date, timeZone: TimeZone) -> String {
+        let formatter = Self.googleCalendarFormatter
+        formatter.timeZone = timeZone
         return formatter.string(from: date)
     }
     

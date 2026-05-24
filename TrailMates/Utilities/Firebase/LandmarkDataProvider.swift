@@ -1,5 +1,6 @@
 import Foundation
 import Firebase
+import FirebaseAuth
 import FirebaseFirestore
 
 /// Handles all landmark-related Firebase operations
@@ -11,13 +12,11 @@ class LandmarkDataProvider {
 
     // MARK: - Dependencies
     private lazy var db = Firestore.firestore()
+    private lazy var auth = Auth.auth()
 
     private init() {
-        // Configure Firestore settings if not already configured
-        let settings = FirestoreSettings()
-        settings.cacheSettings = PersistentCacheSettings()
-        db.settings = settings
-
+        // Firestore settings (persistence, cache) are configured centrally
+        // in FirebaseProviderContainer.init() to avoid duplicate configuration.
         print("LandmarkDataProvider initialized")
     }
 
@@ -27,7 +26,7 @@ class LandmarkDataProvider {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("landmarks").getDocuments()
+                try await self.db.collection(FirestoreConstants.Collections.landmarks).getDocuments()
             }
             return snapshot.documents.count
         } catch {
@@ -43,7 +42,7 @@ class LandmarkDataProvider {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("landmarks").getDocuments()
+                try await self.db.collection(FirestoreConstants.Collections.landmarks).getDocuments()
             }
             return snapshot.documents.compactMap { try? $0.data(as: Landmark.self) }
         } catch {
@@ -59,7 +58,7 @@ class LandmarkDataProvider {
         do {
             // Use retry logic for network fetch
             let document = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("landmarks").document(id).getDocument()
+                try await self.db.collection(FirestoreConstants.Collections.landmarks).document(id).getDocument()
             }
             return try document.data(as: Landmark.self)
         } catch {
@@ -75,7 +74,10 @@ class LandmarkDataProvider {
 
     func markLandmarkVisited(userId: String, landmarkId: String) async {
         do {
-            let userRef = db.collection("users").document(userId)
+            guard let currentUser = auth.currentUser, currentUser.uid == userId else {
+                throw AppError.unauthorized("Cannot mark landmarks for another user")
+            }
+            let userRef = db.collection(FirestoreConstants.Collections.users).document(userId)
             try await userRef.updateData([
                 "visitedLandmarkIds": FieldValue.arrayUnion([landmarkId])
             ])
@@ -89,7 +91,7 @@ class LandmarkDataProvider {
 
     func unmarkLandmarkVisited(userId: String, landmarkId: String) async {
         do {
-            let userRef = db.collection("users").document(userId)
+            let userRef = db.collection(FirestoreConstants.Collections.users).document(userId)
             try await userRef.updateData([
                 "visitedLandmarkIds": FieldValue.arrayRemove([landmarkId])
             ])
@@ -106,7 +108,7 @@ class LandmarkDataProvider {
         do {
             // Use retry logic for network fetch
             let document = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection("users").document(userId).getDocument()
+                try await self.db.collection(FirestoreConstants.Collections.users).document(userId).getDocument()
             }
             return document.get("visitedLandmarkIds") as? [String] ?? []
         } catch {

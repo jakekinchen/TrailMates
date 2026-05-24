@@ -104,7 +104,7 @@ class MockUserManager: ObservableObject {
             throw mockError ?? MockError.saveFailed
         }
         if mockUserExists {
-            throw ValidationError.invalidData("Phone number already registered")
+            throw AppError.invalidData("Phone number already registered")
         }
 
         let newUser = User(
@@ -127,7 +127,7 @@ class MockUserManager: ObservableObject {
         }
 
         guard let user = users[id] else {
-            throw ValidationError.invalidData("No account found with this UID")
+            throw AppError.invalidData("No account found with this UID")
         }
 
         currentUser = user

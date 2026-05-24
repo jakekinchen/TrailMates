@@ -26,9 +26,9 @@ Related plans:
 - [ ] Add regression tests for signup, login, and change-phone flows using differently formatted versions of the same phone number
 
 ### Broken Queries (EventDataProvider field name mismatches)
-- [ ] Fix `EventDataProvider.swift:102` — change `"creatorId"` to `"hostId"` (or add CodingKeys to Event mapping `hostId` → `creatorId`)
-- [ ] Fix `EventDataProvider.swift:121` — same `"creatorId"` → `"hostId"` mismatch
-- [ ] Fix `EventDataProvider.swift:177-178` — change `"startTime"` to `"dateTime"` (or add CodingKeys to Event)
+- [x] Fix `EventDataProvider.swift:102` — change `"creatorId"` to `"hostId"` (or add CodingKeys to Event mapping `hostId` → `creatorId`)
+- [x] Fix `EventDataProvider.swift:121` — same `"creatorId"` → `"hostId"` mismatch
+- [x] Fix `EventDataProvider.swift:177-178` — change `"startTime"` to `"dateTime"` (or add CodingKeys to Event)
 
 ### Atomic Writes / Lost Update Prevention
 - [ ] Replace event join/leave read-modify-write in `EventViewModel` + `EventDataProvider.updateEventStatus` with Firestore `FieldValue.arrayUnion` / `arrayRemove` or a transaction
@@ -46,10 +46,10 @@ Related plans:
 - [ ] Add tests that distinguish permission-denied/network failures from valid empty results
 
 ### Security
-- [ ] Wrap `LocationDataProvider.swift:58-63` debug prints in `#if DEBUG`
-- [ ] Wrap `LocationDataProvider.swift:88-91,94,98` debug prints in `#if DEBUG`
-- [ ] Add auth check to `checkUserExists` Cloud Function (`functions/index.js:292`)
-- [ ] Remove `phoneNumber` from `publicUserPayload` in `functions/index.js:68-85`
+- [x] Wrap `LocationDataProvider.swift:58-63` debug prints in `#if DEBUG`
+- [x] Wrap `LocationDataProvider.swift:88-91,94,98` debug prints in `#if DEBUG`
+- [x] Add auth check to `checkUserExists` Cloud Function (`functions/index.js:292`)
+- [x] Remove `phoneNumber` from `publicUserPayload` in `functions/index.js:68-85`
 - [ ] Rate-limit and App Check-protect user lookup callables (`checkUserExists`, `searchUsers`, `findUsersByPhoneNumbers`)
 - [ ] Add a non-empty default pepper to `PhoneNumberHasher.swift:51` or require callers to pass one
 - [ ] Move user session storage from UserDefaults to Keychain (`UserManager.swift:250`)
@@ -63,100 +63,100 @@ Related plans:
 - [ ] Verify Firebase client keys are restricted in Google Cloud / Firebase Console before shipping
 
 ### Listener Memory Leaks
-- [ ] Store RTDB observer handle returned by `FriendDataProvider.observeFriendRequests` (line 229)
-- [ ] Add `stopObservingFriendRequests()` method to `FriendDataProvider`
-- [ ] Store RTDB observer handle returned by `NotificationDataProvider.observeNotifications` (line 61)
-- [ ] Add `stopObservingNotifications()` method to `NotificationDataProvider`
-- [ ] Fix `LocationDataProvider.stopObservingUserLocation` path mismatch (line 144 vs line 113)
+- [x] Store RTDB observer handle returned by `FriendDataProvider.observeFriendRequests` (line 229)
+- [x] Add `stopObservingFriendRequests()` method to `FriendDataProvider`
+- [x] Store RTDB observer handle returned by `NotificationDataProvider.observeNotifications` (line 61)
+- [x] Add `stopObservingNotifications()` method to `NotificationDataProvider`
+- [x] Fix `LocationDataProvider.stopObservingUserLocation` path mismatch (line 144 vs line 113)
 
 ### deinit Actor Isolation Violations
-- [ ] Fix `UserManager.deinit` (line 173) — capture `cancellables` and `currentUserId` into locals before accessing
-- [ ] Fix `FirebaseDataProvider.deinit` (line 99) — capture `memoryWarningObserver`/`authStateListener` before Task
-- [ ] Fix `UserDataProvider.deinit` (line 64) — don't access `userListeners` from nonisolated deinit
-- [ ] Fix `LocationDataProvider.deinit` (line 27) — replace `Task { [weak self] }` pattern (self is always nil)
+- [x] Fix `UserManager.deinit` (line 173) — capture `cancellables` and `currentUserId` into locals before accessing
+- [x] Fix `FirebaseDataProvider.deinit` (line 99) — capture `memoryWarningObserver`/`authStateListener` before Task
+- [x] Fix `UserDataProvider.deinit` (line 64) — don't access `userListeners` from nonisolated deinit
+- [x] Fix `LocationDataProvider.deinit` (line 27) — replace `Task { [weak self] }` pattern (self is always nil)
 
 ---
 
 ## P1 — Dead Code Deletion
 
-- [ ] Delete `TrailMates/Models/Item.swift` (unused SwiftData template)
-- [ ] Remove `Item.self` from `ModelContainer` schema in `TrailMatesApp.swift:39`
-- [ ] Delete `TrailMates/Utilities/PhoneNumberUtility.swift` (deprecated, replaced by PhoneNumberService)
-- [ ] Delete legacy `FloatingLabelTextField` + `InputFormattingModifier` + `CustomTextFieldStyle` in `AuthView.swift:582-705`
-- [ ] Delete `UserManager.initializeUserIfNeeded()` (line 188, dead duplicate of `initializeIfNeeded`)
-- [ ] Delete `UserManager.ProfileImageSize` enum (line 912, duplicate of `ImageSize`)
-- [ ] Delete `UserManager.ProfileImageError` enum (line 917, duplicates `AppError`)
-- [ ] Delete `FirebaseDataProvider.functionURL` (line 46, unused hardcoded URL)
-- [ ] Delete `HomeView.configureTabBarAppearance()` (defined but never called)
-- [ ] Delete `UnmatchedContactRow` in `ContactsListView.swift:311` (private, never used)
-- [ ] Delete `FriendProfileView.handleFriendAction()` (line 95, defined but never called)
-- [ ] Delete `EventViewModel.cancellables` and empty `setupSubscriptions()` method
-- [ ] Remove identity map `friendIds.map { $0 }` in `EventDataProvider.swift:117`
-- [ ] Remove deprecated `dataProvider` reference in `UserManager.swift:39-40`
+- [x] Delete `TrailMates/Models/Item.swift` (unused SwiftData template)
+- [x] Remove `Item.self` from `ModelContainer` schema in `TrailMatesApp.swift:39`
+- [x] Delete `TrailMates/Utilities/PhoneNumberUtility.swift` (deprecated, replaced by PhoneNumberService)
+- [x] Delete legacy `FloatingLabelTextField` + `InputFormattingModifier` + `CustomTextFieldStyle` in `AuthView.swift:582-705`
+- [x] Delete `UserManager.initializeUserIfNeeded()` (line 188, dead duplicate of `initializeIfNeeded`)
+- [x] Delete `UserManager.ProfileImageSize` enum (line 912, duplicate of `ImageSize`)
+- [x] Delete `UserManager.ProfileImageError` enum (line 917, duplicates `AppError`)
+- [x] Delete `FirebaseDataProvider.functionURL` (line 46, unused hardcoded URL)
+- [x] Delete `HomeView.configureTabBarAppearance()` (defined but never called)
+- [x] Delete `UnmatchedContactRow` in `ContactsListView.swift:311` (private, never used)
+- [x] Delete `FriendProfileView.handleFriendAction()` (line 95, defined but never called)
+- [x] Delete `EventViewModel.cancellables` and empty `setupSubscriptions()` method
+- [x] Remove identity map `friendIds.map { $0 }` in `EventDataProvider.swift:117`
+- [x] Remove deprecated `dataProvider` reference in `UserManager.swift:39-40`
 
 ---
 
 ## P2 — Deduplication
 
 ### Phone Number Formatting → PhoneNumberService
-- [ ] Replace `AuthViewModel.formatPhoneNumber()` (line 154) with `PhoneNumberService.shared.format(_, for: .storage)`
-- [ ] Replace `ChangePhoneView.formatPhoneNumber()` (line 264) with `PhoneNumberService`
-- [ ] Refactor `PhoneNumberFormatter.swift` ViewModifier to delegate to `PhoneNumberService`
-- [ ] Remove `UserManager.normalizePhoneNumber()` (line 458) — callers use PhoneNumberService directly
+- [x] Replace `AuthViewModel.formatPhoneNumber()` (line 154) with `PhoneNumberService.shared.format(_, for: .storage)`
+- [x] Replace `ChangePhoneView.formatPhoneNumber()` (line 264) with `PhoneNumberService`
+- [x] Refactor `PhoneNumberFormatter.swift` ViewModifier to delegate to `PhoneNumberService`
+- [x] Remove `UserManager.normalizePhoneNumber()` (line 458) — callers use PhoneNumberService directly
 - [ ] Update test mocks (`MockUserManager`, `MockFirebaseDataProvider`, fixtures) to use `PhoneNumberService` instead of regex-only normalization
 
 ### Error Types → AppError
-- [ ] Delete `Models/ValidationError.swift` — replace usage in `ContactsListViewModel.swift:101` with `AppError`
-- [ ] Delete `FirebaseDataProvider.ValidationError` enum (line 397)
-- [ ] Delete `ProfileSetupView.ProfileValidationError` (line 6) — use `AppError.notAuthenticated()` etc.
-- [ ] Convert `EventViewModel.EventError` (line 211) throw sites to throw `AppError` directly
+- [x] Delete `Models/ValidationError.swift` — replace usage in `ContactsListViewModel.swift:101` with `AppError`
+- [x] Delete `FirebaseDataProvider.ValidationError` enum (line 397)
+- [x] Delete `ProfileSetupView.ProfileValidationError` (line 6) — use `AppError.notAuthenticated()` etc.
+- [x] Convert `EventViewModel.EventError` (line 211) throw sites to throw `AppError` directly
 
 ### Profile Image Loading → UserAvatarView
-- [ ] Create `Components/Common/UserAvatarView.swift` — encapsulates image loading, circular clip, initials fallback
-- [ ] Replace profile image code in `FriendsView.FriendRow` (lines 101-175) with `UserAvatarView`
-- [ ] Replace profile image code in `ContactsListView.MatchedUserRow` (lines 203-307) with `UserAvatarView`
-- [ ] Replace profile image code in `Components/Cards/ProfileHeader.swift` (lines 23-86) with `UserAvatarView`
-- [ ] Replace profile image code in `AddFriendsView.FriendLookupAvatar` (lines 461-506) with `UserAvatarView`
-- [ ] Replace profile image code in `MapView.FriendsSection` (lines 339-350) with `UserAvatarView`
+- [x] Create `Components/Common/UserAvatarView.swift` — encapsulates image loading, circular clip, initials fallback
+- [x] Replace profile image code in `FriendsView.FriendRow` (lines 101-175) with `UserAvatarView`
+- [x] Replace profile image code in `ContactsListView.MatchedUserRow` (lines 203-307) with `UserAvatarView`
+- [x] Replace profile image code in `Components/Cards/ProfileHeader.swift` (lines 23-86) with `UserAvatarView`
+- [x] Replace profile image code in `AddFriendsView.FriendLookupAvatar` (lines 461-506) with `UserAvatarView`
+- [x] Replace profile image code in `MapView.FriendsSection` (lines 339-350) with `UserAvatarView`
 
 ### Initials Computation → User Extension
-- [ ] Add `var initials: String` computed property to `User` model
-- [ ] Remove `initials` from `FriendsView.FriendRow` (line 104)
-- [ ] Remove `initials` from `AddFriendsView` (line 469)
-- [ ] Update `Friend.initials` (line 55) to use shared logic
+- [x] Add `var initials: String` computed property to `User` model
+- [x] Remove `initials` from `FriendsView.FriendRow` (line 104)
+- [x] Remove `initials` from `AddFriendsView` (line 469)
+- [x] Update `Friend.initials` (line 55) to use shared logic
 
 ### EventGroup Struct
-- [ ] Move `EventGroup` to `Models/` or `ViewModels/EventViewModel.swift`
-- [ ] Remove duplicate definition from `MapView.swift:134`
-- [ ] Remove duplicate definition from `EventsView.swift:21`
+- [x] Move `EventGroup` to `Models/` or `ViewModels/EventViewModel.swift`
+- [x] Remove duplicate definition from `MapView.swift:134`
+- [x] Remove duplicate definition from `EventsView.swift:21`
 
 ### Floating-Label TextField → Single Component
-- [ ] Create `Components/Forms/FloatingLabelTextField.swift` — configurable, replaces all 5 variants
-- [ ] Replace `AuthFloatingLabelTextField` in `AuthView.swift:405` with shared component
-- [ ] Replace `ProfileFloatingLabelTextField` in `ProfileSetupView.swift:430`
-- [ ] Replace `FriendLookupTextField` in `AddFriendsView.swift:358`
-- [ ] Replace `PhoneNumberInput`/`VerificationCodeInput` in `ChangePhoneView.swift:294`
+- [x] Create `Components/Forms/FloatingLabelTextField.swift` — configurable, replaces all 5 variants
+- [x] Replace `AuthFloatingLabelTextField` in `AuthView.swift:405` with shared component
+- [x] Replace `ProfileFloatingLabelTextField` in `ProfileSetupView.swift:430`
+- [x] Replace `FriendLookupTextField` in `AddFriendsView.swift:358`
+- [x] Replace `PhoneNumberInput`/`VerificationCodeInput` in `ChangePhoneView.swift:294`
 
 ### overlayColor / Background Pattern
-- [ ] Create a `.themedBackground()` view modifier encapsulating `ZStack { Color("beige").ignoresSafeArea() }` + `overlayColor`
-- [ ] Replace 7 duplicate `overlayColor` computed properties across settings views
-- [ ] Replace 16 instances of `Color("beige").ignoresSafeArea()` pattern
+- [x] Create a `.themedBackground()` view modifier encapsulating `ZStack { Color("beige").ignoresSafeArea() }` + `overlayColor`
+- [x] Replace 7 duplicate `overlayColor` computed properties across settings views
+- [x] Replace 16 instances of `Color("beige").ignoresSafeArea()` pattern
 
 ### Section Header
-- [ ] Create `Components/Common/SectionHeader.swift`
-- [ ] Replace `MapView.sectionHeader` (line 304)
-- [ ] Replace `EventsView.makeGroupHeader` (line 91)
-- [ ] Replace `FriendsView.FriendsSectionHeader` (line 178)
-- [ ] Replace `ContactsListView.SectionHeader` (line 181)
+- [x] Create `Components/Common/SectionHeader.swift`
+- [x] Replace `MapView.sectionHeader` (line 304)
+- [x] Replace `EventsView.makeGroupHeader` (line 91)
+- [x] Replace `FriendsView.FriendsSectionHeader` (line 178)
+- [x] Replace `ContactsListView.SectionHeader` (line 181)
 
 ### Notification Duplicate
-- [ ] Remove `getTitleForNotificationType` from `FirebaseDataProvider.swift:367` (keep NotificationDataProvider version)
+- [x] Remove `getTitleForNotificationType` from `FirebaseDataProvider.swift:367` (keep NotificationDataProvider version)
 
 ### DateFormatter Caching
-- [ ] Make `Event.formattedDate()` use a `static let` DateFormatter instead of creating new ones
-- [ ] Same for `EventDetailView.swift:306`
-- [ ] Same for `UserManager.swift:638`
-- [ ] Same for `EventViewModel.swift:78`
+- [x] Make `Event.formattedDate()` use a `static let` DateFormatter instead of creating new ones
+- [x] Same for `EventDetailView.swift:306`
+- [x] Same for `UserManager.swift:638`
+- [x] Same for `EventViewModel.swift:78`
 
 ---
 
@@ -185,7 +185,7 @@ Related plans:
 ## P4 — Architecture & Patterns
 
 ### ContentView AnyView Removal
-- [ ] Refactor `ContentView.swift` to use `@ViewBuilder` if/else instead of `AnyView` wrapping
+- [x] Refactor `ContentView.swift` to use `@ViewBuilder` if/else instead of `AnyView` wrapping
 
 ### User State Source of Truth
 - [ ] Decide whether `User` remains a SwiftData `@Model` or becomes a value type; do not keep SwiftData annotations if persistence remains `UserDefaults` / Firebase-only
@@ -195,50 +195,50 @@ Related plans:
 - [ ] Replace manual `objectWillChange.send()` around same-reference `User` mutations with explicit reassignment or value semantics
 
 ### SettingsView Decomposition
-- [ ] Extract `PrivacySettingsView` to its own file
-- [ ] Extract `NotificationSettingsView` to its own file
-- [ ] Extract `HelpCenterView` + `FAQDetailView` to their own file
-- [ ] Extract `AboutView` to its own file
-- [ ] Extract `AcknowledgmentsView` to its own file
-- [ ] Extract `SettingsRow` / `PreferenceToggleRow` to `Components/`
+- [x] Extract `PrivacySettingsView` to its own file
+- [x] Extract `NotificationSettingsView` to its own file
+- [x] Extract `HelpCenterView` + `FAQDetailView` to their own file
+- [x] Extract `AboutView` to its own file
+- [x] Extract `AcknowledgmentsView` to its own file
+- [x] Extract `SettingsRow` / `PreferenceToggleRow` to `Components/`
 
 ### Business Logic Out of Views
-- [ ] Move `MapView.getEventGroups()` (line 140) to `EventViewModel`
-- [ ] Move `MapView.getUserEvents()` (line 290) to `EventViewModel`
+- [x] Move `MapView.getEventGroups()` (line 140) to `EventViewModel`
+- [x] Move `MapView.getUserEvents()` (line 290) to `EventViewModel`
 - [ ] Move `ProfileSetupView.saveProfile/validateInputs/updateUserProfile` (line 288) to a `ProfileSetupViewModel`
 - [ ] Move `ProfileView.cacheStats/loadCachedStats` (line 107) to `UserManager`
 - [ ] Move `AuthView.handleLogin/handleSignup` (line 299) business logic to `AuthViewModel`
 - [ ] Move `EventDetailView` UIKit interop (lines 171-313) to a service or use `.confirmationDialog`
 
 ### NotificationsView ViewModel Extraction
-- [ ] Move `NotificationsViewModel` from `NotificationsView.swift` to `ViewModels/NotificationsViewModel.swift`
-- [ ] Remove per-row `NotificationRowViewModel` — handle tap in parent ViewModel
-- [ ] Move `UserStats` from `ProfileView.swift` to `Models/`
+- [x] Move `NotificationsViewModel` from `NotificationsView.swift` to `ViewModels/NotificationsViewModel.swift`
+- [x] Remove per-row `NotificationRowViewModel` — handle tap in parent ViewModel
+- [x] Move `UserStats` from `ProfileView.swift` to `Models/`
 
 ### Navigation Consistency
 - [ ] Wrap each tab's content in `HomeView` with `NavigationStack`
-- [ ] Replace `NavigationView` with `NavigationStack` in `EventsView.swift:169` sheet
-- [ ] Replace `NavigationView` with `NavigationStack` in `MapView.swift:68` sheet
+- [x] Replace `NavigationView` with `NavigationStack` in `EventsView.swift:169` sheet
+- [x] Replace `NavigationView` with `NavigationStack` in `MapView.swift:68` sheet
 
 ### Deprecated API Migration
-- [ ] Replace `@Environment(\.presentationMode)` with `@Environment(\.dismiss)` in `ProfileSetupView.swift:25`
-- [ ] Replace `@Environment(\.presentationMode)` with `@Environment(\.dismiss)` in `ImageCropper.swift:6`
-- [ ] Replace `.actionSheet` with `.confirmationDialog` in `ProfileSetupView.swift:87`
-- [ ] Replace legacy `Alert` constructor in `ProfileSetupView.swift:80`
+- [x] Replace `@Environment(\.presentationMode)` with `@Environment(\.dismiss)` in `ProfileSetupView.swift:25`
+- [x] Replace `@Environment(\.presentationMode)` with `@Environment(\.dismiss)` in `ImageCropper.swift:6`
+- [x] Replace `.actionSheet` with `.confirmationDialog` in `ProfileSetupView.swift:87`
+- [x] Replace legacy `Alert` constructor in `ProfileSetupView.swift:80`
 
 ### ViewModel Ownership Consistency
-- [ ] Fix `@StateObject` wrapping of `EventViewModel.shared` singleton in `MapView.swift:11` and `HomeView.swift:6`
+- [x] Fix `@StateObject` wrapping of `EventViewModel.shared` singleton in `MapView.swift:11` and `HomeView.swift:6`
 - [ ] Resolve `AuthViewModel` ownership conflict — single source of truth via `@EnvironmentObject`
-- [ ] Remove separate `AuthViewModel()` instance creation in `ChangePhoneView.swift:24`
+- [x] Remove separate `AuthViewModel()` instance creation in `ChangePhoneView.swift:24`
 
 ---
 
 ## P5 — Firebase & Networking
 
 ### Error Wrapping
-- [ ] Wrap RTDB errors in `AppError.from(error)` in `FriendDataProvider` (lines 62, 89, 111, 131)
-- [ ] Wrap RTDB errors in `AppError.from(error)` in `NotificationDataProvider` (lines 38, 109, 159, 175, 190)
-- [ ] Wrap RTDB errors in `AppError.from(error)` in `LocationDataProvider` (lines 92, 161)
+- [x] Wrap RTDB errors in `AppError.from(error)` in `FriendDataProvider` (lines 62, 89, 111, 131)
+- [x] Wrap RTDB errors in `AppError.from(error)` in `NotificationDataProvider` (lines 38, 109, 159, 175, 190)
+- [x] Wrap RTDB errors in `AppError.from(error)` in `LocationDataProvider` (lines 92, 161)
 - [ ] Classify Firestore errors in `AppError.from()` so `withRetry` actually retries them
 - [ ] Stop converting provider permission/network failures into `nil`, `[]`, or `false`; surface `AppError` to callers that need retry/error UI
 - [ ] Re-throw `CancellationError` before wrapping errors in `AppError.from` / `withRetry`
@@ -258,29 +258,29 @@ Related plans:
 - [ ] Fix `callableDate(from:)` silent fallback to `Date()` — log a warning or throw
 
 ### Firestore Configuration
-- [ ] Configure `FirestoreSettings` + `PersistentCacheSettings` once globally, remove from 4 individual provider inits
+- [x] Configure `FirestoreSettings` + `PersistentCacheSettings` once globally, remove from 4 individual provider inits
 
 ### Collection/Function Name Constants
-- [ ] Create `FirestoreConstants.swift` with `static let` for collection names (`users`, `events`, `landmarks`, etc.)
-- [ ] Create constants for Cloud Function names (`checkUserExists`, `searchUsers`, etc.)
-- [ ] Replace all hardcoded string literals across providers
+- [x] Create `FirestoreConstants.swift` with `static let` for collection names (`users`, `events`, `landmarks`, etc.)
+- [x] Create constants for Cloud Function names (`checkUserExists`, `searchUsers`, etc.)
+- [x] Replace all hardcoded string literals across providers
 
 ### Image Caching
 - [ ] Add disk-backed image cache to `ImageStorageProvider` (FileManager or URLCache)
 
 ### Auth Checks
-- [ ] Add `Auth.auth().currentUser` check to `NotificationDataProvider.sendNotification` (line 23)
-- [ ] Add ownership validation to `LandmarkDataProvider.markLandmarkVisited` (line 76)
-- [ ] Fix `checkUsernameTaken` Cloud Function to query `usernameSearchKey` not `username`
+- [x] Add `Auth.auth().currentUser` check to `NotificationDataProvider.sendNotification` (line 23)
+- [x] Add ownership validation to `LandmarkDataProvider.markLandmarkVisited` (line 76)
+- [x] Fix `checkUsernameTaken` Cloud Function to query `usernameSearchKey` not `username`
 - [ ] Ensure `searchUsers` and `fetchPublicUserProfile` never return raw phone numbers or private settings
 
 ### Provider Pattern Compliance
-- [ ] Replace direct provider access in `AuthViewModel.deleteAccount()` with `FirebaseProviderContainer.shared`
-- [ ] Replace direct `Auth.auth()` calls in `FriendDataProvider` with stored `auth` property (lines 45, 101, 123, 219)
-- [ ] Replace direct `Auth.auth()` calls in `NotificationDataProvider.swift:51`
-- [ ] Replace direct `Auth.auth()` calls in `LocationDataProvider.swift:46`
-- [ ] Replace direct `Auth.auth()` calls in `NotificationsView.swift:147,160,188`
-- [ ] Remove direct `ImageStorageProvider.shared` call in `UserDataProvider.swift:163` — inject via container
+- [x] Replace direct provider access in `AuthViewModel.deleteAccount()` with `FirebaseProviderContainer.shared`
+- [x] Replace direct `Auth.auth()` calls in `FriendDataProvider` with stored `auth` property (lines 45, 101, 123, 219)
+- [x] Replace direct `Auth.auth()` calls in `NotificationDataProvider.swift:51`
+- [x] Replace direct `Auth.auth()` calls in `LocationDataProvider.swift:46`
+- [x] Replace direct `Auth.auth()` calls in `NotificationsView.swift:147,160,188`
+- [x] Remove direct `ImageStorageProvider.shared` call in `UserDataProvider.swift:163` — inject via container
 
 ### Legacy Provider Removal
 - [ ] Remove all remaining callers of `FirebaseDataProvider.shared`
@@ -291,26 +291,26 @@ Related plans:
 ## P6 — Swift Concurrency
 
 ### Data Race Fixes
-- [ ] Add `@MainActor` dispatch inside `UserDataProvider.observeUser` callback before calling `onChange`
-- [ ] Add `@MainActor` dispatch inside `NotificationDataProvider.observeNotifications` callback
-- [ ] Add `@MainActor` dispatch inside `LocationDataProvider.observeUserLocation` callback
-- [ ] Add `@MainActor` dispatch inside `FriendDataProvider.observeFriendRequests` callback
-- [ ] Mark observer `completion`/`onChange` closures as `@Sendable` in provider protocols
+- [x] Add `@MainActor` dispatch inside `UserDataProvider.observeUser` callback before calling `onChange`
+- [x] Add `@MainActor` dispatch inside `NotificationDataProvider.observeNotifications` callback
+- [x] Add `@MainActor` dispatch inside `LocationDataProvider.observeUserLocation` callback
+- [x] Add `@MainActor` dispatch inside `FriendDataProvider.observeFriendRequests` callback
+- [x] Mark observer `completion`/`onChange` closures as `@Sendable` in provider protocols
 
 ### User Model Sendability
 - [ ] Add `@unchecked Sendable` to `User` class with documentation that access is confined to `@MainActor`
 - [ ] (Alternative) Evaluate converting `User` to a struct if SwiftData allows
 
 ### Redundant MainActor.run Removal
-- [ ] Remove `await MainActor.run { }` calls inside `@MainActor`-isolated `UserManager` methods (8+ locations)
-- [ ] Remove `await MainActor.run { }` in `AuthViewModel.verifyCode()` (lines 119, 143)
-- [ ] Remove `await MainActor.run { }` in `AuthViewModel.deleteAccount()` (line 283)
+- [x] Remove `await MainActor.run { }` calls inside `@MainActor`-isolated `UserManager` methods (8+ locations)
+- [x] Remove `await MainActor.run { }` in `AuthViewModel.verifyCode()` (lines 119, 143)
+- [x] Remove `await MainActor.run { }` in `AuthViewModel.deleteAccount()` (line 283)
 
 ### Task Parallelism Fix
 - [ ] Fix `ImageStorageProvider.prefetchProfileImages` — use `@Sendable` closure in `group.addTask` to avoid main-thread serialization
 
 ### Cancellation
-- [ ] Add `try Task.checkCancellation()` before each retry in `AppError.withRetry` (line 247)
+- [x] Add `try Task.checkCancellation()` before each retry in `AppError.withRetry` (line 247)
 - [ ] Store and cancel the `MapView` startup task that calls `loadData()` before starting location polling
 - [ ] Replace `LocationPickerView` per-region-change geocoding tasks with one cancellable task and stale-coordinate checks
 - [ ] Add an in-flight guard to `LocationManager.requestLocationPermission()` so overlapping calls cannot overwrite a continuation
@@ -327,33 +327,33 @@ Related plans:
 ## P7 — Low Priority / Polish
 
 ### Debug Print Cleanup
-- [ ] Wrap `ProfileSetupView.swift` ~30 print statements in `#if DEBUG`
-- [ ] Wrap `AuthView.swift` print statements (lines 303-318) in `#if DEBUG`
-- [ ] Wrap `CreateEventView.swift` print statements (lines 79, 232-291) in `#if DEBUG`
-- [ ] Wrap `UserManager.persistUserSession()` prints (lines 243-266) in `#if DEBUG`
-- [ ] Wrap `SettingsView.swift:164` print in `#if DEBUG`
+- [x] Wrap `ProfileSetupView.swift` ~30 print statements in `#if DEBUG`
+- [x] Wrap `AuthView.swift` print statements (lines 303-318) in `#if DEBUG`
+- [x] Wrap `CreateEventView.swift` print statements (lines 79, 232-291) in `#if DEBUG`
+- [x] Wrap `UserManager.persistUserSession()` prints (lines 243-266) in `#if DEBUG`
+- [x] Wrap `SettingsView.swift:164` print in `#if DEBUG`
 
 ### Hardcoded URL Constants
 - [ ] Replace placeholder App Store ID in `SettingsView.swift:192`
 - [ ] Move support/social URLs in `SettingsView.swift` (lines 691, 699, 846-870) to a constants file
 
 ### Accessibility
-- [ ] Add accessibility label to profile image picker in `ProfileSetupView.swift:164`
-- [ ] Add accessibility labels to `EventRowView` rows
-- [ ] Add accessibility label to map preview tap in `EventDetailView.swift:100`
-- [ ] Add accessibility support to `ImageCropper.swift`
-- [ ] Add `.accessibilityElement(children: .combine)` to `StatCard` in `ProfileView.swift`
-- [ ] Add accessibility labels to `NotificationRow` (title + message + read status)
-- [ ] Add accessibility hint to "Get Started" button in `WelcomeView.swift:87`
+- [x] Add accessibility label to profile image picker in `ProfileSetupView.swift:164`
+- [x] Add accessibility labels to `EventRowView` rows
+- [x] Add accessibility label to map preview tap in `EventDetailView.swift:100`
+- [x] Add accessibility support to `ImageCropper.swift`
+- [x] Add `.accessibilityElement(children: .combine)` to `StatCard` in `ProfileView.swift`
+- [x] Add accessibility labels to `NotificationRow` (title + message + read status)
+- [x] Add accessibility hint to "Get Started" button in `WelcomeView.swift:87`
 
 ### File Organization
-- [ ] Move `NavigationBarModifier.swift` to `Components/Modifiers/`
-- [ ] Move `ImageCropper.swift` to `Components/` (rename to `ImageCropperView.swift`)
-- [ ] Delete or archive `User.swift.cursorrules`
+- [x] Move `NavigationBarModifier.swift` to `Components/Modifiers/`
+- [x] Move `ImageCropper.swift` to `Components/` (rename to `ImageCropperView.swift`)
+- [x] Delete or archive `User.swift.cursorrules`
 - [ ] Remove unused `auth` lazy property from `FriendDataProvider.swift:17` (if replacing with direct calls) or use it consistently
 
 ### MapCoordinator Isolation
-- [ ] Add `@MainActor` annotation to `MapCoordinator` in `UnifiedMapView.swift:104`
+- [x] Add `@MainActor` annotation to `MapCoordinator` in `UnifiedMapView.swift:104`
 
 ---
 

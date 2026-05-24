@@ -7,40 +7,37 @@ struct FriendsView: View {
     @FocusState private var isSearchFocused: Bool
     
     var body: some View {
-        ZStack(alignment: .top) {
-            Color("beige").ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                SearchBar(text: $viewModel.searchText, isFocused: $isSearchFocused)
-                    .padding(.horizontal)
-                
-                if viewModel.isLoading {
-                    FriendsLoadingView()
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            isSearchFocused = false
-                        }
-                } else if viewModel.friends.isEmpty {
-                    EmptyFriendsView(showAddFriends: $showAddFriends)
-                        .contentShape(Rectangle())
-                        .padding(.top)
-                        .onTapGesture {
-                            isSearchFocused = false
-                        }
-                } else {
-                    ScrollView {
-                        FriendsListView(
-                            activeFriends: viewModel.filteredActiveFriends,
-                            inactiveFriends: viewModel.filteredInactiveFriends
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            isSearchFocused = false
-                        }
+        VStack(spacing: 0) {
+            SearchBar(text: $viewModel.searchText, isFocused: $isSearchFocused)
+                .padding(.horizontal)
+
+            if viewModel.isLoading {
+                FriendsLoadingView()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isSearchFocused = false
+                    }
+            } else if viewModel.friends.isEmpty {
+                EmptyFriendsView(showAddFriends: $showAddFriends)
+                    .contentShape(Rectangle())
+                    .padding(.top)
+                    .onTapGesture {
+                        isSearchFocused = false
+                    }
+            } else {
+                ScrollView {
+                    FriendsListView(
+                        activeFriends: viewModel.filteredActiveFriends,
+                        inactiveFriends: viewModel.filteredInactiveFriends
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isSearchFocused = false
                     }
                 }
             }
         }
+        .themedBackground()
         .withDefaultNavigation(
             title: "Friends",
             rightButtonIcon: "person.badge.plus",
@@ -85,7 +82,7 @@ struct FriendSection: View {
     let friends: [User]
     
     var body: some View {
-        Section(header: FriendsSectionHeader(title: title)) {
+        Section(header: SectionHeader(title: title)) {
             ForEach(friends) { friend in
                 NavigationLink(destination: FriendProfileView(user: friend)) {
                     FriendRow(friend: friend)
@@ -97,39 +94,16 @@ struct FriendSection: View {
 
 struct FriendRow: View {
     let friend: User
-    @EnvironmentObject var userManager: UserManager
-    @State private var profileImage: UIImage?
-    @State private var isLoadingImage = false
-    
-    private var initials: String {
-        let firstInitial = friend.firstName.prefix(1)
-        let lastInitial = friend.lastName.prefix(1)
-        return "\(firstInitial)\(lastInitial)"
-    }
-    
+
     private var statusColor: Color {
         friend.isActive ? .green : .gray
     }
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Profile Image
-            Group {
-                if let image = profileImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else if isLoadingImage {
-                    ProgressView()
-                } else {
-                    Image(systemName: "person.circle.fill")
-                        .resizable()
-                        .foregroundColor(.gray)
-                }
-            }
-            .frame(width: 50, height: 50)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(statusColor, lineWidth: 2))
+            UserAvatarView(user: friend, size: 50)
+                .overlay(Circle().stroke(statusColor, lineWidth: 2))
             
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(friend.firstName) \(friend.lastName)")
@@ -158,37 +132,9 @@ struct FriendRow: View {
         .padding(.horizontal, 12)
         .background(Color("sage").opacity(0.1))
         .cornerRadius(12)
-        .task {
-            await loadProfileImage()
-        }
-    }
-    
-    private func loadProfileImage() async {
-        isLoadingImage = true
-        defer { isLoadingImage = false }
-        
-        if let image = try? await userManager.fetchProfileImage(for: friend, preferredSize: .thumbnail) {
-            await MainActor.run {
-                profileImage = image
-            }
-        }
     }
 }
 
-struct FriendsSectionHeader: View {
-    let title: String
-    
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.headline)
-                .foregroundColor(Color("pine"))
-            Spacer()
-        }
-        .padding(.vertical, 8)
-        .background(Color("beige"))
-    }
-}
 
 struct EmptyFriendsView: View {
     @Binding var showAddFriends: Bool

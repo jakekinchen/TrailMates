@@ -137,7 +137,7 @@ private extension AuthView {
     }
 
     var authHeaderTopPadding: CGFloat {
-        isShowingAuthFields ? 64 : 110 - authTitleRowHeight
+        isShowingAuthFields ? 42 : 110 - authTitleRowHeight
     }
 
     var authTitleRowHeight: CGFloat {
@@ -304,11 +304,17 @@ private extension AuthView {
         withAnimation(.easeOut(duration: 0.2)) {
             if !phoneNumber.isEmpty {
                 isCheckingPhoneNumber = true
+                #if DEBUG
                 print("Login - Starting phone number check: \(phoneNumber)")
+                #endif
                 Task {
+                    #if DEBUG
                     print("Login - Checking if user exists")
+                    #endif
                     if await userManager.checkUserExists(phoneNumber: phoneNumber) {
+                        #if DEBUG
                         print("Login - User found, proceeding with verification")
+                        #endif
                         authViewModel.phoneNumber = phoneNumber
                         if await authViewModel.sendCode() {
                             isVerificationStage = true
@@ -317,14 +323,18 @@ private extension AuthView {
                             isVerificationSent = true
                         }
                     } else {
+                        #if DEBUG
                         print("Login - No user found with phone number")
+                        #endif
                         authViewModel.showError = true
                         authViewModel.errorMessage = "No account found with this phone number. Please sign up instead."
                     }
                     isCheckingPhoneNumber = false
                 }
             } else {
+                #if DEBUG
                 print("Login - Empty phone number field")
+                #endif
                 showingLoginFields = true
                 showingSignupFields = false
             }
@@ -360,11 +370,6 @@ private extension AuthView {
     }
 }
 
-private enum AuthInputColorStyle {
-    case standard
-    case inverted
-}
-
 // MARK: - PhoneEntryStep Component
 private struct PhoneEntryStep: View {
     @Binding var phoneNumber: String
@@ -373,120 +378,26 @@ private struct PhoneEntryStep: View {
     @FocusState.Binding var focusedField: AuthField?
 
     var body: some View {
-        AuthFloatingLabelTextField(
+        FloatingLabelTextField(
             placeholder: "Phone Number",
             text: $phoneNumber,
             keyboardType: .phonePad,
-            contentType: .telephoneNumber,
+            textContentType: .telephoneNumber,
             isEnabled: isEnabled,
+            colorStyle: usesInvertedColors ? .inverted : .dark,
+            accessibilityId: "auth_phone_textfield",
             field: .phone,
-            colorStyle: usesInvertedColors ? .inverted : .standard,
-            focusedField: $focusedField
+            focusedField: $focusedField,
+            onChange: handlePhoneChange
         )
-    }
-}
-
-// MARK: - OTPVerificationStep Component
-private struct OTPVerificationStep: View {
-    @Binding var verificationCode: String
-    let isEnabled: Bool
-    @FocusState.Binding var focusedField: AuthField?
-
-    var body: some View {
-        AuthFloatingLabelTextField(
-            placeholder: "Verification Code",
-            text: $verificationCode,
-            keyboardType: .numberPad,
-            contentType: .oneTimeCode,
-            isEnabled: isEnabled,
-            field: .verification,
-            focusedField: $focusedField
-        )
-    }
-}
-
-// MARK: - AuthFloatingLabelTextField Component
-private struct AuthFloatingLabelTextField: View {
-    let placeholder: String
-    @Binding var text: String
-    let keyboardType: UIKeyboardType
-    let contentType: UITextContentType
-    let isEnabled: Bool
-    let field: AuthField
-    var colorStyle: AuthInputColorStyle = .standard
-    @FocusState.Binding var focusedField: AuthField?
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            Text(placeholder)
-                .font(.system(size: !text.isEmpty ? 10 : 16))
-                .padding(.horizontal, 8)
-                .foregroundColor(foregroundColor)
-                .offset(x: 8, y: !text.isEmpty ? -16 : 0)
-                .animation(.easeInOut(duration: 0.2), value: !text.isEmpty)
-                .allowsHitTesting(false)
-                .zIndex(1)
-
-            TextField("", text: $text)
-                .keyboardType(keyboardType)
-                .textContentType(contentType)
-                .disabled(!isEnabled)
-                .focused($focusedField, equals: field)
-                .accessibilityIdentifier(accessibilityIdentifier)
-                .tint(foregroundColor)
-                .offset(y: !text.isEmpty ? 2 : 0)
-                .onTapGesture {
-                    if focusedField == field {
-                        UIPasteboard.general.string = text
-                        text = ""
-                    }
-                    focusedField = field
-                }
-                .onChange(of: text) { oldValue, newValue in
-                    handleTextChange(oldValue: oldValue, newValue: newValue)
-                }
-                .modifier(AuthInputFormattingModifier(text: $text, field: field))
-                .padding(.vertical, 16)
-                .padding(.horizontal, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(backgroundColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(borderColor, lineWidth: 1)
-                        )
-                )
-                .foregroundColor(foregroundColor)
-        }
-        .padding(.top, 12)
+        .modifier(PhoneNumberFormatter(text: $phoneNumber))
     }
 
-    private var foregroundColor: Color {
-        colorStyle == .inverted ? Color("alwaysPine") : Color("alwaysBeige")
-    }
-
-    private var backgroundColor: Color {
-        colorStyle == .inverted ? Color("alwaysBeige") : Color("alwaysPine")
-    }
-
-    private var borderColor: Color {
-        colorStyle == .inverted ? Color("alwaysPine") : Color("alwaysBeige")
-    }
-
-    private var accessibilityIdentifier: String {
-        switch field {
-        case .phone:
-            return "auth_phone_textfield"
-        case .verification:
-            return "auth_verification_textfield"
-        }
-    }
-
-    private func handleTextChange(oldValue: String, newValue: String) {
+    private func handlePhoneChange(_ oldValue: String, _ newValue: String) {
         let oldDigitCount = oldValue.filter { $0.isNumber }.count
         let newDigitCount = newValue.filter { $0.isNumber }.count
 
-        if field == .phone && newDigitCount > oldDigitCount {
+        if newDigitCount > oldDigitCount {
             let digits = newValue.filter { $0.isNumber }
             let isUSWithCountryCode = digits.hasPrefix("1")
             let shouldDismiss =
@@ -497,31 +408,41 @@ private struct AuthFloatingLabelTextField: View {
                 focusedField = nil
             }
         }
+    }
+}
 
-        if field == .verification {
-            if newDigitCount > 6 {
-                text = String(newValue.filter { $0.isNumber }.prefix(6))
-            }
-            if newDigitCount == 6 && newDigitCount > oldDigitCount {
-                focusedField = nil
-            }
+// MARK: - OTPVerificationStep Component
+private struct OTPVerificationStep: View {
+    @Binding var verificationCode: String
+    let isEnabled: Bool
+    @FocusState.Binding var focusedField: AuthField?
+
+    var body: some View {
+        FloatingLabelTextField(
+            placeholder: "Verification Code",
+            text: $verificationCode,
+            keyboardType: .numberPad,
+            textContentType: .oneTimeCode,
+            isEnabled: isEnabled,
+            characterLimit: 6,
+            colorStyle: .dark,
+            accessibilityId: "auth_verification_textfield",
+            field: .verification,
+            focusedField: $focusedField,
+            onChange: handleCodeChange
+        )
+    }
+
+    private func handleCodeChange(_ oldValue: String, _ newValue: String) {
+        let oldDigitCount = oldValue.filter { $0.isNumber }.count
+        let newDigitCount = newValue.filter { $0.isNumber }.count
+
+        if newDigitCount == 6 && newDigitCount > oldDigitCount {
+            focusedField = nil
         }
     }
 }
 
-// MARK: - AuthInputFormattingModifier
-private struct AuthInputFormattingModifier: ViewModifier {
-    @Binding var text: String
-    let field: AuthField
-
-    func body(content: Content) -> some View {
-        if field == .phone {
-            content.modifier(PhoneNumberFormatter(text: $text))
-        } else {
-            content
-        }
-    }
-}
 
 // MARK: - AuthSubmitButtonContent
 private struct AuthSubmitButtonContent: View {
@@ -580,131 +501,6 @@ extension AnyTransition {
             insertion: .move(edge: .leading).combined(with: .opacity),
             removal: .move(edge: .trailing).combined(with: .opacity)
         )
-    }
-}
-
-// MARK: - Legacy Support (for other files using Field enum)
-typealias Field = AuthField
-
-// MARK: - Legacy FloatingLabelTextField (for backward compatibility)
-struct FloatingLabelTextField: View {
-    let placeholder: String
-    @Binding var text: String
-    let keyboardType: UIKeyboardType
-    let contentType: UITextContentType
-    let isEnabled: Bool
-    let field: AuthField
-    @FocusState.Binding var focusedField: AuthField?
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            Text(placeholder)
-                .font(.system(size: !text.isEmpty ? 10 : 16))
-                .padding(.horizontal, 8)
-                .foregroundColor(Color("alwaysBeige"))
-                .offset(x: 8, y: !text.isEmpty ? -16 : 0)
-                .animation(.easeInOut(duration: 0.2), value: !text.isEmpty)
-                .allowsHitTesting(false)
-                .zIndex(1)
-
-            TextField("", text: $text)
-                .keyboardType(keyboardType)
-                .textContentType(contentType)
-                .disabled(!isEnabled)
-                .focused($focusedField, equals: field)
-                .accessibilityIdentifier(accessibilityIdentifier)
-                .offset(y: !text.isEmpty ? 2 : 0)
-                .onTapGesture {
-                    if focusedField == field {
-                        UIPasteboard.general.string = text
-                        text = ""
-                    }
-                    focusedField = field
-                }
-                .onChange(of: text) { oldValue, newValue in
-                    let oldDigitCount = oldValue.filter { $0.isNumber }.count
-                    let newDigitCount = newValue.filter { $0.isNumber }.count
-
-                    if field == .phone && newDigitCount >= 11 && newDigitCount > oldDigitCount {
-                        focusedField = nil
-                    }
-
-                    if field == .verification {
-                        if newDigitCount > 6 {
-                            text = String(newValue.filter { $0.isNumber }.prefix(6))
-                        }
-                        if newDigitCount == 6 && newDigitCount > oldDigitCount {
-                            focusedField = nil
-                        }
-                    }
-                }
-                .modifier(InputFormattingModifier(text: $text, field: field))
-                .padding(.vertical, 16)
-                .padding(.horizontal, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color("alwaysPine"))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color("alwaysBeige"), lineWidth: 1)
-                        )
-                )
-                .foregroundColor(Color("alwaysBeige"))
-        }
-        .padding(.top, 12)
-    }
-
-    private var accessibilityIdentifier: String {
-        switch field {
-        case .phone:
-            return "auth_phone_textfield"
-        case .verification:
-            return "auth_verification_textfield"
-        }
-    }
-}
-
-// MARK: - Legacy InputFormattingModifier
-struct InputFormattingModifier: ViewModifier {
-    @Binding var text: String
-    let field: AuthField
-
-    func body(content: Content) -> some View {
-        if field == .phone {
-            content.modifier(PhoneNumberFormatter(text: $text))
-        } else {
-            content
-        }
-    }
-}
-
-// MARK: - Legacy CustomTextFieldStyle
-struct CustomTextFieldStyle: TextFieldStyle {
-    func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration
-            .foregroundColor(Color("alwaysBeige"))
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color("alwaysPine"))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color("alwaysBeige"), lineWidth: 1)
-                    )
-            )
-    }
-}
-
-// MARK: - Legacy Text Button Style Extension
-extension Text {
-    func buttonStyle(primary: Bool) -> some View {
-        self
-            .font(.system(size: 16, weight: .bold))
-            .foregroundColor(primary ? Color("alwaysBeige") : Color("pumpkin"))
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(primary ? Color("pumpkin") : Color("alwaysBeige"))
-            .cornerRadius(25)
     }
 }
 

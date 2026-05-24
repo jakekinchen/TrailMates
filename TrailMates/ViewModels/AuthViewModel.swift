@@ -22,6 +22,7 @@ class AuthViewModel: ObservableObject {
     
     private let auth = Auth.auth()
     private let userManager = UserManager.shared
+    private let providers = FirebaseProviderContainer.shared
     
     @discardableResult
     func sendCode() async -> Bool {
@@ -62,11 +63,9 @@ class AuthViewModel: ObservableObject {
                     }
             }
         } catch {
-            await MainActor.run {
-                self.isLoading = false
-                self.showError = true
-                self.errorMessage = error.localizedDescription
-            }
+            self.isLoading = false
+            self.showError = true
+            self.errorMessage = error.localizedDescription
             return false
         }
     }
@@ -116,13 +115,11 @@ class AuthViewModel: ObservableObject {
                 }
                 
                 // Update UI state after successful operation
-                await MainActor.run {
-                    self.isAuthenticated = true
-                    userManager.isLoggedIn = true
-                    self.isLoading = false
-                    self.isVerifying = false
-                    print("✅ Auth state updated: isAuthenticated=true, isLoggedIn=true")
-                }
+                self.isAuthenticated = true
+                userManager.isLoggedIn = true
+                self.isLoading = false
+                self.isVerifying = false
+                print("✅ Auth state updated: isAuthenticated=true, isLoggedIn=true")
             } catch {
                 let appError = AppError.from(error)
                 #if DEBUG
@@ -140,34 +137,20 @@ class AuthViewModel: ObservableObject {
             #if DEBUG
             print("Verification failed: \(appError.errorDescription ?? "Unknown")")
             #endif
-            await MainActor.run {
-                self.showError = true
-                self.errorMessage = appError.errorDescription ?? "An error occurred"
-                self.isLoading = false
-                self.isVerifying = false
-                self.isAuthenticated = false
-                userManager.isLoggedIn = false
-            }
+            self.showError = true
+            self.errorMessage = appError.errorDescription ?? "An error occurred"
+            self.isLoading = false
+            self.isVerifying = false
+            self.isAuthenticated = false
+            userManager.isLoggedIn = false
         }
     }
 
     private func formatPhoneNumber(_ number: String) throws -> String {
-        // Remove any non-numeric characters
-        let cleanNumber = number.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-
-        // Check if the number starts with "+" already
-        if number.hasPrefix("+") {
-            return number
+        guard let formatted = PhoneNumberService.shared.format(number, for: .storage) else {
+            throw AppError.invalidInput("Invalid phone number format")
         }
-
-        // Add "+1" prefix if not present for US numbers
-        if cleanNumber.count == 10 {
-            return "+1\(cleanNumber)"
-        } else if cleanNumber.count == 11 && cleanNumber.hasPrefix("1") {
-            return "+\(cleanNumber)"
-        }
-
-        throw AppError.invalidInput("Invalid phone number format")
+        return formatted
     }
     
     func signOut() async {
@@ -198,14 +181,14 @@ class AuthViewModel: ObservableObject {
         #if DEBUG
         print("   1. Deleting profile images...")
         #endif
-        await ImageStorageProvider.shared.deleteOldProfileImage(for: userId)
+        await providers.imageProvider.deleteOldProfileImage(for: userId)
 
         // 2. Delete notifications from RTDB
         #if DEBUG
         print("   2. Deleting notifications...")
         #endif
         do {
-            try await NotificationDataProvider.shared.deleteAllNotifications(for: userId)
+            try await providers.notificationProvider.deleteAllNotifications(for: userId)
         } catch {
             #if DEBUG
             print("   ⚠️ Error deleting notifications: \(error.localizedDescription)")
@@ -218,7 +201,7 @@ class AuthViewModel: ObservableObject {
         print("   3. Deleting friend requests...")
         #endif
         do {
-            try await FriendDataProvider.shared.deleteAllFriendRequests(for: userId)
+            try await providers.friendProvider.deleteAllFriendRequests(for: userId)
         } catch {
             #if DEBUG
             print("   ⚠️ Error deleting friend requests: \(error.localizedDescription)")
@@ -230,7 +213,7 @@ class AuthViewModel: ObservableObject {
         print("   4. Deleting location data...")
         #endif
         do {
-            try await LocationDataProvider.shared.deleteUserLocation(userId: userId)
+            try await providers.locationProvider.deleteUserLocation(userId: userId)
         } catch {
             #if DEBUG
             print("   ⚠️ Error deleting location: \(error.localizedDescription)")
@@ -242,7 +225,7 @@ class AuthViewModel: ObservableObject {
         print("   5. Removing from friends' lists...")
         #endif
         do {
-            try await FriendDataProvider.shared.removeUserFromAllFriendLists(userId: userId, friendIds: friendIds)
+            try await providers.friendProvider.removeUserFromAllFriendLists(userId: userId, friendIds: friendIds)
         } catch {
             #if DEBUG
             print("   ⚠️ Error removing from friend lists: \(error.localizedDescription)")
@@ -254,7 +237,7 @@ class AuthViewModel: ObservableObject {
         print("   6. Deleting user document...")
         #endif
         do {
-            try await UserDataProvider.shared.deleteUserDocument(userId: userId)
+            try await providers.userProvider.deleteUserDocument(userId: userId)
         } catch {
             #if DEBUG
             print("   ⚠️ Error deleting user document: \(error.localizedDescription)")
@@ -280,9 +263,7 @@ class AuthViewModel: ObservableObject {
         #if DEBUG
         print("   8. Clearing local state...")
         #endif
-        await MainActor.run {
-            self.isAuthenticated = false
-        }
+        self.isAuthenticated = false
         await userManager.signOut()
 
         #if DEBUG

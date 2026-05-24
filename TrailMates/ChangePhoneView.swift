@@ -17,11 +17,10 @@ struct ChangePhoneView: View {
 
     // MARK: - Environment
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var userManager: UserManager
 
     // MARK: - State
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var newPhoneNumber = ""
     @State private var verificationCode = ""
     @State private var isVerificationSent = false
@@ -29,70 +28,56 @@ struct ChangePhoneView: View {
     @State private var alertMessage = ""
     @FocusState private var focusedField: Field?
 
-    // MARK: - Computed
-    private var overlayColor: Color {
-        switch colorScheme {
-        case .dark:
-            return Color.black.opacity(0.3)
-        default:
-            return Color.white.opacity(0.3)
-        }
-    }
-
     // MARK: - Body
     var body: some View {
-        ZStack {
-            Color("beige").ignoresSafeArea()
-
-            VStack(spacing: 20) {
-                if let currentPhone = userManager.currentUser?.phoneNumber,
-                   !currentPhone.isEmpty {
-                    currentPhoneSection(currentPhone: currentPhone)
-                } else {
-                    newPhoneSection
-                }
-
-                if !authViewModel.errorMessage.isEmpty {
-                    PhoneErrorView(message: authViewModel.errorMessage)
-                }
-
-                if isVerificationSent {
-                    verificationCodeSection
-                }
-
-                Spacer()
+        VStack(spacing: 20) {
+            if let currentPhone = userManager.currentUser?.phoneNumber,
+               !currentPhone.isEmpty {
+                currentPhoneSection(currentPhone: currentPhone)
+            } else {
+                newPhoneSection
             }
-            .padding()
-            .background(overlayColor)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Phone Number")
-                        .foregroundColor(Color("pine"))
-                        .font(.headline)
-                }
+
+            if !authViewModel.errorMessage.isEmpty {
+                PhoneErrorView(message: authViewModel.errorMessage)
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .tint(Color("pine"))
-            .alert("Phone Number Update", isPresented: $showAlert) {
-                Button("OK") {
-                    if authViewModel.isAuthenticated {
-                        dismiss()
-                    }
-                }
-            } message: {
-                Text(alertMessage)
+
+            if isVerificationSent {
+                verificationCodeSection
             }
-            .onChange(of: authViewModel.isAuthenticated) { _, newValue in
-                if newValue {
-                    Task {
-                        try await updateUserPhoneNumber()
-                    }
-                }
-            }
-            .onTapGesture {
-                focusedField = nil
+
+            Spacer()
+        }
+        .padding()
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Phone Number")
+                    .foregroundColor(Color("pine"))
+                    .font(.headline)
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .tint(Color("pine"))
+        .alert("Phone Number Update", isPresented: $showAlert) {
+            Button("OK") {
+                if authViewModel.isAuthenticated {
+                    dismiss()
+                }
+            }
+        } message: {
+            Text(alertMessage)
+        }
+        .onChange(of: authViewModel.isAuthenticated) { _, newValue in
+            if newValue {
+                Task {
+                    try await updateUserPhoneNumber()
+                }
+            }
+        }
+        .onTapGesture {
+            focusedField = nil
+        }
+        .themedBackground()
     }
 }
 
@@ -107,11 +92,17 @@ private extension ChangePhoneView {
                 .multilineTextAlignment(.center)
                 .padding(.top)
 
-            PhoneNumberInput(
-                phoneNumber: $newPhoneNumber,
+            FloatingLabelTextField(
+                placeholder: "Phone Number",
+                text: $newPhoneNumber,
+                keyboardType: .numberPad,
+                textContentType: .telephoneNumber,
                 isEnabled: !authViewModel.isLoading && !isVerificationSent,
+                colorStyle: .outline,
+                showClearButton: true,
+                field: ChangePhoneView.Field.phone,
                 focusedField: $focusedField,
-                onPhoneNumberChange: handlePhoneNumberChange
+                onChange: { _, newValue in handlePhoneNumberChange(newValue) }
             )
             .onAppear {
                 if newPhoneNumber.isEmpty {
@@ -136,11 +127,17 @@ private extension ChangePhoneView {
                 .multilineTextAlignment(.center)
                 .padding(.top)
 
-            PhoneNumberInput(
-                phoneNumber: $newPhoneNumber,
+            FloatingLabelTextField(
+                placeholder: "Phone Number",
+                text: $newPhoneNumber,
+                keyboardType: .numberPad,
+                textContentType: .telephoneNumber,
                 isEnabled: !authViewModel.isLoading && !isVerificationSent,
+                colorStyle: .outline,
+                showClearButton: true,
+                field: ChangePhoneView.Field.phone,
                 focusedField: $focusedField,
-                onPhoneNumberChange: handlePhoneNumberChange
+                onChange: { _, newValue in handlePhoneNumberChange(newValue) }
             )
 
             InstructionsView()
@@ -162,9 +159,16 @@ private extension ChangePhoneView {
                 Spacer()
             }
 
-            VerificationCodeInput(
-                verificationCode: $verificationCode,
+            FloatingLabelTextField(
+                placeholder: "Verification Code",
+                text: $verificationCode,
+                keyboardType: .numberPad,
+                textContentType: .oneTimeCode,
                 isEnabled: !authViewModel.isLoading,
+                characterLimit: 6,
+                colorStyle: .outline,
+                showClearButton: true,
+                field: ChangePhoneView.Field.verification,
                 focusedField: $focusedField
             )
             .onChange(of: verificationCode) { _, newValue in
@@ -262,139 +266,36 @@ private extension ChangePhoneView {
     }
 
     static func formatPhoneNumber(_ number: String) -> String {
-        let digits = number.filter { "0123456789".contains($0) }
-        let hasCountryCode = digits.count > 10
-        let last10 = String(digits.suffix(10))
-        var formatted = last10
+        // For complete numbers, delegate to PhoneNumberService for accurate formatting
+        if let formatted = PhoneNumberService.shared.format(number, for: .display) {
+            return formatted
+        }
+        // Fall back to simple digit grouping for partial input (as-you-type)
+        let digits = number.filter { $0.isNumber }
+        if digits.isEmpty { return "" }
 
-        if formatted.count > 6 {
-            let areaCode = formatted.prefix(3)
-            let prefix = formatted.dropFirst(3).prefix(3)
-            let lineNumber = formatted.dropFirst(6)
+        let hasCountryCode = digits.count > 10 || number.hasPrefix("+")
+        let last10 = String(digits.suffix(10))
+
+        var formatted: String
+        if last10.count > 6 {
+            let areaCode = last10.prefix(3)
+            let prefix = last10.dropFirst(3).prefix(3)
+            let lineNumber = last10.dropFirst(6)
             formatted = "(\(areaCode)) \(prefix)-\(lineNumber)"
-        } else if formatted.count > 3 {
-            let areaCode = formatted.prefix(3)
-            let prefix = formatted.dropFirst(3)
+        } else if last10.count > 3 {
+            let areaCode = last10.prefix(3)
+            let prefix = last10.dropFirst(3)
             formatted = "(\(areaCode)) \(prefix)"
-        } else if formatted.count > 0 {
-            formatted = "(\(formatted)"
+        } else {
+            formatted = "(\(last10)"
         }
 
         if hasCountryCode {
             formatted = "+1 " + formatted
-        } else if number.hasPrefix("+") {
-            formatted = "+1 " + formatted
         }
 
         return formatted
-    }
-}
-
-// MARK: - PhoneNumberInput Component
-private struct PhoneNumberInput: View {
-    @Binding var phoneNumber: String
-    let isEnabled: Bool
-    @FocusState.Binding var focusedField: ChangePhoneView.Field?
-    let onPhoneNumberChange: (String) -> Void
-
-    @State private var isAnimated = false
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color("pine"), lineWidth: 2)
-
-            Text("Phone Number")
-                .font(.custom("SF Pro", size: isAnimated ? 12 : 16))
-                .foregroundColor(Color("pine").opacity(0.8))
-                .offset(y: isAnimated ? -14 : 0)
-                .offset(x: 10)
-                .animation(.spring(response: 0.2), value: isAnimated)
-
-            HStack {
-                TextField("", text: $phoneNumber)
-                    .keyboardType(.numberPad)
-                    .textContentType(.telephoneNumber)
-                    .disabled(!isEnabled)
-                    .focused($focusedField, equals: .phone)
-                    .font(.custom("SF Pro", size: 16))
-                    .foregroundColor(Color("pine"))
-                    .padding(.leading, 12)
-                    .padding(.trailing, 35)
-                    .padding(.top, isAnimated ? 8 : 0)
-
-                if !phoneNumber.isEmpty {
-                    Button(action: { phoneNumber = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(Color("pine"))
-                    }
-                    .padding(.trailing, 8)
-                }
-            }
-        }
-        .frame(height: 56)
-        .onChange(of: phoneNumber) { _, newValue in
-            withAnimation {
-                isAnimated = !newValue.isEmpty
-            }
-            onPhoneNumberChange(newValue)
-        }
-        .onAppear {
-            isAnimated = !phoneNumber.isEmpty
-        }
-    }
-}
-
-// MARK: - VerificationCodeInput Component
-private struct VerificationCodeInput: View {
-    @Binding var verificationCode: String
-    let isEnabled: Bool
-    @FocusState.Binding var focusedField: ChangePhoneView.Field?
-
-    @State private var isAnimated = false
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color("pine"), lineWidth: 2)
-
-            Text("Verification Code")
-                .font(.custom("SF Pro", size: isAnimated ? 12 : 16))
-                .foregroundColor(Color("pine").opacity(0.8))
-                .offset(y: isAnimated ? -14 : 0)
-                .offset(x: 10)
-                .animation(.spring(response: 0.2), value: isAnimated)
-
-            HStack {
-                TextField("", text: $verificationCode)
-                    .keyboardType(.numberPad)
-                    .textContentType(.oneTimeCode)
-                    .disabled(!isEnabled)
-                    .focused($focusedField, equals: .verification)
-                    .font(.custom("SF Pro", size: 16))
-                    .foregroundColor(Color("pine"))
-                    .padding(.leading, 12)
-                    .padding(.trailing, 35)
-                    .padding(.top, isAnimated ? 8 : 0)
-
-                if !verificationCode.isEmpty {
-                    Button(action: { verificationCode = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(Color("pine"))
-                    }
-                    .padding(.trailing, 8)
-                }
-            }
-        }
-        .frame(height: 56)
-        .onChange(of: verificationCode) { _, newValue in
-            withAnimation {
-                isAnimated = !newValue.isEmpty
-            }
-        }
-        .onAppear {
-            isAnimated = !verificationCode.isEmpty
-        }
     }
 }
 

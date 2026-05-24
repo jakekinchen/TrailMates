@@ -69,9 +69,9 @@ final class User: Codable, Identifiable, Equatable {
         guard let location = self.location else { return false }
         let outerPolygon = MKPolygon(coordinates: TrailData.outerCoordinates, count: TrailData.outerCoordinates.count)
         let friendPoint = MKMapPoint(location)
-        
+
         guard outerPolygon.contains(friendPoint) else { return false }
-        
+
         for innerCoordinates in TrailData.innerCoordinatesList {
             let innerPolygon = MKPolygon(coordinates: innerCoordinates, count: innerCoordinates.count)
             if innerPolygon.contains(friendPoint) {
@@ -80,7 +80,13 @@ final class User: Codable, Identifiable, Equatable {
         }
         return false
     }
-    
+
+    var initials: String {
+        let first = firstName.prefix(1)
+        let last = lastName.prefix(1)
+        return "\(first)\(last)".uppercased()
+    }
+
     // MARK: - Initialization
     init(id: String,
          firstName: String = "",

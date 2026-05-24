@@ -10,7 +10,6 @@ import UIKit
 import Firebase
 import FirebaseAuth
 import UserNotifications
-import SwiftData
 
 @main
 struct TrailMatesApp: App {
@@ -31,21 +30,7 @@ struct TrailMatesApp: App {
     }()
     
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    
-    // SwiftData container
-    var sharedModelContainer: ModelContainer = {
-        print("📱 Creating ModelContainer")
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-    
+
     // View Models with guaranteed Firebase configuration
     @StateObject private var userManager: UserManager = {
         _ = TrailMatesApp.firebaseConfigured
@@ -82,7 +67,6 @@ struct TrailMatesApp: App {
                     }
                 }
         }
-        .modelContainer(sharedModelContainer)
     }
 }
 

@@ -63,16 +63,13 @@ struct AddFriendsView: View {
     // MARK: - Body
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack {
-                Color("beige").ignoresSafeArea()
-
-                ScrollView {
-                    VStack(spacing: 24) {
-                        connectionMethodsSection
-                    }
-                    .padding(.vertical)
+            ScrollView {
+                VStack(spacing: 24) {
+                    connectionMethodsSection
                 }
+                .padding(.vertical)
             }
+            .themedBackground()
             .navigationTitle("Add Friends")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -140,11 +137,17 @@ private extension AddFriendsView {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(alignment: .bottom, spacing: 10) {
-                FriendLookupTextField(
+                FloatingLabelTextField<Bool>(
+                    placeholder: "Username or Phone Number",
                     text: $viewModel.friendLookupText,
-                    isFocused: $isFriendLookupFocused,
+                    keyboardType: .namePhonePad,
+                    autocapitalization: .none,
+                    colorStyle: .dark,
+                    autocorrectionDisabled: true,
+                    submitLabel: .search,
                     onSubmit: handleFriendSearch
                 )
+                .focused($isFriendLookupFocused)
 
                 Button(action: handleFriendSearch) {
                     ZStack {
@@ -354,49 +357,6 @@ private extension AddFriendsView {
     }
 }
 
-// MARK: - Friend Lookup Text Field
-private struct FriendLookupTextField: View {
-    @Binding var text: String
-    @FocusState.Binding var isFocused: Bool
-    let onSubmit: () -> Void
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            Text("Username or Phone Number")
-                .font(.system(size: text.isEmpty ? 16 : 10, weight: .medium))
-                .padding(.horizontal, 8)
-                .foregroundColor(AppColors.textOnAccent)
-                .offset(x: 8, y: text.isEmpty ? 0 : -16)
-                .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
-                .allowsHitTesting(false)
-                .zIndex(1)
-
-            TextField("", text: $text)
-                .font(.system(size: 16, weight: .medium))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.namePhonePad)
-                .submitLabel(.search)
-                .focused($isFocused)
-                .tint(AppColors.pumpkin)
-                .foregroundColor(AppColors.textOnAccent)
-                .offset(y: text.isEmpty ? 0 : 2)
-                .padding(.vertical, 16)
-                .padding(.horizontal, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(AppColors.alwaysPine)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isFocused ? AppColors.borderFocused : AppColors.alwaysBeige, lineWidth: 1)
-                        )
-                )
-                .onSubmit(onSubmit)
-        }
-        .padding(.top, 12)
-    }
-}
-
 // MARK: - Friend Lookup Result Row
 private struct FriendLookupResultRow: View {
     let user: User
@@ -461,46 +421,8 @@ private struct FriendLookupResultRow: View {
 private struct FriendLookupAvatar: View {
     let user: User
 
-    private var imageURL: URL? {
-        let urlString = user.profileThumbnailUrl ?? user.profileImageUrl
-        return urlString.flatMap(URL.init(string:))
-    }
-
-    private var initials: String {
-        let firstInitial = user.firstName.prefix(1)
-        let lastInitial = user.lastName.prefix(1)
-        return "\(firstInitial)\(lastInitial)".uppercased()
-    }
-
     var body: some View {
-        Group {
-            if let imageURL {
-                AsyncImage(url: imageURL) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    default:
-                        fallback
-                    }
-                }
-            } else {
-                fallback
-            }
-        }
-        .frame(width: 48, height: 48)
-        .clipShape(Circle())
-        .overlay(Circle().stroke(Color("pine").opacity(0.18), lineWidth: 1))
-    }
-
-    private var fallback: some View {
-        ZStack {
-            Circle()
-                .fill(Color("sage").opacity(0.4))
-            Text(initials.isEmpty ? "?" : initials)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(Color("pine"))
-        }
+        UserAvatarView(user: user, size: 48)
+            .overlay(Circle().stroke(Color("pine").opacity(0.18), lineWidth: 1))
     }
 }
