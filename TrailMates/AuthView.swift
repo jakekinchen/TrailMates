@@ -32,8 +32,6 @@ struct AuthView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                backgroundImage(geometry: geometry)
-
                 VStack(spacing: 0) {
                     headerSection
                         .frame(height: 250, alignment: .top)
@@ -50,6 +48,12 @@ struct AuthView: View {
                 .frame(width: geometry.size.width, height: geometry.size.height)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .background {
+            GeometryReader { geometry in
+                backgroundImage(geometry: geometry)
+            }
+            .ignoresSafeArea(.container, edges: .all)
         }
         .simultaneousGesture(TapGesture().onEnded {
             dismissKeyboard()
