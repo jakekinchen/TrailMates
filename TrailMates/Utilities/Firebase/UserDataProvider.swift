@@ -155,41 +155,13 @@ class UserDataProvider {
                 ])
             }
 
-            // Handle profile image according to hierarchy rules
-            if let imageUrl = user.profileImageUrl {
-                do {
-                    user.profileImage = try await imageProvider.downloadProfileImage(from: imageUrl)
-                    #if DEBUG
-                    print("UserDataProvider: Loaded profile image from remote URL")
-                    #endif
-                } catch let error as AppError {
-                    #if DEBUG
-                    print("Warning: Failed to load remote image: \(error.errorDescription ?? "Unknown")")
-                    #endif
-                    user.profileImageUrl = nil
-                    user.profileThumbnailUrl = nil
-
-                    try? await db.collection(FirestoreConstants.Collections.users).document(id).updateData([
-                        "profileImageUrl": FieldValue.delete(),
-                        "profileThumbnailUrl": FieldValue.delete()
-                    ])
-                } catch {
-                    #if DEBUG
-                    print("Warning: Failed to load remote image: \(error.localizedDescription)")
-                    #endif
-                    user.profileImageUrl = nil
-                    user.profileThumbnailUrl = nil
-
-                    try? await db.collection(FirestoreConstants.Collections.users).document(id).updateData([
-                        "profileImageUrl": FieldValue.delete(),
-                        "profileThumbnailUrl": FieldValue.delete()
-                    ])
-                }
-            }
+            // Profile image loading is handled lazily by UserAvatarView.
+            // We intentionally do NOT download images here to keep fetches fast
+            // and avoid side effects (like deleting Firestore URLs on transient failures).
 
             return user
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("UserDataProvider: Error fetching user: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -197,15 +169,17 @@ class UserDataProvider {
         }
     }
 
-    func fetchAllUsers() async -> [User] {
+    func fetchAllUsers(limit: Int = 50) async -> [User] {
         do {
             // Use retry logic for network fetch
             let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection(FirestoreConstants.Collections.users).getDocuments()
+                try await self.db.collection(FirestoreConstants.Collections.users)
+                    .limit(to: limit)
+                    .getDocuments()
             }
             return snapshot.documents.compactMap { try? $0.data(as: User.self) }
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("UserDataProvider: Error fetching all users: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -235,29 +209,9 @@ class UserDataProvider {
             throw AppError.alreadyExists("User document")
         }
 
-        let initialData: [String: Any] = [
-            "id": user.id,
-            "phoneNumber": user.phoneNumber,
-            "hashedPhoneNumber": user.hashedPhoneNumber,
-            "joinDate": user.joinDate,
-            "isActive": true,
-            "firstName": "",
-            "lastName": "",
-            "username": "",
-            "usernameSearchKey": "",
-            "friends": [],
-            "doNotDisturb": false,
-            "createdEventIds": [],
-            "attendingEventIds": [],
-            "visitedLandmarkIds": [],
-            "receiveFriendRequests": true,
-            "receiveFriendEvents": true,
-            "receiveEventUpdates": true,
-            "shareLocationWithFriends": true,
-            "shareLocationWithEventHost": true,
-            "shareLocationWithEventGroup": true,
-            "allowFriendsToInviteOthers": true
-        ]
+        // Use Firestore.Encoder for consistency with saveUser
+        var initialData = try Firestore.Encoder().encode(user)
+        initialData["usernameSearchKey"] = Self.normalizedUsername(user.username)
 
         try await userRef.setData(initialData)
 
@@ -327,7 +281,7 @@ class UserDataProvider {
             print("UserDataProvider: Full user data saved successfully")
             #endif
         } catch {
-            let appError = AppError.from(error)
+            let appError = try AppError.from(error)
             #if DEBUG
             print("UserDataProvider: Error saving full user: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -338,12 +292,32 @@ class UserDataProvider {
     // MARK: - User Query Methods
 
     func fetchFriends(for user: User) async -> [User] {
+        let friendIds = user.friends
+        guard !friendIds.isEmpty else { return [] }
+
+        // Firestore 'in' queries are limited to 30 items per query; chunk accordingly
+        let chunkSize = 30
         var friends: [User] = []
-        for friendId in user.friends {
-            if let friend = await fetchUser(by: friendId) {
-                friends.append(friend)
+
+        for chunkStart in stride(from: 0, to: friendIds.count, by: chunkSize) {
+            let chunkEnd = min(chunkStart + chunkSize, friendIds.count)
+            let chunk = Array(friendIds[chunkStart..<chunkEnd])
+
+            do {
+                let snapshot = try await withRetry(maxAttempts: 3) {
+                    try await self.db.collection(FirestoreConstants.Collections.users)
+                        .whereField(FieldPath.documentID(), in: chunk)
+                        .getDocuments()
+                }
+                let chunkUsers = snapshot.documents.compactMap { try? $0.data(as: User.self) }
+                friends.append(contentsOf: chunkUsers)
+            } catch {
+                #if DEBUG
+                print("UserDataProvider: Error batch-fetching friends chunk: \(error.localizedDescription)")
+                #endif
             }
         }
+
         return friends
     }
 
@@ -351,7 +325,7 @@ class UserDataProvider {
         do {
             return try await searchUsers(username: username, phoneNumber: nil).first
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("UserDataProvider: Error fetching user by username: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -399,7 +373,7 @@ class UserDataProvider {
                 return nil
             }
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("UserDataProvider: Error fetching user by phone: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -426,7 +400,7 @@ class UserDataProvider {
                 return userExists
             }
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("UserDataProvider: Error calling checkUserExists function: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -442,7 +416,7 @@ class UserDataProvider {
                 try await callable.call()
             }
         } catch {
-            throw AppError.from(error)
+            throw try AppError.from(error)
         }
     }
 
@@ -470,7 +444,7 @@ class UserDataProvider {
             return matchedUsers
 
         } catch {
-            let appError = AppError.from(error)
+            let appError = try AppError.from(error)
             #if DEBUG
             print("UserDataProvider: Error finding users by phone numbers: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -516,7 +490,7 @@ class UserDataProvider {
 
             return usersData.compactMap { callableUser(from: $0) }
         } catch {
-            throw AppError.from(error)
+            throw try AppError.from(error)
         }
     }
 
@@ -535,19 +509,22 @@ class UserDataProvider {
 
             return user
         } catch {
-            throw AppError.from(error)
+            throw try AppError.from(error)
         }
     }
 
     private func callableUser(from userData: [String: Any]) -> User? {
         guard let id = userData["id"] as? String else { return nil }
 
+        // Intentionally do NOT populate phoneNumber or hashedPhoneNumber from
+        // callable responses — these are private fields that should not be
+        // exposed through search/public profile endpoints.
         let user = User(
             id: id,
             firstName: userData["firstName"] as? String ?? "",
             lastName: userData["lastName"] as? String ?? "",
             username: userData["username"] as? String ?? "",
-            phoneNumber: userData["phoneNumber"] as? String ?? "",
+            phoneNumber: "",
             joinDate: callableDate(from: userData["joinDate"])
         )
 
@@ -555,6 +532,22 @@ class UserDataProvider {
         user.profileThumbnailUrl = userData["profileThumbnailUrl"] as? String
         user.isActive = userData["isActive"] as? Bool ?? user.isActive
         user.friends = userData["friends"] as? [String] ?? user.friends
+        user.doNotDisturb = userData["doNotDisturb"] as? Bool ?? false
+        user.createdEventIds = userData["createdEventIds"] as? [String] ?? []
+        user.attendingEventIds = userData["attendingEventIds"] as? [String] ?? []
+        user.visitedLandmarkIds = userData["visitedLandmarkIds"] as? [String] ?? []
+        user.facebookId = userData["facebookId"] as? String
+
+        // Notification settings
+        user.receiveFriendRequests = userData["receiveFriendRequests"] as? Bool ?? true
+        user.receiveFriendEvents = userData["receiveFriendEvents"] as? Bool ?? true
+        user.receiveEventUpdates = userData["receiveEventUpdates"] as? Bool ?? true
+
+        // Privacy settings
+        user.shareLocationWithFriends = userData["shareLocationWithFriends"] as? Bool ?? true
+        user.shareLocationWithEventHost = userData["shareLocationWithEventHost"] as? Bool ?? true
+        user.shareLocationWithEventGroup = userData["shareLocationWithEventGroup"] as? Bool ?? true
+        user.allowFriendsToInviteOthers = userData["allowFriendsToInviteOthers"] as? Bool ?? true
 
         return user
     }
@@ -583,6 +576,9 @@ class UserDataProvider {
             return Date(timeIntervalSince1970: seconds + nanos / 1_000_000_000)
         }
 
+        #if DEBUG
+        print("UserDataProvider: callableDate failed to parse value: \(String(describing: value)) — falling back to Date()")
+        #endif
         return Date()
     }
 
@@ -608,7 +604,7 @@ class UserDataProvider {
                 return usernameTaken
             }
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("UserDataProvider: Error calling checkUsernameTaken: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -626,7 +622,7 @@ class UserDataProvider {
         let listener = db.collection(FirestoreConstants.Collections.users).document(id)
             .addSnapshotListener { documentSnapshot, error in
                 guard let document = documentSnapshot else {
-                    let appError = error.map { AppError.from($0) } ?? AppError.unknown()
+                    let appError = error.map { AppError.classify($0) } ?? AppError.unknown()
                     #if DEBUG
                     print("UserDataProvider: Error fetching document: \(appError.errorDescription ?? "Unknown")")
                     #endif
@@ -646,7 +642,7 @@ class UserDataProvider {
                     let user = try document.data(as: User.self)
                     Task { @MainActor in onChange(user) }
                 } catch {
-                    let appError = AppError.from(error)
+                    let appError = AppError.classify(error)
                     #if DEBUG
                     print("UserDataProvider: Error decoding user: \(appError.errorDescription ?? "Unknown")")
                     #endif
@@ -682,7 +678,7 @@ class UserDataProvider {
             print("UserDataProvider: Deleted user document for \(userId)")
             #endif
         } catch {
-            throw AppError.from(error)
+            throw try AppError.from(error)
         }
     }
 

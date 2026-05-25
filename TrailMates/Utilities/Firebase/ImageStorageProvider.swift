@@ -2,6 +2,7 @@ import Foundation
 import Firebase
 import FirebaseStorage
 import SwiftUI
+import CryptoKit
 
 /// Handles all image storage operations for Firebase Storage.
 ///
@@ -10,7 +11,7 @@ import SwiftUI
 ///
 /// ## Features
 /// - Automatic thumbnail generation (150x150)
-/// - In-memory caching with configurable limits
+/// - Two-tier caching: in-memory (NSCache) + disk (FileManager)
 /// - Retry logic for failed downloads
 /// - Old image cleanup before new uploads
 ///
@@ -33,12 +34,52 @@ class ImageStorageProvider {
     /// In-memory cache for downloaded images to reduce network requests
     private let imageCache = NSCache<NSString, UIImage>()
 
+    /// Disk cache directory for persisting images across app launches
+    private let diskCacheDirectory: URL
+
     private init() {
         // Configure cache limits to balance memory usage and performance
         imageCache.countLimit = 100 // Maximum 100 images
         imageCache.totalCostLimit = 50 * 1024 * 1024 // 50MB memory limit
 
+        // Set up disk cache directory in the system Caches folder
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        diskCacheDirectory = cacheDir.appendingPathComponent("ProfileImageCache", isDirectory: true)
+
+        // Create directory if it doesn't exist
+        try? FileManager.default.createDirectory(at: diskCacheDirectory, withIntermediateDirectories: true)
+
         print("ImageStorageProvider initialized")
+    }
+
+    // MARK: - Disk Cache Helpers
+
+    /// Returns a filename for the disk cache based on a SHA256 hash of the URL string.
+    private nonisolated func diskCacheKey(for url: String) -> String {
+        let digest = SHA256.hash(data: Data(url.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined() + ".jpg"
+    }
+
+    /// Attempts to load an image from the disk cache.
+    private func loadFromDiskCache(url: String) -> UIImage? {
+        let filePath = diskCacheDirectory.appendingPathComponent(diskCacheKey(for: url))
+        guard FileManager.default.fileExists(atPath: filePath.path) else { return nil }
+        guard let data = try? Data(contentsOf: filePath),
+              let image = UIImage(data: data) else { return nil }
+        return image
+    }
+
+    /// Saves an image to the disk cache.
+    private func saveToDiskCache(image: UIImage, url: String) {
+        let filePath = diskCacheDirectory.appendingPathComponent(diskCacheKey(for: url))
+        guard let data = image.jpegData(compressionQuality: 0.85) else { return }
+        try? data.write(to: filePath, options: .atomic)
+    }
+
+    /// Removes an image from the disk cache.
+    private func removeFromDiskCache(url: String) {
+        let filePath = diskCacheDirectory.appendingPathComponent(diskCacheKey(for: url))
+        try? FileManager.default.removeItem(at: filePath)
     }
 
     // MARK: - Profile Image Upload
@@ -121,18 +162,25 @@ class ImageStorageProvider {
 
     // MARK: - Profile Image Download
 
-    /// Downloads a profile image from a URL with caching and retry support.
+    /// Downloads a profile image from a URL with two-tier caching and retry support.
     ///
-    /// Images are cached in memory after download to reduce network requests
-    /// for frequently accessed images (e.g., in friend lists).
+    /// Images are checked against in-memory cache first, then disk cache,
+    /// and finally downloaded from the network. Results are stored in both caches.
     ///
     /// - Parameter url: The image URL to download from
     /// - Returns: The downloaded UIImage
     /// - Throws: `AppError.invalidImageUrl` or `AppError.imageDownloadFailed`
     func downloadProfileImage(from url: String) async throws -> UIImage {
-        // Check cache first to avoid unnecessary network requests
+        // Check in-memory cache first (fastest)
         if let cachedImage = imageCache.object(forKey: url as NSString) {
             return cachedImage
+        }
+
+        // Check disk cache (survives app restarts)
+        if let diskImage = loadFromDiskCache(url: url) {
+            // Promote back to in-memory cache
+            imageCache.setObject(diskImage, forKey: url as NSString)
+            return diskImage
         }
 
         // Validate URL format
@@ -157,8 +205,10 @@ class ImageStorageProvider {
             return downloadedImage
         }
 
-        // Cache the downloaded image for future requests
+        // Cache the downloaded image in both tiers
         imageCache.setObject(image, forKey: url as NSString)
+        saveToDiskCache(image: image, url: url)
+
         return image
     }
 
@@ -173,9 +223,10 @@ class ImageStorageProvider {
     func prefetchProfileImages(urls: [String]) async {
         await withTaskGroup(of: Void.self) { group in
             for url in urls {
-                group.addTask {
-                    // Silently ignore failures during prefetch
-                    _ = try? await self.downloadProfileImage(from: url)
+                group.addTask { @Sendable [weak self] in
+                    // Silently ignore failures during prefetch.
+                    // The await hops back to @MainActor for the actual download call.
+                    _ = try? await self?.downloadProfileImage(from: url)
                 }
             }
         }
@@ -183,19 +234,23 @@ class ImageStorageProvider {
 
     // MARK: - Cache Management
 
-    /// Clears all cached images from memory.
+    /// Clears all cached images from memory and disk.
     ///
     /// Call this in response to memory warnings or when the user logs out.
     func clearCache() {
         imageCache.removeAllObjects()
+        // Also clear disk cache
+        try? FileManager.default.removeItem(at: diskCacheDirectory)
+        try? FileManager.default.createDirectory(at: diskCacheDirectory, withIntermediateDirectories: true)
     }
 
-    /// Removes a specific image from the cache.
+    /// Removes a specific image from both in-memory and disk caches.
     ///
     /// Use this when an image has been updated and the cached version is stale.
     ///
     /// - Parameter url: The URL of the image to remove from cache
     func removeFromCache(url: String) {
         imageCache.removeObject(forKey: url as NSString)
+        removeFromDiskCache(url: url)
     }
 }

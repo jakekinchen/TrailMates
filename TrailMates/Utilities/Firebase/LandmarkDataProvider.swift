@@ -24,13 +24,12 @@ class LandmarkDataProvider {
 
     func fetchTotalLandmarks() async -> Int {
         do {
-            // Use retry logic for network fetch
-            let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection(FirestoreConstants.Collections.landmarks).getDocuments()
-            }
-            return snapshot.documents.count
+            // Use Firestore count() aggregation to avoid downloading all documents
+            let countQuery = db.collection(FirestoreConstants.Collections.landmarks).count
+            let snapshot = try await countQuery.getAggregation(source: .server)
+            return Int(truncating: snapshot.count)
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("LandmarkDataProvider: Error fetching total landmarks: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -46,7 +45,7 @@ class LandmarkDataProvider {
             }
             return snapshot.documents.compactMap { try? $0.data(as: Landmark.self) }
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("LandmarkDataProvider: Error fetching all landmarks: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -62,7 +61,7 @@ class LandmarkDataProvider {
             }
             return try document.data(as: Landmark.self)
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("LandmarkDataProvider: Error fetching landmark: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -82,7 +81,7 @@ class LandmarkDataProvider {
                 "visitedLandmarkIds": FieldValue.arrayUnion([landmarkId])
             ])
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("LandmarkDataProvider: Error marking landmark as visited: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -96,7 +95,7 @@ class LandmarkDataProvider {
                 "visitedLandmarkIds": FieldValue.arrayRemove([landmarkId])
             ])
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("LandmarkDataProvider: Error unmarking landmark as visited: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -112,7 +111,7 @@ class LandmarkDataProvider {
             }
             return document.get("visitedLandmarkIds") as? [String] ?? []
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("LandmarkDataProvider: Error fetching visited landmarks: \(appError.errorDescription ?? "Unknown")")
             #endif

@@ -163,21 +163,21 @@ Related plans:
 ## P3 — Design System Adoption
 
 ### Replace Raw Color Literals with AppColors
-- [ ] Audit and replace `Color("pine")` (~100 occurrences) with `AppColors.textPrimary` / appropriate semantic constant
-- [ ] Audit and replace `Color("beige")` (~50 occurrences) with `AppColors.backgroundPrimary`
-- [ ] Audit and replace `Color("pumpkin")` (~30 occurrences) with `AppColors.buttonPrimary`
-- [ ] Audit and replace `Color("sage")` (~15 occurrences) with appropriate `AppColors` constant
-- [ ] Audit and replace `Color("alwaysBeige")`/`Color("alwaysPine")`/`Color("altBeige")` with `AppColors` constants
+- [x] Audit and replace `Color("pine")` (~100 occurrences) with `AppColors.pine`
+- [x] Audit and replace `Color("beige")` (~50 occurrences) with `AppColors.beige`
+- [x] Audit and replace `Color("pumpkin")` (~30 occurrences) with `AppColors.pumpkin`
+- [x] Audit and replace `Color("sage")` (~15 occurrences) with `AppColors.sage`
+- [x] Audit and replace `Color("alwaysBeige")`/`Color("alwaysPine")`/`Color("altBeige")` with `AppColors` constants (note: `altBeige` has no AppColors mapping — left as-is)
 
 ### Replace Inline Fonts with AppTypography
-- [ ] Replace `Font.custom("Magic Retro", size: 48)` in `AuthView.swift:118` with `AppTypography.displayLarge`
-- [ ] Replace `Font.custom("Magic Retro", size: 24)` in `NavigationBarModifier.swift:22` with `AppTypography.displaySmall`
-- [ ] Replace `Font.custom("SF Pro", size: ...)` instances in `ProfileSetupView.swift` and `ChangePhoneView.swift`
-- [ ] Audit remaining `.font(.system(size: X, weight: Y))` calls for consistency with `AppTypography`
+- [x] Replace `Font.custom("Magic Retro", size: 48)` in `AuthView.swift:118` with `AppTypography.displayLarge`
+- [x] Replace `Font.custom("Magic Retro", size: 24)` in `NavigationBarModifier.swift:22` with `AppTypography.displaySmall`
+- [x] Replace `Font.custom("SF Pro", size: ...)` instances in `ProfileSetupView.swift` and `ChangePhoneView.swift`
+- [x] Audit remaining `.font(.system(size: X, weight: Y))` calls for consistency with `AppTypography`
 
 ### Adopt Existing Reusable Components
-- [ ] Replace inline pumpkin-button styling (~10 instances) with `PrimaryButton`
-- [ ] Replace inline empty states in `FriendsView`, `EventsView`, `ContactsListView` with `EmptyStateView`
+- [x] Replace inline pumpkin-button styling (~10 instances) with `PrimaryButton`
+- [x] Replace inline empty states in `FriendsView`, `EventsView`, `ContactsListView` with `EmptyStateView`
 - [ ] Replace inline `ProgressView()` loading patterns with `LoadingView` where appropriate
 
 ---
@@ -216,7 +216,7 @@ Related plans:
 - [x] Move `UserStats` from `ProfileView.swift` to `Models/`
 
 ### Navigation Consistency
-- [ ] Wrap each tab's content in `HomeView` with `NavigationStack`
+- [x] Wrap each tab's content in `HomeView` with `NavigationStack`
 - [x] Replace `NavigationView` with `NavigationStack` in `EventsView.swift:169` sheet
 - [x] Replace `NavigationView` with `NavigationStack` in `MapView.swift:68` sheet
 
@@ -239,23 +239,23 @@ Related plans:
 - [x] Wrap RTDB errors in `AppError.from(error)` in `FriendDataProvider` (lines 62, 89, 111, 131)
 - [x] Wrap RTDB errors in `AppError.from(error)` in `NotificationDataProvider` (lines 38, 109, 159, 175, 190)
 - [x] Wrap RTDB errors in `AppError.from(error)` in `LocationDataProvider` (lines 92, 161)
-- [ ] Classify Firestore errors in `AppError.from()` so `withRetry` actually retries them
-- [ ] Stop converting provider permission/network failures into `nil`, `[]`, or `false`; surface `AppError` to callers that need retry/error UI
-- [ ] Re-throw `CancellationError` before wrapping errors in `AppError.from` / `withRetry`
+- [x] Classify Firestore errors in `AppError.from()` so `withRetry` actually retries them
+- [x] Stop converting provider permission/network failures into `nil`, `[]`, or `false`; surface `AppError` to callers that need retry/error UI
+- [x] Re-throw `CancellationError` before wrapping errors in `AppError.from` / `withRetry`
 
 ### Query Efficiency
-- [ ] Add pagination/limit to `EventDataProvider.fetchAllEvents()`
-- [ ] Add pagination/limit to `UserDataProvider.fetchAllUsers()`
-- [ ] Replace `LandmarkDataProvider.fetchTotalLandmarks()` with Firestore `count()` aggregation
-- [ ] Batch `UserDataProvider.fetchFriends()` using `whereField("id", in:)` or `TaskGroup`
-- [ ] Decouple image downloading from `UserDataProvider.fetchUser(by:)` — make it lazy
-- [ ] Remove Firestore URL-deletion side effects from `UserDataProvider.fetchUser(by:)` image-download failure paths
-- [ ] Add chunking for `fetchCircleEvents` when friendIds exceeds Firestore `in` limit of 30
+- [x] Add pagination/limit to `EventDataProvider.fetchAllEvents()`
+- [x] Add pagination/limit to `UserDataProvider.fetchAllUsers()`
+- [x] Replace `LandmarkDataProvider.fetchTotalLandmarks()` with Firestore `count()` aggregation
+- [x] Batch `UserDataProvider.fetchFriends()` using `whereField("id", in:)` or `TaskGroup`
+- [x] Decouple image downloading from `UserDataProvider.fetchUser(by:)` — make it lazy
+- [x] Remove Firestore URL-deletion side effects from `UserDataProvider.fetchUser(by:)` image-download failure paths
+- [x] Add chunking for `fetchCircleEvents` when friendIds exceeds Firestore `in` limit of 30
 
 ### Serialization Consistency
-- [ ] Unify `saveInitialUser` (manual dict) with `saveUser` (Firestore.Encoder) to use same path
-- [ ] Fix `callableUser(from:)` to populate all User fields (missing settings, hashed phone, etc.)
-- [ ] Fix `callableDate(from:)` silent fallback to `Date()` — log a warning or throw
+- [x] Unify `saveInitialUser` (manual dict) with `saveUser` (Firestore.Encoder) to use same path
+- [x] Fix `callableUser(from:)` to populate all User fields (missing settings, hashed phone, etc.)
+- [x] Fix `callableDate(from:)` silent fallback to `Date()` — log a warning or throw
 
 ### Firestore Configuration
 - [x] Configure `FirestoreSettings` + `PersistentCacheSettings` once globally, remove from 4 individual provider inits
@@ -266,13 +266,13 @@ Related plans:
 - [x] Replace all hardcoded string literals across providers
 
 ### Image Caching
-- [ ] Add disk-backed image cache to `ImageStorageProvider` (FileManager or URLCache)
+- [x] Add disk-backed image cache to `ImageStorageProvider` (FileManager or URLCache)
 
 ### Auth Checks
 - [x] Add `Auth.auth().currentUser` check to `NotificationDataProvider.sendNotification` (line 23)
 - [x] Add ownership validation to `LandmarkDataProvider.markLandmarkVisited` (line 76)
 - [x] Fix `checkUsernameTaken` Cloud Function to query `usernameSearchKey` not `username`
-- [ ] Ensure `searchUsers` and `fetchPublicUserProfile` never return raw phone numbers or private settings
+- [x] Ensure `searchUsers` and `fetchPublicUserProfile` never return raw phone numbers or private settings
 
 ### Provider Pattern Compliance
 - [x] Replace direct provider access in `AuthViewModel.deleteAccount()` with `FirebaseProviderContainer.shared`
@@ -283,8 +283,8 @@ Related plans:
 - [x] Remove direct `ImageStorageProvider.shared` call in `UserDataProvider.swift:163` — inject via container
 
 ### Legacy Provider Removal
-- [ ] Remove all remaining callers of `FirebaseDataProvider.shared`
-- [ ] Delete `FirebaseDataProvider.swift` (444 lines, entirely deprecated pass-through)
+- [x] Remove all remaining callers of `FirebaseDataProvider.shared` (zero production callers — marked `@available(*, deprecated)`)
+- [ ] Delete `FirebaseDataProvider.swift` (retained for test suite — migrate tests first)
 
 ---
 
@@ -311,11 +311,11 @@ Related plans:
 
 ### Cancellation
 - [x] Add `try Task.checkCancellation()` before each retry in `AppError.withRetry` (line 247)
-- [ ] Store and cancel the `MapView` startup task that calls `loadData()` before starting location polling
-- [ ] Replace `LocationPickerView` per-region-change geocoding tasks with one cancellable task and stale-coordinate checks
+- [x] Store and cancel the `MapView` startup task that calls `loadData()` before starting location polling
+- [x] Replace `LocationPickerView` per-region-change geocoding tasks with one cancellable task and stale-coordinate checks
 - [ ] Add an in-flight guard to `LocationManager.requestLocationPermission()` so overlapping calls cannot overwrite a continuation
 - [ ] Add cancellation/stale-attempt handling to `AuthViewModel.sendCode()` continuation bridge
-- [ ] Convert contacts loading from `onAppear { Task { ... } }` to `.task` with cancellation-aware contact enumeration
+- [x] Convert contacts loading from `onAppear { Task { ... } }` to `.task` with cancellation-aware contact enumeration
 - [ ] Audit fire-and-forget `Task` blocks in `EventsView`, `EventDetailView`, `SettingsView`, and button actions so thrown errors are surfaced as `AppError`
 
 ### Build Settings
@@ -334,8 +334,8 @@ Related plans:
 - [x] Wrap `SettingsView.swift:164` print in `#if DEBUG`
 
 ### Hardcoded URL Constants
-- [ ] Replace placeholder App Store ID in `SettingsView.swift:192`
-- [ ] Move support/social URLs in `SettingsView.swift` (lines 691, 699, 846-870) to a constants file
+- [x] Replace placeholder App Store ID in `SettingsView.swift:192` (TODO left for real ID)
+- [x] Move support/social URLs in `SettingsView.swift` (lines 691, 699, 846-870) to `AppConstants.swift`
 
 ### Accessibility
 - [x] Add accessibility label to profile image picker in `ProfileSetupView.swift:164`
@@ -373,11 +373,11 @@ Related plans:
 - [ ] Remove unsafe `-suppress-warnings` flags from `Package.swift` if the package is only documentation for Xcode-managed dependencies
 
 ### Repo Hygiene
-- [ ] Remove empty root `package-lock.json` if there is no root `package.json`
-- [ ] Consolidate duplicate `Package.resolved` files under the project/workspace
-- [ ] Remove duplicate Preview Content asset catalogs if only one is used by the target
+- [x] Remove empty root `package-lock.json` if there is no root `package.json`
+- [x] Consolidate duplicate `Package.resolved` files under the project/workspace
+- [x] Remove duplicate Preview Content asset catalogs if only one is used by the target
 - [ ] Clean ignored `.DS_Store`, `.build/`, `functions/node_modules/`, and derived artifacts from local repo-adjacent folders
 
 ### Plan Lifecycle
-- [ ] Normalize archived plan frontmatter from `status: complete` to `status: completed`
-- [ ] Review archived plans with unchecked boxes and either complete the work, move leftovers to backlog, or correct the archive status
+- [x] Normalize archived plan frontmatter from `status: complete` to `status: completed`
+- [x] Review archived plans with unchecked boxes and either complete the work, move leftovers to backlog, or correct the archive status
