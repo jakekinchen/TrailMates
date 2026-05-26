@@ -64,7 +64,8 @@ struct FloatingLabelTextField<Field: Hashable>: View {
     // MARK: - Computed Colors
     private var foregroundColor: Color {
         switch colorStyle {
-        case .standard, .outline, .inverted: AppColors.pine
+        case .standard, .outline: AppColors.pine
+        case .inverted: AppColors.alwaysPine
         case .dark: AppColors.alwaysBeige
         }
     }
@@ -88,7 +89,8 @@ struct FloatingLabelTextField<Field: Hashable>: View {
 
     private var labelColor: Color {
         switch colorStyle {
-        case .standard, .outline, .inverted: AppColors.pine
+        case .standard, .outline: AppColors.pine
+        case .inverted: AppColors.alwaysPine
         case .dark: AppColors.alwaysBeige
         }
     }
@@ -97,8 +99,8 @@ struct FloatingLabelTextField<Field: Hashable>: View {
     var body: some View {
         ZStack(alignment: .leading) {
             backgroundShape
-            floatingLabel
             inputField
+            floatingLabel
         }
         .frame(height: 56)
         .onChange(of: text) { oldValue, newValue in

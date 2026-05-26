@@ -141,12 +141,12 @@ struct FriendRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(friend.firstName) \(friend.lastName)")
                     .font(AppTypography.headingSecondary)
-                    .foregroundColor(AppColors.pine)
+                    .foregroundColor(AppColors.alwaysPine)
                     .lineLimit(1)
 
                 Text("@\(friend.username)")
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(AppColors.pine.opacity(0.7))
+                    .foregroundColor(AppColors.alwaysPine.opacity(0.7))
                     .lineLimit(1)
             }
             
@@ -171,7 +171,7 @@ struct FriendRow: View {
         .padding(.horizontal, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(AppColors.alwaysBeige.opacity(0.72))
+                .fill(AppColors.alwaysBeige)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -211,11 +211,16 @@ struct SearchBar: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(AppColors.pine.opacity(0.7))
+                .foregroundColor(AppColors.alwaysPine.opacity(0.7))
             
-            TextField("Search friends...", text: $text)
+            TextField(
+                "",
+                text: $text,
+                prompt: Text("Search friends...")
+                    .foregroundColor(AppColors.alwaysPine.opacity(0.6))
+            )
                 .focused($isFocused)
-                .foregroundColor(AppColors.pine)
+                .foregroundColor(AppColors.alwaysPine)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
             
@@ -224,7 +229,7 @@ struct SearchBar: View {
                     text = ""
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(AppColors.pine.opacity(0.7))
+                        .foregroundColor(AppColors.alwaysPine.opacity(0.7))
                 }
             }
         }
@@ -232,7 +237,7 @@ struct SearchBar: View {
         .padding(.horizontal, 14)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(AppColors.alwaysBeige.opacity(0.76))
+                .fill(AppColors.alwaysBeige)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
