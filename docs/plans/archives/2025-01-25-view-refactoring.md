@@ -2,7 +2,7 @@
 title: SwiftUI View Refactoring
 created: 2025-01-25
 priority: urgent
-status: complete
+status: completed
 tags: [swiftui, refactoring, views]
 skill: swiftui-view-refactor
 ---

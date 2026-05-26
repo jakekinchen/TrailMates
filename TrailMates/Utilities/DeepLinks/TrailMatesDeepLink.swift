@@ -101,7 +101,7 @@ final class DeepLinkRouter: ObservableObject {
             do {
                 user = try await userManager.fetchPublicUserProfile(userId: profileUserId)
             } catch {
-                let appError = AppError.from(error)
+                let appError = AppError.classify(error)
                 errorMessage = appError.errorDescription ?? "That TrailMates profile could not be found."
                 pendingProfileUserId = nil
                 return

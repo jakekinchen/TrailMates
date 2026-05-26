@@ -16,16 +16,16 @@ struct ProfileView: View {
                             Text("Edit Profile")
                                 .font(.system(.body, design: .rounded))
                                 .fontWeight(.medium)
-                                .foregroundColor(Color("beige"))
+                                .foregroundColor(AppColors.beige)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
-                                .background(Color("pine"))
+                                .background(AppColors.pine)
                                 .cornerRadius(25)
                         }
                     ))
                 } else {
-                    ProgressView()
-                        .frame(width: 120, height: 120)
+                    LoadingView()
+                        .frame(height: 120)
                 }
 
                 // Stats Section - uses .equatable() to prevent unnecessary re-renders
@@ -65,7 +65,7 @@ struct ProfileView: View {
         }
         .task {
             // Load cached stats immediately if available
-            if let cachedStats = loadCachedStats() {
+            if let cachedStats = userManager.loadCachedStats() {
                 userStats = cachedStats
             }
             
@@ -89,30 +89,16 @@ struct ProfileView: View {
     private func refreshProfileData() async {
         isLoading = true
         defer { isLoading = false }
-        
+
         // Refresh user data in background
         await userManager.refreshUserInBackground()
-        
+
         // Refresh stats
         if let newStats = await userManager.getUserStats() {
             userStats = newStats
             // Cache the new stats
-            cacheStats(newStats)
+            userManager.cacheStats(newStats)
         }
-    }
-    
-    private func cacheStats(_ stats: UserStats) {
-        if let encoded = try? JSONEncoder().encode(stats) {
-            UserDefaults.standard.set(encoded, forKey: "cachedUserStats")
-        }
-    }
-    
-    private func loadCachedStats() -> UserStats? {
-        guard let data = UserDefaults.standard.data(forKey: "cachedUserStats"),
-              let stats = try? JSONDecoder().decode(UserStats.self, from: data) else {
-            return nil
-        }
-        return stats
     }
 }
 // Keeping the existing supporting views and models
@@ -127,23 +113,23 @@ struct StatCard: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 24))
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
 
             VStack(spacing: 4) {
                 Text(title)
                     .font(.subheadline)
-                    .foregroundColor(Color("pine").opacity(0.8))
+                    .foregroundColor(AppColors.pine.opacity(0.8))
 
                 Text(value)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(10)
         .background(
-            colorScheme == .dark ? Color.white.opacity(0.2) : Color("sage").opacity(0.2)
+            colorScheme == .dark ? Color.white.opacity(0.2) : AppColors.sage.opacity(0.2)
         )
         .cornerRadius(16)
         .accessibilityElement(children: .combine)

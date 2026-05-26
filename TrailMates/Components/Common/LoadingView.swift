@@ -51,12 +51,12 @@ struct LoadingView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(style.scale)
-                .tint(Color("pine"))
+                .tint(AppColors.pine)
 
             if let message = message {
                 Text(message)
                     .font(style.font)
-                    .foregroundColor(Color("pine").opacity(0.8))
+                    .foregroundColor(AppColors.pine.opacity(0.8))
                     .multilineTextAlignment(.center)
             }
         }
@@ -93,7 +93,7 @@ struct LoadingOverlay: View {
             .padding(32)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color("pine").opacity(0.9))
+                    .fill(AppColors.pine.opacity(0.9))
             )
         }
     }
@@ -118,7 +118,7 @@ struct LoadingOverlay: View {
 
 #Preview("Loading Overlay") {
     ZStack {
-        Color("beige").ignoresSafeArea()
+        AppColors.beige.ignoresSafeArea()
         Text("Background Content")
         LoadingOverlay(message: "Saving changes...")
     }

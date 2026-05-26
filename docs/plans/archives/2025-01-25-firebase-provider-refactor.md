@@ -2,7 +2,7 @@
 title: FirebaseDataProvider Refactoring
 created: 2025-01-25
 priority: backlog
-status: complete
+status: completed
 tags: [firebase, refactoring, architecture]
 skill: swiftui-view-refactor
 ---

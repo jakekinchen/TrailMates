@@ -36,7 +36,7 @@ struct SettingsView: View {
                     logoutSection
                 }
                 .listStyle(InsetGroupedListStyle())
-                .background(Color("beige"))
+                .background(AppColors.beige)
                 .scrollContentBackground(.hidden)
                 .toolbar { toolbarContent }
                 .navigationBarTitleDisplayMode(.inline)
@@ -67,7 +67,7 @@ struct SettingsView: View {
                     Text(deleteAccountError ?? "An unknown error occurred")
                 }
             }
-            .tint(Color("pine"))
+            .tint(AppColors.pine)
             .toolbarBackground(Color("altBeige"), for: .navigationBar)
         }
     }
@@ -79,7 +79,7 @@ private extension SettingsView {
         ZStack {
             (colorScheme == .dark ? Color.black : Color.white)
                 .ignoresSafeArea()
-            Color("beige")
+            AppColors.beige
                 .opacity(0.5)
                 .ignoresSafeArea()
         }
@@ -100,7 +100,7 @@ private extension SettingsView {
             }
         }
         .listRowBackground(Color("altBeige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
     }
 
     var privacyNotificationsSection: some View {
@@ -124,7 +124,7 @@ private extension SettingsView {
             }
         }
         .listRowBackground(Color("altBeige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
     }
 
     var appPermissionsSection: some View {
@@ -139,7 +139,7 @@ private extension SettingsView {
             }
         }
         .listRowBackground(Color("altBeige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
     }
 
     var appearanceSection: some View {
@@ -157,7 +157,7 @@ private extension SettingsView {
             }
         }
         .listRowBackground(Color("altBeige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
     }
 
     var resourcesSection: some View {
@@ -180,8 +180,9 @@ private extension SettingsView {
                 )
             }
 
+            // TODO: Replace placeholder App Store ID with real ID once available
             Button(action: {
-                if let url = URL(string: "itms-apps://itunes.apple.com/app/id123456789") {
+                if let url = URL(string: AppConstants.appStoreURL) {
                     UIApplication.shared.open(url)
                 }
             }) {
@@ -194,7 +195,7 @@ private extension SettingsView {
             }
         }
         .listRowBackground(Color("altBeige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
     }
 
     var accountSection: some View {
@@ -229,13 +230,13 @@ private extension SettingsView {
                 HStack {
                     Spacer()
                     Text("Log Out")
-                        .foregroundColor(Color("pine"))
+                        .foregroundColor(AppColors.pine)
                     Spacer()
                 }
             }
         }
         .listRowBackground(Color("altBeige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
     }
 }
 
@@ -248,12 +249,12 @@ private extension SettingsView {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
             }
         }
         ToolbarItem(placement: .principal) {
             Text("Settings")
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .font(.headline)
         }
     }

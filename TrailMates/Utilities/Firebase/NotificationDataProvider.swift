@@ -43,7 +43,7 @@ class NotificationDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             notificationRef.setValue(notificationData) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     continuation.resume()
                 }
@@ -125,7 +125,7 @@ class NotificationDataProvider {
 
             notificationsRef.getData { error, snapshot in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                     return
                 }
 
@@ -176,7 +176,7 @@ class NotificationDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             notificationRef.updateChildValues(["read": true]) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     continuation.resume()
                 }
@@ -192,7 +192,7 @@ class NotificationDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             notificationRef.removeValue { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     continuation.resume()
                 }
@@ -207,7 +207,7 @@ class NotificationDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             notificationsRef.removeValue { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     #if DEBUG
                     print("NotificationDataProvider: Deleted all notifications for user \(userId)")

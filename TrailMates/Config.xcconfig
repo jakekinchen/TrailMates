@@ -1,7 +1,0 @@
-// Configuration settings for TrailMates
-OTHER_SWIFT_FLAGS = $(inherited) -suppress-warnings
-GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO
-
-// Build settings
-SWIFT_TREAT_WARNINGS_AS_ERRORS = NO
-SWIFT_SUPPRESS_WARNINGS = YES

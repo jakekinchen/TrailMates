@@ -1,6 +1,8 @@
 # Signing Credentials
 
-This folder contains Apple code signing credentials for App Store distribution.
+This folder contains non-private Apple code signing templates and metadata for
+App Store distribution. Private key material and `.p12` files must stay outside
+the repo checkout.
 
 ## Files
 
@@ -20,6 +22,17 @@ This folder contains Apple code signing credentials for App Store distribution.
 - **Team ID**: BN58T9KR6C
 - **Expires**: January 29, 2027
 - **Bundle ID**: com.bridges.trailmatesatx
+
+## Local Private Material
+
+Private signing files were moved out of the checkout to:
+
+```bash
+../TrailMates-local-artifacts/signing/
+```
+
+Import the `.p12` from that local artifact folder when archiving locally. Do not
+copy private keys or `.p12` files back into this repo.
 
 ## Regenerating Credentials
 

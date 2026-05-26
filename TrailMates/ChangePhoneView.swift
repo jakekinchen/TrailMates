@@ -52,27 +52,18 @@ struct ChangePhoneView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Phone Number")
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .font(.headline)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .tint(Color("pine"))
+        .tint(AppColors.pine)
         .alert("Phone Number Update", isPresented: $showAlert) {
             Button("OK") {
-                if authViewModel.isAuthenticated {
-                    dismiss()
-                }
+                dismiss()
             }
         } message: {
             Text(alertMessage)
-        }
-        .onChange(of: authViewModel.isAuthenticated) { _, newValue in
-            if newValue {
-                Task {
-                    try await updateUserPhoneNumber()
-                }
-            }
         }
         .onTapGesture {
             focusedField = nil
@@ -87,8 +78,8 @@ private extension ChangePhoneView {
     func currentPhoneSection(currentPhone: String) -> some View {
         VStack(spacing: 20) {
             Text("You can update your number and we'll send a verification to this number.")
-                .font(.system(size: 14))
-                .foregroundColor(Color("pine"))
+                .font(AppTypography.bodySmall)
+                .foregroundColor(AppColors.pine)
                 .multilineTextAlignment(.center)
                 .padding(.top)
 
@@ -122,8 +113,8 @@ private extension ChangePhoneView {
     var newPhoneSection: some View {
         VStack(spacing: 20) {
             Text("Enter your new phone number and we'll send a verification.")
-                .font(.system(size: 14))
-                .foregroundColor(Color("pine"))
+                .font(AppTypography.bodySmall)
+                .foregroundColor(AppColors.pine)
                 .multilineTextAlignment(.center)
                 .padding(.top)
 
@@ -153,8 +144,8 @@ private extension ChangePhoneView {
         VStack(spacing: 20) {
             HStack {
                 Text("Verification Code")
-                    .foregroundColor(Color("pine"))
-                    .font(.system(size: 16))
+                    .foregroundColor(AppColors.pine)
+                    .font(AppTypography.bodyPrimary)
                     .padding(.bottom, 2)
                 Spacer()
             }
@@ -181,70 +172,35 @@ private extension ChangePhoneView {
 
     @ViewBuilder
     func nextButtonWithVerification(currentPhone: String) -> some View {
-        Button(action: {
+        PrimaryButton("Next", isDisabled: newPhoneNumber.filter(\.isNumber).isEmpty) {
             Task {
-                let rawNumber = newPhoneNumber.filter { $0.isNumber }
-                if currentPhone.filter(\.isNumber) == rawNumber {
-                    authViewModel.showError = true
-                    authViewModel.errorMessage = "Please enter a different phone number."
-                    return
-                }
-                authViewModel.phoneNumber = rawNumber
-                if await authViewModel.sendCode() {
-                    withAnimation {
-                        isVerificationSent = true
-                    }
-                }
+                await sendPhoneChangeCode(currentPhone: currentPhone)
             }
-        }) {
-            Text("Next")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(Color("alwaysBeige"))
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color("pumpkin"))
-                .cornerRadius(25)
         }
-        .disabled(newPhoneNumber.filter(\.isNumber).isEmpty)
     }
 
     @ViewBuilder
     var simpleNextButton: some View {
-        Button(action: {
+        PrimaryButton("Next", isDisabled: newPhoneNumber.filter(\.isNumber).isEmpty) {
             Task {
-                let rawNumber = newPhoneNumber.filter { $0.isNumber }
-                authViewModel.phoneNumber = rawNumber
-                if await authViewModel.sendCode() {
-                    withAnimation {
-                        isVerificationSent = true
-                    }
-                }
+                await sendPhoneChangeCode(currentPhone: nil)
             }
-        }) {
-            Text("Next")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(Color("beige"))
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color("pumpkin"))
-                .cornerRadius(25)
         }
-        .disabled(newPhoneNumber.filter(\.isNumber).isEmpty)
     }
 
     @ViewBuilder
     var verifyButton: some View {
         Button(action: {
             Task {
-                await authViewModel.verifyCode()
+                await verifyAndUpdatePhoneNumber()
             }
         }) {
             Text("Verify and Update")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(Color("beige"))
+                .font(AppTypography.buttonDefault)
+                .foregroundColor(AppColors.beige)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color("pine"))
+                .background(AppColors.pine)
                 .cornerRadius(10)
         }
         .disabled(verificationCode.isEmpty)
@@ -258,11 +214,52 @@ private extension ChangePhoneView {
         newPhoneNumber = formatted
     }
 
-    func updateUserPhoneNumber() async throws {
-        let rawNumber = newPhoneNumber.filter(\.isNumber)
-        try await userManager.updatePhoneNumber(rawNumber)
-        showAlert = true
-        alertMessage = "Phone number successfully updated"
+    func sendPhoneChangeCode(currentPhone: String?) async {
+        do {
+            let storagePhoneNumber = try storagePhoneNumber(from: newPhoneNumber)
+            if let currentPhone,
+               PhoneNumberService.shared.format(currentPhone, for: .storage) == storagePhoneNumber {
+                throw AppError.invalidInput("Please enter a different phone number.")
+            }
+
+            if await authViewModel.sendPhoneChangeCode(to: storagePhoneNumber) {
+                withAnimation {
+                    isVerificationSent = true
+                }
+                focusedField = .verification
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            present(error)
+        }
+    }
+
+    func verifyAndUpdatePhoneNumber() async {
+        do {
+            authViewModel.verificationCode = verificationCode
+            let verifiedPhoneNumber = try await authViewModel.verifyPhoneChangeCode()
+            try await userManager.updatePhoneNumber(verifiedPhoneNumber)
+            showAlert = true
+            alertMessage = "Phone number successfully updated"
+        } catch is CancellationError {
+            return
+        } catch {
+            present(error)
+        }
+    }
+
+    func storagePhoneNumber(from number: String) throws -> String {
+        guard let storageNumber = PhoneNumberService.shared.format(number, for: .storage) else {
+            throw AppError.invalidInput("Invalid phone number format")
+        }
+        return storageNumber
+    }
+
+    func present(_ error: Error) {
+        let appError = AppError.classify(error)
+        authViewModel.showError = true
+        authViewModel.errorMessage = appError.errorDescription ?? "Unable to update phone number."
     }
 
     static func formatPhoneNumber(_ number: String) -> String {
@@ -310,7 +307,7 @@ private struct PhoneVerificationStatusView: View {
                     .foregroundColor(.green)
                 Text("Current number")
                     .foregroundColor(.green)
-                    .font(.system(size: 14))
+                    .font(AppTypography.bodySmall)
                 Spacer()
             }
         } else {
@@ -323,10 +320,10 @@ private struct InstructionsView: View {
     var body: some View {
         HStack {
             Image(systemName: "envelope.badge.fill")
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
             Text("A verification code will be sent to the above number.")
-                .font(.system(size: 14))
-                .foregroundColor(Color("pine"))
+                .font(AppTypography.bodySmall)
+                .foregroundColor(AppColors.pine)
                 .multilineTextAlignment(.leading)
             Spacer()
         }
@@ -338,17 +335,17 @@ private struct PhoneErrorView: View {
 
     var body: some View {
         Text(message)
-            .font(.system(size: 14, weight: .medium))
-            .foregroundColor(Color("beige"))
+            .font(AppTypography.labelPrimary)
+            .foregroundColor(AppColors.beige)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color("pine"))
+                    .fill(AppColors.pine)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color("pumpkin"), lineWidth: 1)
+                            .stroke(AppColors.pumpkin, lineWidth: 1)
                     )
             )
             .padding(.horizontal, 20)

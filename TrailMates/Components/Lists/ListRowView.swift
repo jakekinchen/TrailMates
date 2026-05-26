@@ -52,7 +52,7 @@ struct ListRowView<LeadingContent: View, TrailingContent: View>: View {
 
         var backgroundColor: Color {
             switch self {
-            case .default: return Color("sage").opacity(0.1)
+            case .default: return AppColors.sage.opacity(0.1)
             case .card: return Color.white.opacity(0.8)
             case .plain: return Color.clear
             }
@@ -167,7 +167,7 @@ struct ListRowView<LeadingContent: View, TrailingContent: View>: View {
             } else if let icon = leadingIcon {
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .frame(width: 32)
             }
 
@@ -176,12 +176,12 @@ struct ListRowView<LeadingContent: View, TrailingContent: View>: View {
                 Text(title)
                     .font(.body)
                     .fontWeight(.medium)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundColor(Color("pine").opacity(0.7))
+                        .foregroundColor(AppColors.pine.opacity(0.7))
                 }
             }
 
@@ -195,7 +195,7 @@ struct ListRowView<LeadingContent: View, TrailingContent: View>: View {
             if showChevron {
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(Color("pine").opacity(0.4))
+                    .foregroundColor(AppColors.pine.opacity(0.4))
             }
         }
         .padding(.horizontal, style.padding)
@@ -276,7 +276,7 @@ extension View {
         ListRowView(title: "Jane Smith", subtitle: "@janesmith")
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("With Icons") {
@@ -286,7 +286,7 @@ extension View {
         ListRowView(title: "Privacy", leadingIcon: "lock", showChevron: true)
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Card Style") {
@@ -305,7 +305,7 @@ extension View {
         )
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("With Custom Leading") {
@@ -327,7 +327,7 @@ extension View {
         }
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("With Custom Trailing") {
@@ -351,18 +351,18 @@ extension View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color("pumpkin"))
+                        .background(AppColors.pumpkin)
                         .cornerRadius(8)
 
                     Button("Decline") {}
                         .font(.caption)
-                        .foregroundColor(Color("pine"))
+                        .foregroundColor(AppColors.pine)
                 }
             }
         )
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Plain Style") {
@@ -374,5 +374,5 @@ extension View {
         ListRowView(title: "Help", leadingIcon: "questionmark.circle", showChevron: true, style: .plain)
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }

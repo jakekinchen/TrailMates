@@ -6,6 +6,48 @@ const crypto = require("crypto");
 
 admin.initializeApp();
 
+const LOOKUP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const LOOKUP_RATE_LIMIT_MAX_REQUESTS = 30;
+const lookupRateLimitBuckets = new Map();
+
+/**
+ * Applies a lightweight per-instance rate limit to authenticated lookup
+ * callables. Cloud Functions maxInstances keeps the aggregate bound small;
+ * App Check enforcement handles automated abuse across instances.
+ * @param {object} request Callable request.
+ * @param {string} functionName Function name for bucket separation.
+ */
+function enforceLookupRateLimit(request, functionName) {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) {
+    throw new HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated.",
+    );
+  }
+
+  const now = Date.now();
+  const bucket = Math.floor(now / LOOKUP_RATE_LIMIT_WINDOW_MS);
+  const key = `${functionName}:${uid}:${bucket}`;
+  const currentCount = lookupRateLimitBuckets.get(key) || 0;
+
+  if (currentCount >= LOOKUP_RATE_LIMIT_MAX_REQUESTS) {
+    throw new HttpsError(
+        "resource-exhausted",
+        "Too many lookup requests. Please try again shortly.",
+    );
+  }
+
+  lookupRateLimitBuckets.set(key, currentCount + 1);
+
+  // Keep memory bounded in warm function instances.
+  for (const bucketKey of lookupRateLimitBuckets.keys()) {
+    if (!bucketKey.endsWith(`:${bucket}`)) {
+      lookupRateLimitBuckets.delete(bucketKey);
+    }
+  }
+}
+
 /**
  * Hashes an E.164 phone number using SHA-256.
  * @param {string} phoneNumberE164 E.164 formatted phone number.
@@ -94,7 +136,7 @@ function normalizeUsername(username) {
 
 // Cloud Function: findUsersByPhoneNumbers
 exports.findUsersByPhoneNumbers = onCall(
-    {region: "us-central1", maxInstances: 3},
+    {region: "us-central1", maxInstances: 3, enforceAppCheck: true},
     async (request) => {
       // 1. Verify authentication
       if (!request.auth) {
@@ -104,6 +146,7 @@ exports.findUsersByPhoneNumbers = onCall(
         );
       }
       console.log(`🔐 Authenticated user: ${request.auth.uid}`);
+      enforceLookupRateLimit(request, "findUsersByPhoneNumbers");
 
       // 2. Validate input
       const {hashedPhoneNumbers} = request.data;
@@ -160,7 +203,7 @@ exports.findUsersByPhoneNumbers = onCall(
 
 // Cloud Function: searchUsers
 exports.searchUsers = onCall(
-    {region: "us-central1", maxInstances: 3},
+    {region: "us-central1", maxInstances: 3, enforceAppCheck: true},
     async (request) => {
       if (!request.auth) {
         throw new HttpsError(
@@ -168,6 +211,7 @@ exports.searchUsers = onCall(
             "The function must be called while authenticated.",
         );
       }
+      enforceLookupRateLimit(request, "searchUsers");
 
       const {username, hashedPhoneNumber, userId} = request.data || {};
       const usersRef = admin.firestore().collection("users");
@@ -289,11 +333,12 @@ exports.checkUsernameTaken = onCall(
 
 // Cloud Function: checkUserExists
 exports.checkUserExists = onCall(
-    {region: "us-central1", maxInstances: 3},
+    {region: "us-central1", maxInstances: 3, enforceAppCheck: true},
     async (request) => {
       if (!request.auth) {
         throw new HttpsError("unauthenticated", "Authentication required.");
       }
+      enforceLookupRateLimit(request, "checkUserExists");
 
       const {hashedPhoneNumber, phoneNumberE164} = request.data;
       if (!hashedPhoneNumber && !phoneNumberE164) {

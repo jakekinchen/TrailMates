@@ -73,9 +73,7 @@ struct LocationPickerView: View {
                         onRegionChanged: { region in
                             viewModel.handleMapRegionChange(region)
                             if viewModel.showCustomPin {
-                                Task {
-                                    await viewModel.updateCustomLocation(for: region.center)
-                                }
+                                viewModel.scheduleCustomLocationUpdate(for: region.center)
                             }
                         }
                     )
@@ -97,12 +95,12 @@ struct LocationPickerView: View {
                     } label: {
                         HStack {
                             Text(viewModel.menuLabel)
-                                .foregroundColor(Color("pine"))
+                                .foregroundColor(AppColors.pine)
                             Image(systemName: "chevron.down")
-                                .foregroundColor(Color("pine"))
+                                .foregroundColor(AppColors.pine)
                         }
                         .padding()
-                        .background(Color("beige"))
+                        .background(AppColors.beige)
                         .cornerRadius(10)
                     }
                     .padding()
@@ -117,7 +115,7 @@ struct LocationPickerView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -130,7 +128,7 @@ struct LocationPickerView: View {
                             }
                         }
                     }
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .disabled(viewModel.showCustomPin ? viewModel.currentCustomLocation == nil : viewModel.selectedLocation == nil)
                 }
             }

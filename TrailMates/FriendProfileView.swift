@@ -44,16 +44,16 @@ struct FriendProfileView: View {
                     HStack(spacing: 8) {
                         if isFriend {
                             Image(systemName: "checkmark")
-                                .foregroundColor(Color("pine").opacity(0.6))
+                                .foregroundColor(AppColors.pine.opacity(0.6))
                         }
                         Text(isFriend ? "Friends" : "Add Friend")
                             .font(.system(.body, design: .rounded))
                             .fontWeight(.medium)
                     }
-                    .foregroundColor(isFriend ? Color("pine").opacity(0.6) : Color("beige"))
+                    .foregroundColor(isFriend ? AppColors.pine.opacity(0.6) : AppColors.beige)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(isFriend ? Color("sage").opacity(0.3) : Color("pine"))
+                    .background(isFriend ? AppColors.sage.opacity(0.3) : AppColors.pine)
                     .cornerRadius(25)
                 }
                 .disabled(isProcessingFriendAction)
@@ -69,8 +69,7 @@ struct FriendProfileView: View {
             if let stats = userStats {
                 StatsSection(stats: stats)
             } else if isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
+                LoadingView()
                     .padding()
             }
         }

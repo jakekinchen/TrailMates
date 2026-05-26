@@ -19,10 +19,10 @@ Related plans:
 ## P0 — Broken / Security / Data Loss
 
 ### Auth / Phone Account Correctness
-- [ ] Replace `ChangePhoneView` phone-change flow so it reauthenticates and updates the current Firebase Auth user's phone number instead of reusing login/signup `AuthViewModel.verifyCode()`
-- [ ] Ensure `ChangePhoneView` cannot sign into or switch to another existing account while changing the current user's phone number
-- [ ] Normalize phone numbers to E.164 with `PhoneNumberService.shared.format(_, for: .storage)` before `UserManager.createNewUser`, `UserManager.login`, and `UserManager.updatePhoneNumber`
-- [ ] Ensure `UserDataProvider.saveInitialUser` and `saveUser` only persist E.164 `phoneNumber` values
+- [x] Replace `ChangePhoneView` phone-change flow so it reauthenticates and updates the current Firebase Auth user's phone number instead of reusing login/signup `AuthViewModel.verifyCode()`
+- [x] Ensure `ChangePhoneView` cannot sign into or switch to another existing account while changing the current user's phone number
+- [x] Normalize phone numbers to E.164 with `PhoneNumberService.shared.format(_, for: .storage)` before `UserManager.createNewUser`, `UserManager.login`, and `UserManager.updatePhoneNumber`
+- [x] Ensure `UserDataProvider.saveInitialUser` and `saveUser` only persist E.164 `phoneNumber` values
 - [ ] Add regression tests for signup, login, and change-phone flows using differently formatted versions of the same phone number
 
 ### Broken Queries (EventDataProvider field name mismatches)
@@ -31,18 +31,18 @@ Related plans:
 - [x] Fix `EventDataProvider.swift:177-178` — change `"startTime"` to `"dateTime"` (or add CodingKeys to Event)
 
 ### Atomic Writes / Lost Update Prevention
-- [ ] Replace event join/leave read-modify-write in `EventViewModel` + `EventDataProvider.updateEventStatus` with Firestore `FieldValue.arrayUnion` / `arrayRemove` or a transaction
-- [ ] Add provider APIs for atomic event attendance updates instead of overwriting full `Event` documents
-- [ ] Move `UserManager.attendEvent` / `leaveEvent` to atomic user array updates instead of full `saveProfile(updatedUser:)`
-- [ ] Move `UserManager.toggleDoNotDisturb`, privacy settings, notification settings, and phone updates to partial `updateUserFields` patches
+- [x] Replace event join/leave read-modify-write in `EventViewModel` + `EventDataProvider.updateEventStatus` with Firestore `FieldValue.arrayUnion` / `arrayRemove` or a transaction
+- [x] Add provider APIs for atomic event attendance updates instead of overwriting full `Event` documents
+- [x] Move `UserManager.attendEvent` / `leaveEvent` to atomic user array updates instead of full `saveProfile(updatedUser:)`
+- [x] Move `UserManager.toggleDoNotDisturb`, privacy settings, notification settings, and phone updates to partial `updateUserFields` patches
 - [ ] Add tests proving concurrent joins/leaves do not drop existing attendee IDs
 
 ### Firestore Rules / Server Authority Compatibility
-- [ ] Move bidirectional friend accept/remove writes out of the client provider or change Firestore rules so `FriendDataProvider.addFriend/removeFriend` can update both user documents safely
+- [x] Move bidirectional friend accept/remove writes out of the client provider or change Firestore rules so `FriendDataProvider.addFriend/removeFriend` can update both user documents safely
 - [ ] Add Firebase Emulator tests for friend accept/remove against `firestore.rules`
-- [ ] Resolve denied client `/users` collection reads from `UserDataProvider.fetchAllUsers()` by removing the client query, adding a callable, or adding narrowly scoped rules
-- [ ] Resolve denied client hashed-phone queries from `UserDataProvider.fetchUser(byPhoneNumber:)` by routing through an authenticated callable or adding narrowly scoped rules
-- [ ] Add explicit Firestore rules for the `landmarks` collection used by `LandmarkDataProvider`
+- [x] Resolve denied client `/users` collection reads from `UserDataProvider.fetchAllUsers()` by removing the client query, adding a callable, or adding narrowly scoped rules
+- [x] Resolve denied client hashed-phone queries from `UserDataProvider.fetchUser(byPhoneNumber:)` by routing through an authenticated callable or adding narrowly scoped rules
+- [x] Add explicit Firestore rules for the `landmarks` collection used by `LandmarkDataProvider`
 - [ ] Add tests that distinguish permission-denied/network failures from valid empty results
 
 ### Security
@@ -50,16 +50,16 @@ Related plans:
 - [x] Wrap `LocationDataProvider.swift:88-91,94,98` debug prints in `#if DEBUG`
 - [x] Add auth check to `checkUserExists` Cloud Function (`functions/index.js:292`)
 - [x] Remove `phoneNumber` from `publicUserPayload` in `functions/index.js:68-85`
-- [ ] Rate-limit and App Check-protect user lookup callables (`checkUserExists`, `searchUsers`, `findUsersByPhoneNumbers`)
+- [x] Rate-limit and App Check-protect user lookup callables (`checkUserExists`, `searchUsers`, `findUsersByPhoneNumbers`)
 - [ ] Add a non-empty default pepper to `PhoneNumberHasher.swift:51` or require callers to pass one
-- [ ] Move user session storage from UserDefaults to Keychain (`UserManager.swift:250`)
+- [x] Move user session storage from UserDefaults to Keychain (`UserManager.swift:250`)
 
 ### Bundle / Config Hygiene
-- [ ] Move signing private key and `.p12` files out of the repo checkout entirely; keep only setup docs and templates under `signing/`
-- [ ] Move generated `build/` archives, IPAs, and export logs out of the repo checkout
-- [ ] Exclude `TrailMates/App/GoogleService-Info.plist.template` from the signed app bundle
-- [ ] Exclude `TrailMates/Models/User.swift.cursorrules` from the signed app bundle or move it out of the app source root
-- [ ] Consolidate `GOOGLE_API_KEY` configuration so it is not duplicated between the shared scheme and project build settings
+- [x] Move signing private key and `.p12` files out of the repo checkout entirely; keep only setup docs and templates under `signing/`
+- [x] Move generated `build/` archives, IPAs, and export logs out of the repo checkout
+- [x] Exclude `TrailMates/App/GoogleService-Info.plist.template` from the signed app bundle
+- [x] Confirm `TrailMates/Models/User.swift.cursorrules` is no longer present in the app source root or signed app bundle
+- [x] Consolidate `GOOGLE_API_KEY` configuration so it is not duplicated between the shared scheme and project build settings
 - [ ] Verify Firebase client keys are restricted in Google Cloud / Firebase Console before shipping
 
 ### Listener Memory Leaks
@@ -103,7 +103,7 @@ Related plans:
 - [x] Replace `ChangePhoneView.formatPhoneNumber()` (line 264) with `PhoneNumberService`
 - [x] Refactor `PhoneNumberFormatter.swift` ViewModifier to delegate to `PhoneNumberService`
 - [x] Remove `UserManager.normalizePhoneNumber()` (line 458) — callers use PhoneNumberService directly
-- [ ] Update test mocks (`MockUserManager`, `MockFirebaseDataProvider`, fixtures) to use `PhoneNumberService` instead of regex-only normalization
+- [x] Update test mocks (`MockUserManager`, `MockFirebaseDataProvider`, fixtures) to use `PhoneNumberService` instead of regex-only normalization
 
 ### Error Types → AppError
 - [x] Delete `Models/ValidationError.swift` — replace usage in `ContactsListViewModel.swift:101` with `AppError`
@@ -178,7 +178,7 @@ Related plans:
 ### Adopt Existing Reusable Components
 - [x] Replace inline pumpkin-button styling (~10 instances) with `PrimaryButton`
 - [x] Replace inline empty states in `FriendsView`, `EventsView`, `ContactsListView` with `EmptyStateView`
-- [ ] Replace inline `ProgressView()` loading patterns with `LoadingView` where appropriate
+- [x] Replace inline `ProgressView()` loading patterns with `LoadingView` where appropriate
 
 ---
 
@@ -188,11 +188,11 @@ Related plans:
 - [x] Refactor `ContentView.swift` to use `@ViewBuilder` if/else instead of `AnyView` wrapping
 
 ### User State Source of Truth
-- [ ] Decide whether `User` remains a SwiftData `@Model` or becomes a value type; do not keep SwiftData annotations if persistence remains `UserDefaults` / Firebase-only
-- [ ] Remove `Item.self` from `ModelContainer` after deleting the unused template model
-- [ ] Add a persisted user schema version and clear stale `UserDefaults` user data on decode/version mismatch
-- [ ] Ensure remote Firebase user fetch wins over stale local persisted user data immediately after login
-- [ ] Replace manual `objectWillChange.send()` around same-reference `User` mutations with explicit reassignment or value semantics
+- [x] Decide whether `User` remains a SwiftData `@Model` or becomes a value type; do not keep SwiftData annotations if persistence remains `UserDefaults` / Firebase-only
+- [x] Confirm `Item.self` is already removed from `ModelContainer` after deleting the unused template model
+- [x] Add a persisted user schema version and clear stale `UserDefaults` user data on decode/version mismatch
+- [x] Ensure remote Firebase user fetch wins over stale local persisted user data immediately after login
+- [x] Replace manual `objectWillChange.send()` around same-reference `User` mutations with explicit reassignment or value semantics
 
 ### SettingsView Decomposition
 - [x] Extract `PrivacySettingsView` to its own file
@@ -205,10 +205,10 @@ Related plans:
 ### Business Logic Out of Views
 - [x] Move `MapView.getEventGroups()` (line 140) to `EventViewModel`
 - [x] Move `MapView.getUserEvents()` (line 290) to `EventViewModel`
-- [ ] Move `ProfileSetupView.saveProfile/validateInputs/updateUserProfile` (line 288) to a `ProfileSetupViewModel`
-- [ ] Move `ProfileView.cacheStats/loadCachedStats` (line 107) to `UserManager`
-- [ ] Move `AuthView.handleLogin/handleSignup` (line 299) business logic to `AuthViewModel`
-- [ ] Move `EventDetailView` UIKit interop (lines 171-313) to a service or use `.confirmationDialog`
+- [x] Move `ProfileSetupView.saveProfile/validateInputs/updateUserProfile` (line 288) to a `ProfileSetupViewModel`
+- [x] Move `ProfileView.cacheStats/loadCachedStats` (line 107) to `UserManager`
+- [x] Move `AuthView.handleLogin/handleSignup` (line 299) business logic to `AuthViewModel`
+- [x] Move `EventDetailView` UIKit interop (lines 171-313) to `SharingService`
 
 ### NotificationsView ViewModel Extraction
 - [x] Move `NotificationsViewModel` from `NotificationsView.swift` to `ViewModels/NotificationsViewModel.swift`
@@ -228,7 +228,7 @@ Related plans:
 
 ### ViewModel Ownership Consistency
 - [x] Fix `@StateObject` wrapping of `EventViewModel.shared` singleton in `MapView.swift:11` and `HomeView.swift:6`
-- [ ] Resolve `AuthViewModel` ownership conflict — single source of truth via `@EnvironmentObject`
+- [x] Resolve `AuthViewModel` ownership conflict — single source of truth via `@EnvironmentObject`
 - [x] Remove separate `AuthViewModel()` instance creation in `ChangePhoneView.swift:24`
 
 ---
@@ -298,7 +298,7 @@ Related plans:
 - [x] Mark observer `completion`/`onChange` closures as `@Sendable` in provider protocols
 
 ### User Model Sendability
-- [ ] Add `@unchecked Sendable` to `User` class with documentation that access is confined to `@MainActor`
+- [x] Remove redundant explicit `@unchecked Sendable` from `User`; rely on SwiftData-generated conformance to avoid duplicate-conformance warnings
 - [ ] (Alternative) Evaluate converting `User` to a struct if SwiftData allows
 
 ### Redundant MainActor.run Removal
@@ -307,20 +307,20 @@ Related plans:
 - [x] Remove `await MainActor.run { }` in `AuthViewModel.deleteAccount()` (line 283)
 
 ### Task Parallelism Fix
-- [ ] Fix `ImageStorageProvider.prefetchProfileImages` — use `@Sendable` closure in `group.addTask` to avoid main-thread serialization
+- [x] Fix `ImageStorageProvider.prefetchProfileImages` — use `@Sendable` closure in `group.addTask` to avoid main-thread serialization
 
 ### Cancellation
 - [x] Add `try Task.checkCancellation()` before each retry in `AppError.withRetry` (line 247)
 - [x] Store and cancel the `MapView` startup task that calls `loadData()` before starting location polling
 - [x] Replace `LocationPickerView` per-region-change geocoding tasks with one cancellable task and stale-coordinate checks
-- [ ] Add an in-flight guard to `LocationManager.requestLocationPermission()` so overlapping calls cannot overwrite a continuation
-- [ ] Add cancellation/stale-attempt handling to `AuthViewModel.sendCode()` continuation bridge
+- [x] Add an in-flight guard to `LocationManager.requestLocationPermission()` so overlapping calls cannot overwrite a continuation
+- [x] Add cancellation/stale-attempt handling to `AuthViewModel.sendCode()` continuation bridge
 - [x] Convert contacts loading from `onAppear { Task { ... } }` to `.task` with cancellation-aware contact enumeration
-- [ ] Audit fire-and-forget `Task` blocks in `EventsView`, `EventDetailView`, `SettingsView`, and button actions so thrown errors are surfaced as `AppError`
+- [x] Audit fire-and-forget `Task` blocks in `EventsView`, `EventDetailView`, `SettingsView`, and button actions so thrown errors are surfaced as `AppError`
 
 ### Build Settings
-- [ ] Plan Swift 6 / strict concurrency migration after the app has a green baseline build and test run
-- [ ] Remove broad warning suppression from Package/build settings before enabling stricter concurrency checks
+- [x] Plan Swift 6 / strict concurrency migration after the app has a green baseline build and test run — see `2026-05-25-swift-6-strict-concurrency-migration.md`
+- [x] Remove broad warning suppression from Package/build settings before enabling stricter concurrency checks
 
 ---
 
@@ -350,7 +350,7 @@ Related plans:
 - [x] Move `NavigationBarModifier.swift` to `Components/Modifiers/`
 - [x] Move `ImageCropper.swift` to `Components/` (rename to `ImageCropperView.swift`)
 - [x] Delete or archive `User.swift.cursorrules`
-- [ ] Remove unused `auth` lazy property from `FriendDataProvider.swift:17` (if replacing with direct calls) or use it consistently
+- [x] Remove unused `auth` lazy property from `FriendDataProvider.swift:17` (if replacing with direct calls) or use it consistently
 
 ### MapCoordinator Isolation
 - [x] Add `@MainActor` annotation to `MapCoordinator` in `UnifiedMapView.swift:104`
@@ -360,24 +360,28 @@ Related plans:
 ## P8 — Tests / Build / Planning Hygiene
 
 ### Test Coverage
-- [ ] Replace placeholder default tests in `TrailMatesTests.swift` with meaningful smoke coverage
-- [ ] Add unit tests for phone normalization and hash consistency across signup, login, search, and change-phone paths
+- [x] Replace placeholder default tests in `TrailMatesTests.swift` with meaningful smoke coverage
+- [x] Add unit tests for phone normalization and hash consistency across signup, login, search, and change-phone paths
 - [ ] Add Firebase Emulator tests for callable privacy, Firestore rules, friend accept/remove, and event attendance atomic writes
 - [ ] Replace manually mutated auth tests with tests that exercise `AuthViewModel` state transitions through its public async methods
 - [ ] Add UI tests for the auth route, onboarding gate, friend search, event join/leave, and settings account deletion entry point
 
 ### Build Configuration
-- [ ] Change shared scheme `LaunchAction` back to `Debug` unless there is a documented reason to launch Release locally
-- [ ] Remove duplicate API-key injection from the shared scheme or project settings after choosing one source of truth
-- [ ] Wire `Config.xcconfig` intentionally or delete it if it is stale
-- [ ] Remove unsafe `-suppress-warnings` flags from `Package.swift` if the package is only documentation for Xcode-managed dependencies
+- [x] Change shared scheme `LaunchAction` back to `Debug` unless there is a documented reason to launch Release locally
+- [x] Remove duplicate API-key injection from the shared scheme or project settings after choosing one source of truth
+- [x] Wire `Config.xcconfig` intentionally or delete it if it is stale
+- [x] Remove unsafe `-suppress-warnings` flags from `Package.swift` if the package is only documentation for Xcode-managed dependencies
 
 ### Repo Hygiene
 - [x] Remove empty root `package-lock.json` if there is no root `package.json`
 - [x] Consolidate duplicate `Package.resolved` files under the project/workspace
 - [x] Remove duplicate Preview Content asset catalogs if only one is used by the target
-- [ ] Clean ignored `.DS_Store`, `.build/`, `functions/node_modules/`, and derived artifacts from local repo-adjacent folders
+- [x] Clean ignored `.DS_Store`, `.build/`, `functions/node_modules/`, and derived artifacts from local repo-adjacent folders
 
 ### Plan Lifecycle
 - [x] Normalize archived plan frontmatter from `status: complete` to `status: completed`
 - [x] Review archived plans with unchecked boxes and either complete the work, move leftovers to backlog, or correct the archive status
+
+## Release Handoff
+- 2026-05-25: Bumped TrailMates ATX to `1.0.4` / build `14`, exported `build/export-1.0.4-14/TrailMatesATX.ipa`, uploaded it to App Store Connect, and confirmed delivery status `VALID` for delivery UUID `54d10952-5f54-471d-86d9-ed353fee4016`.
+- App Store Connect version `1.0.4` was created in `PREPARE_FOR_SUBMISSION`; the uploaded build may still need to finish Apple-side processing before it can be selected for review submission.

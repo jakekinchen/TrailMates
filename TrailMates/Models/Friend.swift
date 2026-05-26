@@ -67,7 +67,7 @@ struct FriendViewModel: Identifiable {
         if doNotDisturb {
             return .gray
         } else if isActive {
-            return Color("pine")
+            return AppColors.pine
         } else {
             return .red
         }

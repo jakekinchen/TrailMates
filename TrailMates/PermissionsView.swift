@@ -81,12 +81,12 @@ struct PermissionsView: View {
         VStack(spacing: AppSpacing.md) {
             Text(currentStep.progressLabel)
                 .font(AppTypography.labelPrimary)
-                .foregroundColor(Color("alwaysSage"))
+                .foregroundColor(AppColors.alwaysSage)
 
             HStack(spacing: AppSpacing.sm) {
                 ForEach(PermissionStep.allCases, id: \.self) { step in
                     Capsule()
-                        .fill(step.rawValue <= currentStep.rawValue ? Color("pumpkin") : Color("alwaysSage").opacity(0.25))
+                        .fill(step.rawValue <= currentStep.rawValue ? AppColors.pumpkin : AppColors.alwaysSage.opacity(0.25))
                         .frame(width: step == currentStep ? 28 : 10, height: 6)
                         .animation(.easeInOut(duration: 0.2), value: currentStep)
                 }
@@ -99,7 +99,7 @@ struct PermissionsView: View {
         VStack(spacing: AppSpacing.xxl) {
             Image(systemName: step.iconName)
                 .font(.system(size: 52, weight: .semibold))
-                .foregroundColor(Color("pumpkin"))
+                .foregroundColor(AppColors.pumpkin)
                 .frame(width: 96, height: 96)
                 .background(Color.white.opacity(0.75))
                 .clipShape(Circle())
@@ -107,12 +107,12 @@ struct PermissionsView: View {
             VStack(spacing: AppSpacing.md) {
                 Text(step.title)
                     .font(AppTypography.titleLarge)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .multilineTextAlignment(.center)
 
                 Text(step.message)
                     .font(AppTypography.bodyPrimary)
-                    .foregroundColor(Color("alwaysSage"))
+                    .foregroundColor(AppColors.alwaysSage)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -121,28 +121,11 @@ struct PermissionsView: View {
     }
 
     private var continueButton: some View {
-        Button {
+        PrimaryButton("Continue", isLoading: isRequestingPermissions, size: .large) {
             Task {
                 await continueFromCurrentStep()
             }
-        } label: {
-            HStack(spacing: AppSpacing.sm) {
-                if isRequestingPermissions {
-                    ProgressView()
-                        .tint(.white)
-                }
-
-                Text("Continue")
-                    .font(AppTypography.buttonLarge)
-            }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: AppSpacing.buttonHeight)
-            .background(Color("pumpkin"))
-            .cornerRadius(AppSpacing.cornerRadiusSmall)
         }
-        .disabled(isRequestingPermissions)
-        .opacity(isRequestingPermissions ? 0.75 : 1)
     }
 
     private var notificationPermissionStatus: PermissionStatus {

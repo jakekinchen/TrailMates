@@ -2,7 +2,7 @@
 title: SwiftUI Performance Audit
 created: 2025-01-25
 priority: backlog
-status: complete
+status: completed
 tags: [performance, swiftui, optimization]
 skill: swiftui-performance-audit
 ---

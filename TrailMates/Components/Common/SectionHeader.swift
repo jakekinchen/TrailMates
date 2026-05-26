@@ -21,11 +21,11 @@ struct SectionHeader: View {
         HStack {
             Text(title)
                 .font(.headline)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .padding(.horizontal)
                 .padding(.vertical, 8)
             Spacer()
         }
-        .background(Color("beige"))
+        .background(AppColors.beige)
     }
 }

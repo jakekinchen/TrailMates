@@ -42,9 +42,9 @@ struct SecondaryButton: View {
         func backgroundColor(isPressed: Bool) -> Color {
             switch self {
             case .filled:
-                return isPressed ? Color("alwaysBeige").opacity(0.8) : Color("alwaysBeige")
+                return isPressed ? AppColors.alwaysBeige.opacity(0.8) : AppColors.alwaysBeige
             case .outline:
-                return isPressed ? Color("pine").opacity(0.1) : Color.clear
+                return isPressed ? AppColors.pine.opacity(0.1) : Color.clear
             case .text:
                 return Color.clear
             }
@@ -52,16 +52,16 @@ struct SecondaryButton: View {
 
         var foregroundColor: Color {
             switch self {
-            case .filled: return Color("pumpkin")
-            case .outline: return Color("pine")
-            case .text: return Color("pumpkin")
+            case .filled: return AppColors.pumpkin
+            case .outline: return AppColors.pine
+            case .text: return AppColors.pumpkin
             }
         }
 
         var borderColor: Color? {
             switch self {
             case .filled: return nil
-            case .outline: return Color("pine")
+            case .outline: return AppColors.pine
             case .text: return nil
             }
         }
@@ -160,7 +160,7 @@ struct SecondaryButton: View {
         SecondaryButton("Go Back") {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Outline Style") {
@@ -169,7 +169,7 @@ struct SecondaryButton: View {
         SecondaryButton("View Details", style: .outline) {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Text Style") {
@@ -178,7 +178,7 @@ struct SecondaryButton: View {
         SecondaryButton("Maybe later", style: .text) {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Sizes") {
@@ -188,7 +188,7 @@ struct SecondaryButton: View {
         SecondaryButton("Large", size: .large) {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Loading State") {
@@ -197,7 +197,7 @@ struct SecondaryButton: View {
         SecondaryButton("Loading...", isLoading: true, style: .outline) {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Button Pair") {
@@ -206,5 +206,5 @@ struct SecondaryButton: View {
         SecondaryButton("Cancel") {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }

@@ -260,9 +260,20 @@ mocha.describe("Phone Number Functions", () => {
   });
 
   mocha.describe("checkUserExists", () => {
-    mocha.it("should validate input", async () => {
+    mocha.it("should require authentication", async () => {
       try {
         await functionsMock.checkUserExists.run({data: {}, auth: null});
+        assert.fail("Should have thrown an error");
+      } catch (error) {
+        assert.equal(error.code, "unauthenticated");
+      }
+    });
+
+    mocha.it("should validate input", async () => {
+      const auth = {uid: "test-user"};
+
+      try {
+        await functionsMock.checkUserExists.run({data: {}, auth});
         assert.fail("Should have thrown an error");
       } catch (error) {
         assert.equal(error.code, "invalid-argument");
@@ -285,7 +296,7 @@ mocha.describe("Phone Number Functions", () => {
 
       const result = await functionsMock.checkUserExists.run({
         data: {hashedPhoneNumber: "existing-hash"},
-        auth: null,
+        auth: {uid: "test-user"},
       });
       assert.equal(result.userExists, true);
       assert(firestoreStub.collection.calledWith("users"));
@@ -312,7 +323,7 @@ mocha.describe("Phone Number Functions", () => {
 
       const result = await functionsMock.checkUserExists.run({
         data: {hashedPhoneNumber: "non-existent-hash"},
-        auth: null,
+        auth: {uid: "test-user"},
       });
       assert.equal(result.userExists, false);
       assert(firestoreStub.collection.calledWith("users"));

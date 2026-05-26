@@ -135,7 +135,7 @@ extension View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Username")
                 .font(.caption)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
             Text("ab")
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -145,7 +145,7 @@ extension View {
         }
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Banner Style") {
@@ -154,7 +154,7 @@ extension View {
         ValidationErrorView("Your session has expired. Please log in again.", style: .banner)
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Toast Style") {
@@ -164,7 +164,7 @@ extension View {
             .padding(.horizontal)
             .padding(.bottom, 32)
     }
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Form with Validation") {
@@ -187,5 +187,5 @@ extension View {
     }
     .validationErrors(["Email is required", "Password must be at least 8 characters"])
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }

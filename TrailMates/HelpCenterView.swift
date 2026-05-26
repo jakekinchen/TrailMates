@@ -57,12 +57,12 @@ struct HelpCenterView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Help Center")
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .font(.headline)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
         .themedBackground()
     }
 }
@@ -70,20 +70,20 @@ struct HelpCenterView: View {
 // MARK: - HelpCenterView Sections
 private extension HelpCenterView {
     var faqSection: some View {
-        Section(header: Text("Frequently Asked Questions").foregroundColor(Color("pine"))) {
+        Section(header: Text("Frequently Asked Questions").foregroundColor(AppColors.pine)) {
             ForEach(faqItems, id: \.question) { item in
                 NavigationLink(item.question) {
                     FAQDetailView(question: item.question, answer: item.answer)
                 }
             }
         }
-        .listRowBackground(Color("beige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .listRowBackground(AppColors.beige.opacity(0.9))
+        .foregroundColor(AppColors.pine)
     }
 
     var contactSupportSection: some View {
-        Section(header: Text("Contact Support").foregroundColor(Color("pine"))) {
-            Link(destination: URL(string: "mailto:support@trailmates.app")!) {
+        Section(header: Text("Contact Support").foregroundColor(AppColors.pine)) {
+            Link(destination: URL(string: AppConstants.supportEmail)!) {
                 HStack {
                     Text("Email Support")
                     Spacer()
@@ -91,7 +91,7 @@ private extension HelpCenterView {
                 }
             }
 
-            Link(destination: URL(string: "https://trailmates.app/support")!) {
+            Link(destination: URL(string: AppConstants.supportCenterURL)!) {
                 HStack {
                     Text("Visit Support Center")
                     Spacer()
@@ -99,12 +99,12 @@ private extension HelpCenterView {
                 }
             }
         }
-        .listRowBackground(Color("beige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .listRowBackground(AppColors.beige.opacity(0.9))
+        .foregroundColor(AppColors.pine)
     }
 
     var feedbackSection: some View {
-        Section(header: Text("Feedback").foregroundColor(Color("pine"))) {
+        Section(header: Text("Feedback").foregroundColor(AppColors.pine)) {
             Button(action: {
                 // Implement feedback form
             }) {
@@ -115,8 +115,8 @@ private extension HelpCenterView {
                 }
             }
         }
-        .listRowBackground(Color("beige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .listRowBackground(AppColors.beige.opacity(0.9))
+        .foregroundColor(AppColors.pine)
     }
 }
 
@@ -129,25 +129,25 @@ struct FAQDetailView: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            Color("beige").ignoresSafeArea()
+            AppColors.beige.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(question)
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(Color("pine"))
+                        .foregroundColor(AppColors.pine)
                         .padding(.bottom, 8)
 
                     Text(answer)
-                        .foregroundColor(Color("pine").opacity(0.8))
+                        .foregroundColor(AppColors.pine.opacity(0.8))
                 }
                 .padding()
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(question)
-                        .foregroundColor(Color("beige"))
+                        .foregroundColor(AppColors.beige)
                         .font(.headline)
                 }
             }

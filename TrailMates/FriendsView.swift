@@ -107,12 +107,12 @@ struct FriendRow: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(friend.firstName) \(friend.lastName)")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Color("pine"))
-                
+                    .font(AppTypography.headingSecondary)
+                    .foregroundColor(AppColors.pine)
+
                 Text("@\(friend.username)")
-                    .font(.system(size: 14))
-                    .foregroundColor(Color("pine").opacity(0.7))
+                    .font(AppTypography.bodySmall)
+                    .foregroundColor(AppColors.pine.opacity(0.7))
             }
             
             Spacer()
@@ -130,7 +130,7 @@ struct FriendRow: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
-        .background(Color("sage").opacity(0.1))
+        .background(AppColors.sage.opacity(0.1))
         .cornerRadius(12)
     }
 }
@@ -138,46 +138,21 @@ struct FriendRow: View {
 
 struct EmptyFriendsView: View {
     @Binding var showAddFriends: Bool
-    
+
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "person.2")
-                .font(.system(size: 50))
-                .foregroundColor(Color("pine").opacity(0.5))
-            
-            Text("No Friends Yet")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(Color("pine"))
-            
-            Text("Add friends to see their activity and join them on trails!")
-                .multilineTextAlignment(.center)
-                .foregroundColor(Color("pine").opacity(0.7))
-            
-            Button(action: { showAddFriends = true }) {
-                Text("Add Friends")
-                    .font(.headline)
-                    .foregroundColor(Color("beige"))
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(Color("pine"))
-                    .cornerRadius(25)
-            }
-        }
-        .padding()
+        EmptyStateView(
+            title: "No Friends Yet",
+            message: "Add friends to see their activity and join them on trails!",
+            systemImage: "person.2",
+            actionTitle: "Add Friends",
+            action: { showAddFriends = true }
+        )
     }
 }
 
 struct FriendsLoadingView: View {
     var body: some View {
-        VStack {
-            ProgressView()
-                .scaleEffect(1.5)
-                .padding()
-            Text("Loading Friends...")
-                .foregroundColor(Color("pine").opacity(0.7))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        LoadingView(message: "Loading Friends...")
     }
 }
 
@@ -188,11 +163,11 @@ struct SearchBar: View {
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(Color("pine").opacity(0.7))
+                .foregroundColor(AppColors.pine.opacity(0.7))
             
             TextField("Search friends...", text: $text)
                 .focused($isFocused)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .autocapitalization(.none)
             
             if !text.isEmpty {
@@ -200,12 +175,12 @@ struct SearchBar: View {
                     text = ""
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(Color("pine").opacity(0.7))
+                        .foregroundColor(AppColors.pine.opacity(0.7))
                 }
             }
         }
         .padding(10)
-        .background(Color("sage").opacity(0.1))
+        .background(AppColors.sage.opacity(0.1))
         .cornerRadius(10)
     }
 }

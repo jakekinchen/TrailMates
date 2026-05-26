@@ -41,10 +41,10 @@ struct UserAvatarView: View {
     private var initialsFallback: some View {
         ZStack {
             Circle()
-                .fill(Color("sage").opacity(0.4))
+                .fill(AppColors.sage.opacity(0.4))
             Text(user.initials.isEmpty ? "?" : user.initials)
                 .font(.system(size: size * 0.35, weight: .bold))
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
         }
     }
 

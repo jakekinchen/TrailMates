@@ -53,14 +53,14 @@ struct EventRowView: View {
             // Event Type Icon
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color("pine").opacity(0.8))
-                    .shadow(color: Color("alwaysPine").opacity(0.8), radius: 4)
+                    .fill(AppColors.pine.opacity(0.8))
+                    .shadow(color: AppColors.alwaysPine.opacity(0.8), radius: 4)
                     .frame(width: 80, height: 80)
                     
                     
                 Image(systemName: event.eventType == .walk ? "figure.walk" :
                         event.eventType == .bike ? "bicycle" : "figure.run")
-                    .foregroundColor(Color("beige"))
+                    .foregroundColor(AppColors.beige)
                     .font(.system(size: 30))
             }
             
@@ -68,15 +68,15 @@ struct EventRowView: View {
                 HStack {
                     Text(event.title)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(Color("pine"))
+                        .foregroundColor(AppColors.pine)
                     
                     if isHostedByUser {
                         Text("Hosted by you")
                             .font(.system(size: 12))
-                            .foregroundColor(Color("pumpkin"))
+                            .foregroundColor(AppColors.pumpkin)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(Color("pumpkin").opacity(0.1))
+                            .background(AppColors.pumpkin.opacity(0.1))
                             .cornerRadius(8)
                     }
                 }
@@ -116,13 +116,13 @@ struct EventRowView: View {
                     Button(action: isUserAttending ? onLeaveTap : onJoinTap) {
                         Text(isUserAttending ? "Leave" : "Join")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(isUserAttending ? .red : Color("alwaysBeige"))
+                            .foregroundColor(isUserAttending ? .red : AppColors.alwaysBeige)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 6)
                             .background(
                                 isUserAttending ?
                                     Color.red.opacity(0.1) :
-                                    Color("pumpkin")
+                                    AppColors.pumpkin
                             )
                             .cornerRadius(16)
                     }

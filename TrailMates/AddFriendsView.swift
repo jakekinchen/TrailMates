@@ -133,7 +133,7 @@ private extension AddFriendsView {
             Text("Find Friends")
                 .font(.title2)
                 .fontWeight(.bold)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(alignment: .bottom, spacing: 10) {
@@ -156,7 +156,7 @@ private extension AddFriendsView {
                                 .tint(AppColors.textOnAccent)
                         } else {
                             Image(systemName: "magnifyingglass")
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(AppTypography.buttonSmall)
                                 .foregroundColor(AppColors.textOnAccent)
                         }
                     }
@@ -185,12 +185,12 @@ private extension AddFriendsView {
             if let message = viewModel.friendLookupMessage {
                 Text(message)
                     .font(.footnote)
-                    .foregroundColor(Color("pine").opacity(0.75))
+                    .foregroundColor(AppColors.pine.opacity(0.75))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding()
-        .background(Color("sage").opacity(0.14))
+        .background(AppColors.sage.opacity(0.14))
         .cornerRadius(12)
     }
 
@@ -200,7 +200,7 @@ private extension AddFriendsView {
             Text("More Ways")
                 .font(.headline)
                 .fontWeight(.bold)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             contactsButton
@@ -216,22 +216,22 @@ private extension AddFriendsView {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 24, height: 24)
-                    .foregroundColor(Color("beige"))
+                    .foregroundColor(AppColors.beige)
                     .accessibilityHidden(true)
 
                 Text("Add from Contacts")
                     .fontWeight(.bold)
-                    .foregroundColor(Color("beige"))
+                    .foregroundColor(AppColors.beige)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if contactsAccessGranted {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(Color("beige"))
+                        .foregroundColor(AppColors.beige)
                         .accessibilityHidden(true)
                 }
             }
             .padding()
-            .background(Color("pine"))
+            .background(AppColors.pine)
             .cornerRadius(15)
         }
     }
@@ -244,16 +244,16 @@ private extension AddFriendsView {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 24, height: 24)
-                    .foregroundColor(Color("alwaysBeige"))
+                    .foregroundColor(AppColors.alwaysBeige)
                     .accessibilityHidden(true)
 
                 Text("Invite Friends")
                     .fontWeight(.bold)
-                    .foregroundColor(Color("alwaysBeige"))
+                    .foregroundColor(AppColors.alwaysBeige)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding()
-            .background(Color("pumpkin"))
+            .background(AppColors.pumpkin)
             .cornerRadius(15)
         }
     }
@@ -267,7 +267,7 @@ private extension AddFriendsView {
                 dismiss()
             }
         }
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
     }
 
     @ViewBuilder
@@ -383,12 +383,12 @@ private struct FriendLookupResultRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(user.firstName) \(user.lastName)")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Color("pine"))
+                    .font(AppTypography.headingSecondary)
+                    .foregroundColor(AppColors.pine)
 
                 Text("@\(user.username)")
-                    .font(.system(size: 14))
-                    .foregroundColor(Color("pine").opacity(0.72))
+                    .font(AppTypography.bodySmall)
+                    .foregroundColor(AppColors.pine.opacity(0.72))
             }
 
             Spacer(minLength: 8)
@@ -397,23 +397,23 @@ private struct FriendLookupResultRow: View {
                 ZStack {
                     if isSending && canAdd {
                         ProgressView()
-                            .tint(Color("alwaysBeige"))
+                            .tint(AppColors.alwaysBeige)
                     } else {
                         Text(buttonTitle)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(AppTypography.buttonSmall)
                     }
                 }
                 .frame(minWidth: 72)
                 .padding(.vertical, 9)
                 .padding(.horizontal, 12)
-                .foregroundColor(canAdd ? Color("alwaysBeige") : Color("pine").opacity(0.72))
-                .background(canAdd ? Color("pine") : Color("sage").opacity(0.35))
+                .foregroundColor(canAdd ? AppColors.alwaysBeige : AppColors.pine.opacity(0.72))
+                .background(canAdd ? AppColors.pine : AppColors.sage.opacity(0.35))
                 .cornerRadius(9)
             }
             .disabled(!canAdd || isSending)
         }
         .padding(12)
-        .background(Color("alwaysBeige").opacity(0.72))
+        .background(AppColors.alwaysBeige.opacity(0.72))
         .cornerRadius(12)
     }
 }
@@ -423,6 +423,6 @@ private struct FriendLookupAvatar: View {
 
     var body: some View {
         UserAvatarView(user: user, size: 48)
-            .overlay(Circle().stroke(Color("pine").opacity(0.18), lineWidth: 1))
+            .overlay(Circle().stroke(AppColors.pine.opacity(0.18), lineWidth: 1))
     }
 }

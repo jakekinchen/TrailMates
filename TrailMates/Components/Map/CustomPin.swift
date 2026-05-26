@@ -27,16 +27,16 @@ struct CustomPin: View {
     var body: some View {
         VStack(spacing: 0) {
             Circle()
-                .fill(Color("pine"))
+                .fill(AppColors.pine)
                 .frame(width: topCircleSize, height: topCircleSize)
 
             Rectangle()
-                .fill(Color("pine"))
+                .fill(AppColors.pine)
                 .frame(width: 3, height: strokeLength)
                 .offset(y: isDragging ? -10 : 0)
 
             Circle()
-                .fill(Color("pine").opacity(0.3))
+                .fill(AppColors.pine.opacity(0.3))
                 .frame(width: circleSize, height: circleSize)
                 .opacity(isDragging ? 1 : 0)
                 .scaleEffect(isDragging ? 1 : 0.5)

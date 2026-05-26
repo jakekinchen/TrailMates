@@ -2,11 +2,9 @@ import Foundation
 import CoreLocation
 import MapKit
 import UIKit
-import SwiftData
 
 /// A user model that represents a TrailMates user with both local and remote data storage capabilities.
-/// The model uses SwiftData for local persistence and Firebase for remote storage.
-@Model
+///
 final class User: Codable, Identifiable, Equatable {
     var id: String
     var firstName: String
@@ -21,7 +19,7 @@ final class User: Codable, Identifiable, Equatable {
     }
     
     // Profile Image properties
-    @Attribute(.externalStorage) var profileImageData: Data?
+    var profileImageData: Data?
     var profileImageUrl: String?
     var profileThumbnailUrl: String?
     var profileImage: UIImage? {

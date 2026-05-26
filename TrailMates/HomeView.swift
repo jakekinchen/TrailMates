@@ -11,38 +11,43 @@ struct HomeView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            MapView()
-                .tag(0)
-                .tabItem {
-                    Label("Map", systemImage: "map")
-                }
-            
-            EventsView(eventViewModel: eventViewModel)
-                .tag(1)
-                .tabItem {
-                    Label("Events", systemImage: "calendar")
-                }
-            
-            FriendsView()
-                .tag(2)
-                .tabItem {
-                    Label("Friends", systemImage: "person.2")
-                }
-            
-            ProfileView()
-                .tag(3)
-                .tabItem {
-                    Label("Profile", systemImage: "person.crop.circle")
-                }
+            NavigationStack {
+                MapView()
+            }
+            .tag(0)
+            .tabItem {
+                Label("Map", systemImage: "map")
+            }
+
+            NavigationStack {
+                EventsView(eventViewModel: eventViewModel)
+            }
+            .tag(1)
+            .tabItem {
+                Label("Events", systemImage: "calendar")
+            }
+
+            NavigationStack {
+                FriendsView()
+            }
+            .tag(2)
+            .tabItem {
+                Label("Friends", systemImage: "person.2")
+            }
+
+            NavigationStack {
+                ProfileView()
+            }
+            .tag(3)
+            .tabItem {
+                Label("Profile", systemImage: "person.crop.circle")
+            }
         }
-        .accentColor(Color("pine"))
+        .accentColor(AppColors.pine)
         .overlay(
             Group {
                 if isRefreshing {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.black.opacity(0.2))
+                    LoadingOverlay()
                 }
             }
         )
@@ -94,9 +99,6 @@ struct HomeView: View {
 // Refresh indicator view
 struct RefreshIndicator: View {
     var body: some View {
-        ProgressView()
-            .scaleEffect(1.5)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black.opacity(0.2))
+        LoadingOverlay()
     }
 }

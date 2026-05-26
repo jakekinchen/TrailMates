@@ -29,10 +29,10 @@ struct FriendsListCard: View {
                 HStack {
                     Text("Friends on the Trail")
                         .font(.system(size: 18))
-                        .foregroundColor(Color("pine"))
+                        .foregroundColor(AppColors.pine)
                     Spacer()
                     Image(systemName: "person.badge.plus")
-                        .foregroundColor(Color("pine"))
+                        .foregroundColor(AppColors.pine)
                         .font(.system(size: 20))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

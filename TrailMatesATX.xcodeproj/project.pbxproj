@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		73611DDC2D01FD8F00868529 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 73611DDB2D01FD8F00868529 /* FirebaseFunctions */; };
 		736EC68C2D3C475E00664BA1 /* PhoneNumberKit in Frameworks */ = {isa = PBXBuildFile; productRef = 736EC68B2D3C475E00664BA1 /* PhoneNumberKit */; };
+		73AC10012F00000100AF0CAD /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 73AC10002F00000100AF0CAD /* FirebaseAppCheck */; };
 		73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */; };
 		73D868C62CED5F7000AF0CAD /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C52CED5F7000AF0CAD /* FirebaseAuth */; };
 		73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 73D868C72CED5F7000AF0CAD /* FirebaseCore */; };
@@ -44,11 +45,10 @@
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		732D9AD62CE5ADF3004F62E7 /* Exceptions for "TrailMates" folder in "TrailMatesATX" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				App/Info.plist,
-				Config.xcconfig,
-				"Preview Content/Preview Assets.xcassets",
-				"Resources/Preview Content/Preview Assets.xcassets",
+				membershipExceptions = (
+					App/GoogleService-Info.plist.template,
+					App/Info.plist,
+					"Preview Content/Preview Assets.xcassets",
 			);
 			target = 73266DA82CAEDBF60087B7A1 /* TrailMatesATX */;
 		};
@@ -79,10 +79,11 @@
 		73266DA62CAEDBF60087B7A1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
-				73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */,
-				73611DDC2D01FD8F00868529 /* FirebaseFunctions in Frameworks */,
+				files = (
+					73C0986F2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
+					73AC10012F00000100AF0CAD /* FirebaseAppCheck in Frameworks */,
+					73D868C82CED5F7000AF0CAD /* FirebaseCore in Frameworks */,
+					73611DDC2D01FD8F00868529 /* FirebaseFunctions in Frameworks */,
 				73D868CA2CED5F7000AF0CAD /* FirebaseDatabase in Frameworks */,
 				73D868CC2CED5F7000AF0CAD /* FirebaseFirestore in Frameworks */,
 				73D869962CF02DA000AF0CAD /* FirebaseStorage in Frameworks */,
@@ -149,8 +150,9 @@
 			);
 			name = TrailMatesATX;
 			packageProductDependencies = (
-				73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */,
-				73D868C52CED5F7000AF0CAD /* FirebaseAuth */,
+					73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */,
+					73AC10002F00000100AF0CAD /* FirebaseAppCheck */,
+					73D868C52CED5F7000AF0CAD /* FirebaseAuth */,
 				73D868C72CED5F7000AF0CAD /* FirebaseCore */,
 				73D868C92CED5F7000AF0CAD /* FirebaseDatabase */,
 				73D868CB2CED5F7000AF0CAD /* FirebaseFirestore */,
@@ -444,7 +446,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = TrailMatesATX.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_ASSET_PATHS = "\"TrailMates/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -469,7 +471,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bridges.trailmatesatx;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -490,7 +492,7 @@
 				CODE_SIGN_ENTITLEMENTS = TrailMatesATX.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_ASSET_PATHS = "\"TrailMates/Preview Content\"";
 				DEVELOPMENT_TEAM = BN58T9KR6C;
 				ENABLE_PREVIEWS = YES;
@@ -516,7 +518,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bridges.trailmatesatx;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "TrailMates AppStore Associated Domains 2026-05-24";
@@ -535,10 +537,10 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = bridges.trailmatesatxTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -553,10 +555,10 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = bridges.trailmatesatxTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -570,9 +572,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = Bridges.TrailMatesUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -586,9 +588,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = Bridges.TrailMatesUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -668,6 +670,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 736EC68A2D3C475E00664BA1 /* XCRemoteSwiftPackageReference "PhoneNumberKit" */;
 			productName = PhoneNumberKit;
+		};
+		73AC10002F00000100AF0CAD /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 73C0986D2CB9B2A900477F4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 		73C0986E2CB9B2A900477F4A /* FirebaseAnalyticsWithoutAdIdSupport */ = {
 			isa = XCSwiftPackageProductDependency;

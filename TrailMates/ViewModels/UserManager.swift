@@ -62,6 +62,16 @@ class UserManager: ObservableObject {
         ProcessInfo.processInfo.arguments.contains("--uitesting")
     }
 
+    private static let currentUserStorageKey = "currentUser"
+    private static let isLoggedInStorageKey = "isLoggedIn"
+    private static let isWelcomeCompleteStorageKey = "isWelcomeComplete"
+    private static let isPermissionsGrantedStorageKey = "isPermissionsGranted"
+    private static let hasAddedFriendsStorageKey = "hasAddedFriends"
+    private static let isOnboardingCompleteStorageKey = "isOnboardingComplete"
+    private static let lastUserRefreshTimeStorageKey = "lastUserRefreshTime"
+    private static let currentUserSchemaVersionKey = "currentUserSchemaVersion"
+    private static let currentUserSchemaVersion = 1
+
     func initializeIfNeeded() async {
         guard !hasInitialized else { return }
 
@@ -74,16 +84,16 @@ class UserManager: ObservableObject {
             resetSessionForUITesting()
         }
 
-        // First try to load from persistence
-        if checkPersistedUser() {
-            hasInitialized = true
+        // Load local state for immediate UI continuity, but still refresh from
+        // Firebase below so remote data wins over stale persisted user data.
+        let loadedPersistedUser = checkPersistedUser()
+        if loadedPersistedUser {
             #if DEBUG
             print("👤 User loaded from persistence")
             #endif
-            return
         }
 
-        // If not persisted, fetch from Firebase
+        // Fetch from Firebase and prefer it over any persisted snapshot.
         if let user = await userProvider.fetchCurrentUser() {
             self.currentUser = user
             self.isLoggedIn = true
@@ -99,7 +109,7 @@ class UserManager: ObservableObject {
                     try await userProvider.ensureUserDocument()
                 } catch {
                     #if DEBUG
-                    let appError = AppError.from(error)
+                    let appError = AppError.classify(error)
                     print("UserManager: ensureUserDocument failed during init: \(appError.errorDescription ?? "Unknown")")
                     #endif
                 }
@@ -116,8 +126,11 @@ class UserManager: ObservableObject {
                 #if DEBUG
                 print("❌ No user found in Firebase")
                 #endif
-                self.isLoggedIn = false
-                self.currentUser = nil
+                if !loadedPersistedUser || !userProvider.isUserAuthenticated() {
+                    self.isLoggedIn = false
+                    self.currentUser = nil
+                    clearPersistedUserSession()
+                }
             }
         }
 
@@ -180,17 +193,22 @@ class UserManager: ObservableObject {
     }
     
     private func checkPersistedUser() -> Bool {
-        if let userData = UserDefaults.standard.data(forKey: "currentUser"),
-           let user = try? JSONDecoder().decode(User.self, from: userData) {
-            currentUser = user
-            isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
-            isWelcomeComplete = UserDefaults.standard.bool(forKey: "isWelcomeComplete")
-            isPermissionsGranted = UserDefaults.standard.bool(forKey: "isPermissionsGranted")
-            isOnboardingComplete = UserDefaults.standard.bool(forKey: "isOnboardingComplete")
-            hasAddedFriends = UserDefaults.standard.bool(forKey: "hasAddedFriends")
-            return true
+        guard let userData = persistedCurrentUserData() else {
+            return false
         }
-        return false
+
+        guard let user = try? JSONDecoder().decode(User.self, from: userData) else {
+            clearPersistedUserSession()
+            return false
+        }
+
+        currentUser = user
+        isLoggedIn = UserDefaults.standard.bool(forKey: Self.isLoggedInStorageKey)
+        isWelcomeComplete = UserDefaults.standard.bool(forKey: Self.isWelcomeCompleteStorageKey)
+        isPermissionsGranted = UserDefaults.standard.bool(forKey: Self.isPermissionsGrantedStorageKey)
+        isOnboardingComplete = UserDefaults.standard.bool(forKey: Self.isOnboardingCompleteStorageKey)
+        hasAddedFriends = UserDefaults.standard.bool(forKey: Self.hasAddedFriendsStorageKey)
+        return true
     }
     
     func isUsernameTaken(_ username: String) async -> Bool {
@@ -210,8 +228,16 @@ class UserManager: ObservableObject {
                 print("     • Last Name: '\(user.lastName)'")
                 print("     • Username: '\(user.username)'")
                 #endif
-                UserDefaults.standard.set(userData, forKey: "currentUser")
-                UserDefaults.standard.set(Date(), forKey: "lastUserRefreshTime")
+                do {
+                    try KeychainStore.set(userData, forKey: Self.currentUserStorageKey)
+                    UserDefaults.standard.removeObject(forKey: Self.currentUserStorageKey)
+                } catch {
+                    #if DEBUG
+                    print("❌ Failed to save user data to secure storage: \(error.localizedDescription)")
+                    #endif
+                }
+                UserDefaults.standard.set(Date(), forKey: Self.lastUserRefreshTimeStorageKey)
+                UserDefaults.standard.set(Self.currentUserSchemaVersion, forKey: Self.currentUserSchemaVersionKey)
                 #if DEBUG
                 print("   - User data saved successfully")
                 #endif
@@ -226,36 +252,65 @@ class UserManager: ObservableObject {
             #endif
         }
 
-        UserDefaults.standard.set(isLoggedIn, forKey: "isLoggedIn")
-        UserDefaults.standard.set(isWelcomeComplete, forKey: "isWelcomeComplete")
-        UserDefaults.standard.set(isPermissionsGranted, forKey: "isPermissionsGranted")
-        UserDefaults.standard.set(hasAddedFriends, forKey: "hasAddedFriends")
-        UserDefaults.standard.set(isOnboardingComplete, forKey: "isOnboardingComplete")
+        UserDefaults.standard.set(isLoggedIn, forKey: Self.isLoggedInStorageKey)
+        UserDefaults.standard.set(isWelcomeComplete, forKey: Self.isWelcomeCompleteStorageKey)
+        UserDefaults.standard.set(isPermissionsGranted, forKey: Self.isPermissionsGrantedStorageKey)
+        UserDefaults.standard.set(hasAddedFriends, forKey: Self.hasAddedFriendsStorageKey)
+        UserDefaults.standard.set(isOnboardingComplete, forKey: Self.isOnboardingCompleteStorageKey)
         #if DEBUG
         print("   - Session flags saved")
         #endif
     }
 
     private func loadPersistedUserSession() {
-        if let userData = UserDefaults.standard.data(forKey: "currentUser"),
+        if let userData = persistedCurrentUserData(),
            let user = try? JSONDecoder().decode(User.self, from: userData) {
             currentUser = user
-            lastRefreshTime = UserDefaults.standard.object(forKey: "lastUserRefreshTime") as? Date
-            isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
-            isWelcomeComplete = UserDefaults.standard.bool(forKey: "isWelcomeComplete")
-            isPermissionsGranted = UserDefaults.standard.bool(forKey: "isPermissionsGranted")
-            hasAddedFriends = UserDefaults.standard.bool(forKey: "hasAddedFriends")
-            isOnboardingComplete = UserDefaults.standard.bool(forKey: "isOnboardingComplete")
+            lastRefreshTime = UserDefaults.standard.object(forKey: Self.lastUserRefreshTimeStorageKey) as? Date
+            isLoggedIn = UserDefaults.standard.bool(forKey: Self.isLoggedInStorageKey)
+            isWelcomeComplete = UserDefaults.standard.bool(forKey: Self.isWelcomeCompleteStorageKey)
+            isPermissionsGranted = UserDefaults.standard.bool(forKey: Self.isPermissionsGrantedStorageKey)
+            hasAddedFriends = UserDefaults.standard.bool(forKey: Self.hasAddedFriendsStorageKey)
+            isOnboardingComplete = UserDefaults.standard.bool(forKey: Self.isOnboardingCompleteStorageKey)
         }
     }
 
     private func clearPersistedUserSession() {
-        UserDefaults.standard.removeObject(forKey: "currentUser")
-        UserDefaults.standard.removeObject(forKey: "isLoggedIn")
-        UserDefaults.standard.removeObject(forKey: "isWelcomeComplete")
-        UserDefaults.standard.removeObject(forKey: "isPermissionsGranted")
-        UserDefaults.standard.removeObject(forKey: "hasAddedFriends")
-        UserDefaults.standard.removeObject(forKey: "isOnboardingComplete")
+        KeychainStore.remove(forKey: Self.currentUserStorageKey)
+        UserDefaults.standard.removeObject(forKey: Self.currentUserStorageKey)
+        UserDefaults.standard.removeObject(forKey: Self.isLoggedInStorageKey)
+        UserDefaults.standard.removeObject(forKey: Self.isWelcomeCompleteStorageKey)
+        UserDefaults.standard.removeObject(forKey: Self.isPermissionsGrantedStorageKey)
+        UserDefaults.standard.removeObject(forKey: Self.hasAddedFriendsStorageKey)
+        UserDefaults.standard.removeObject(forKey: Self.isOnboardingCompleteStorageKey)
+        UserDefaults.standard.removeObject(forKey: Self.currentUserSchemaVersionKey)
+    }
+
+    private func persistedCurrentUserData() -> Data? {
+        guard UserDefaults.standard.integer(forKey: Self.currentUserSchemaVersionKey) == Self.currentUserSchemaVersion else {
+            KeychainStore.remove(forKey: Self.currentUserStorageKey)
+            UserDefaults.standard.removeObject(forKey: Self.currentUserStorageKey)
+            return nil
+        }
+
+        if let keychainData = KeychainStore.data(forKey: Self.currentUserStorageKey) {
+            return keychainData
+        }
+
+        guard let legacyData = UserDefaults.standard.data(forKey: Self.currentUserStorageKey) else {
+            return nil
+        }
+
+        do {
+            try KeychainStore.set(legacyData, forKey: Self.currentUserStorageKey)
+            UserDefaults.standard.removeObject(forKey: Self.currentUserStorageKey)
+        } catch {
+            #if DEBUG
+            print("⚠️ Failed to migrate current user to secure storage: \(error.localizedDescription)")
+            #endif
+        }
+
+        return legacyData
     }
 
     // MARK: - Logout
@@ -349,9 +404,26 @@ class UserManager: ObservableObject {
     }
     
     func updatePhoneNumber(_ newPhone: String) async throws {
-        if let updatedUser = currentUser {
-            updatedUser.updatePhoneNumber(newPhone)
-            try await saveProfile(updatedUser: updatedUser)
+        guard let updatedUser = currentUser else {
+            throw AppError.notAuthenticated()
+        }
+
+        let previousPhone = updatedUser.phoneNumber
+        let storagePhone = try storagePhoneNumber(from: newPhone)
+        updatedUser.updatePhoneNumber(storagePhone)
+
+        do {
+            try await userProvider.updateUserFields(
+                userId: updatedUser.id,
+                fields: [
+                    "phoneNumber": storagePhone,
+                    "hashedPhoneNumber": updatedUser.hashedPhoneNumber
+                ]
+            )
+            persistUserSession()
+        } catch {
+            updatedUser.updatePhoneNumber(previousPhone)
+            throw error
         }
     }
 
@@ -364,21 +436,43 @@ class UserManager: ObservableObject {
         allowFriendsInvite: Bool? = nil
     ) async throws {
         guard let updatedUser = currentUser else { return }
-        
+        let previousValues = (
+            shareLocationWithFriends: updatedUser.shareLocationWithFriends,
+            shareLocationWithEventHost: updatedUser.shareLocationWithEventHost,
+            shareLocationWithEventGroup: updatedUser.shareLocationWithEventGroup,
+            allowFriendsToInviteOthers: updatedUser.allowFriendsToInviteOthers
+        )
+        var fields: [String: Any] = [:]
+
         if let shareWithFriends = shareWithFriends {
             updatedUser.shareLocationWithFriends = shareWithFriends
+            fields["shareLocationWithFriends"] = shareWithFriends
         }
         if let shareWithHost = shareWithHost {
             updatedUser.shareLocationWithEventHost = shareWithHost
+            fields["shareLocationWithEventHost"] = shareWithHost
         }
         if let shareWithGroup = shareWithGroup {
             updatedUser.shareLocationWithEventGroup = shareWithGroup
+            fields["shareLocationWithEventGroup"] = shareWithGroup
         }
         if let allowFriendsInvite = allowFriendsInvite {
             updatedUser.allowFriendsToInviteOthers = allowFriendsInvite
+            fields["allowFriendsToInviteOthers"] = allowFriendsInvite
         }
-        
-        try await saveProfile(updatedUser: updatedUser)
+
+        guard !fields.isEmpty else { return }
+
+        do {
+            try await userProvider.updateUserFields(userId: updatedUser.id, fields: fields)
+            persistUserSession()
+        } catch {
+            updatedUser.shareLocationWithFriends = previousValues.shareLocationWithFriends
+            updatedUser.shareLocationWithEventHost = previousValues.shareLocationWithEventHost
+            updatedUser.shareLocationWithEventGroup = previousValues.shareLocationWithEventGroup
+            updatedUser.allowFriendsToInviteOthers = previousValues.allowFriendsToInviteOthers
+            throw error
+        }
     }
     
     // MARK: - Notification Settings Methods
@@ -388,18 +482,37 @@ class UserManager: ObservableObject {
         eventUpdates: Bool? = nil
     ) async throws {
         guard let updatedUser = currentUser else { return }
-        
+        let previousValues = (
+            receiveFriendRequests: updatedUser.receiveFriendRequests,
+            receiveFriendEvents: updatedUser.receiveFriendEvents,
+            receiveEventUpdates: updatedUser.receiveEventUpdates
+        )
+        var fields: [String: Any] = [:]
+
         if let friendRequests = friendRequests {
             updatedUser.receiveFriendRequests = friendRequests
+            fields["receiveFriendRequests"] = friendRequests
         }
         if let friendEvents = friendEvents {
             updatedUser.receiveFriendEvents = friendEvents
+            fields["receiveFriendEvents"] = friendEvents
         }
         if let eventUpdates = eventUpdates {
             updatedUser.receiveEventUpdates = eventUpdates
+            fields["receiveEventUpdates"] = eventUpdates
         }
-        
-        try await saveProfile(updatedUser: updatedUser)
+
+        guard !fields.isEmpty else { return }
+
+        do {
+            try await userProvider.updateUserFields(userId: updatedUser.id, fields: fields)
+            persistUserSession()
+        } catch {
+            updatedUser.receiveFriendRequests = previousValues.receiveFriendRequests
+            updatedUser.receiveFriendEvents = previousValues.receiveFriendEvents
+            updatedUser.receiveEventUpdates = previousValues.receiveEventUpdates
+            throw error
+        }
     }
     
     func findUserByPhoneNumber(_ phoneNumber: String) async -> User? {
@@ -432,7 +545,7 @@ class UserManager: ObservableObject {
         do {
             return try await userProvider.findUsersByPhoneNumbers(phoneNumbers)
         } catch {
-            let appError = AppError.from(error)
+            let appError = try AppError.from(error)
             #if DEBUG
             print("Error finding users by phone numbers: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -441,12 +554,14 @@ class UserManager: ObservableObject {
     }
     
     func createNewUser(phoneNumber: String, id: String) async throws {
+        let storagePhone = try storagePhoneNumber(from: phoneNumber)
+
         #if DEBUG
-        print("Starting signup process for phone: \(phoneNumber)")
+        print("Starting signup process for phone: \(storagePhone)")
         #endif
 
         // First check if a user with this phone number already exists
-        if await checkUserExists(phoneNumber: phoneNumber) {
+        if await checkUserExists(phoneNumber: storagePhone) {
             throw AppError.alreadyExists("Phone number already registered")
         }
 
@@ -456,7 +571,7 @@ class UserManager: ObservableObject {
             firstName: "",
             lastName: "",
             username: "",
-            phoneNumber: phoneNumber,
+            phoneNumber: storagePhone,
             joinDate: Date()
         )
 
@@ -481,7 +596,7 @@ class UserManager: ObservableObject {
             print("User session persisted with minimal data")
             #endif
         } catch {
-            let appError = AppError.from(error)
+            let appError = try AppError.from(error)
             #if DEBUG
             print("Error saving user: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -519,12 +634,7 @@ class UserManager: ObservableObject {
             print("✅ User saved successfully to Firebase")
             #endif
 
-            // Ensure the in-memory reference is the same user we just saved.
-            // Avoid re-assigning the same instance (which can create redundant update loops).
-            if currentUser !== updatedUser {
-                objectWillChange.send()
-                self.currentUser = updatedUser
-            }
+            self.currentUser = updatedUser
 
             self.currentUserId = updatedUser.id
             self.persistUserSession()
@@ -536,7 +646,7 @@ class UserManager: ObservableObject {
             print("   - Username: '\(updatedUser.username)'")
             #endif
         } catch {
-            let appError = AppError.from(error)
+            let appError = try AppError.from(error)
             #if DEBUG
             print("❌ Error saving profile: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -550,8 +660,19 @@ class UserManager: ObservableObject {
 
     func toggleDoNotDisturb() async throws {
         guard let user = currentUser else { return }
+        let previousValue = user.doNotDisturb
         user.doNotDisturb.toggle()
-        try await saveProfile(updatedUser: user)
+
+        do {
+            try await userProvider.updateUserFields(
+                userId: user.id,
+                fields: ["doNotDisturb": user.doNotDisturb]
+            )
+            persistUserSession()
+        } catch {
+            user.doNotDisturb = previousValue
+            throw error
+        }
     }
 
     // MARK: - User Actions
@@ -562,12 +683,17 @@ class UserManager: ObservableObject {
 
         // Update user's attending events locally
         user.attendingEventIds.append(eventId)
-        
-        // Sync with Firestore
-        try await saveProfile(updatedUser: user)
-        #if DEBUG
-        print("✅ Event attendance synced with Firestore: \(eventId)")
-        #endif
+
+        do {
+            try await userProvider.updateAttendingEvent(userId: user.id, eventId: eventId, isAttending: true)
+            persistUserSession()
+            #if DEBUG
+            print("✅ Event attendance synced with Firestore: \(eventId)")
+            #endif
+        } catch {
+            user.attendingEventIds.removeAll { $0 == eventId }
+            throw error
+        }
     }
 
     func leaveEvent(_ eventId: String) async throws {
@@ -577,12 +703,17 @@ class UserManager: ObservableObject {
         // Remove from user's attending events locally
         if let index = user.attendingEventIds.firstIndex(of: eventId) {
             user.attendingEventIds.remove(at: index)
-            
-            // Sync with Firestore
-            try await saveProfile(updatedUser: user)
-            #if DEBUG
-            print("✅ Event departure synced with Firestore: \(eventId)")
-            #endif
+
+            do {
+                try await userProvider.updateAttendingEvent(userId: user.id, eventId: eventId, isAttending: false)
+                persistUserSession()
+                #if DEBUG
+                print("✅ Event departure synced with Firestore: \(eventId)")
+                #endif
+            } catch {
+                user.attendingEventIds.insert(eventId, at: index)
+                throw error
+            }
         }
     }
 
@@ -647,7 +778,25 @@ class UserManager: ObservableObject {
         guard let currentUser = currentUser else { return nil }
         return await getUserStats(for: currentUser.id)
     }
-    
+
+    // MARK: - Stats Caching
+
+    private static let cachedStatsKey = "cachedUserStats"
+
+    func cacheStats(_ stats: UserStats) {
+        if let encoded = try? JSONEncoder().encode(stats) {
+            UserDefaults.standard.set(encoded, forKey: Self.cachedStatsKey)
+        }
+    }
+
+    func loadCachedStats() -> UserStats? {
+        guard let data = UserDefaults.standard.data(forKey: Self.cachedStatsKey),
+              let stats = try? JSONDecoder().decode(UserStats.self, from: data) else {
+            return nil
+        }
+        return stats
+    }
+
     // MARK: - Landmark Management
     func visitLandmark(_ landmarkId: String) async {
         guard let userId = currentUser?.id else { return }
@@ -708,7 +857,7 @@ class UserManager: ObservableObject {
                 #endif
             }
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("UserManager: Error updating location: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -804,7 +953,7 @@ class UserManager: ObservableObject {
                 let image = try await imageProvider.downloadProfileImage(from: imageUrl)
                 return image
             } catch {
-                let appError = AppError.from(error)
+                let appError = AppError.classify(error)
                 #if DEBUG
                 print("Failed to fetch remote image: \(appError.errorDescription ?? "Unknown")")
                 #endif
@@ -831,15 +980,18 @@ class UserManager: ObservableObject {
     }
 
     func checkUserExists(phoneNumber: String) async -> Bool {
+        let storagePhone = (try? storagePhoneNumber(from: phoneNumber)) ?? phoneNumber
         #if DEBUG
-        print("Checking if user exists with phone number: \(phoneNumber)")
+        print("Checking if user exists with phone number: \(storagePhone)")
         #endif
-        return await userProvider.checkUserExists(phoneNumber: phoneNumber)
+        return await userProvider.checkUserExists(phoneNumber: storagePhone)
     }
 
     func login(phoneNumber: String, id: String) async throws {
+        let storagePhone = try storagePhoneNumber(from: phoneNumber)
+
         #if DEBUG
-        print("Starting login process for phone: \(phoneNumber)")
+        print("Starting login process for phone: \(storagePhone)")
         #endif
 
         let existingUser: User
@@ -851,7 +1003,7 @@ class UserManager: ObservableObject {
                 try await userProvider.ensureUserDocument()
             } catch {
                 #if DEBUG
-                let appError = AppError.from(error)
+                let appError = AppError.classify(error)
                 print("UserManager: ensureUserDocument failed: \(appError.errorDescription ?? "Unknown")")
                 #endif
             }
@@ -862,11 +1014,15 @@ class UserManager: ObservableObject {
             existingUser = user
         }
 
-        // (Optional) If you want to double-check that this user has the same phone number:
-//        let normalizedPhone = normalizePhoneNumber(phoneNumber)
-//        guard existingUser.phoneNumber == normalizedPhone else {
-//            throw ValidationError.invalidData("No account found with this phone number")
-//        }
+        if let existingStoragePhone = PhoneNumberService.shared.format(existingUser.phoneNumber, for: .storage),
+           existingStoragePhone != storagePhone {
+            throw AppError.authenticationFailed("No account found with this phone number.")
+        }
+
+        if existingUser.phoneNumber != storagePhone,
+           PhoneNumberService.shared.format(existingUser.phoneNumber, for: .storage) == storagePhone {
+            existingUser.updatePhoneNumber(storagePhone)
+        }
 
         #if DEBUG
         print("User found, logging in")
@@ -878,6 +1034,13 @@ class UserManager: ObservableObject {
         #if DEBUG
         print("User logged in successfully")
         #endif
+    }
+
+    private func storagePhoneNumber(from phoneNumber: String) throws -> String {
+        guard let storagePhone = PhoneNumberService.shared.format(phoneNumber, for: .storage) else {
+            throw AppError.invalidInput("Invalid phone number format")
+        }
+        return storagePhone
     }
 
     // MARK: - Initial Profile Setup
@@ -900,12 +1063,6 @@ class UserManager: ObservableObject {
             print("✅ User saved successfully to Firebase")
             #endif
 
-            // Force SwiftUI to detect the change by explicitly notifying
-            // (User is a class, so setting the same reference doesn't trigger @Published)
-            #if DEBUG
-            print("✅ Setting current user to saved user")
-            #endif
-            objectWillChange.send()
             self.currentUser = updatedUser
             self.persistUserSession()
             #if DEBUG

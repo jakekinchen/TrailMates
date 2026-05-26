@@ -35,6 +35,8 @@ enum FirestoreConstants {
         static let checkUsernameTaken = "checkUsernameTaken"
         static let findUsersByPhoneNumbers = "findUsersByPhoneNumbers"
         static let ensureUserDocument = "ensureUserDocument"
+        static let acceptFriendRequest = "acceptFriendRequest"
+        static let removeFriend = "removeFriend"
     }
 
     // MARK: - Realtime Database Paths

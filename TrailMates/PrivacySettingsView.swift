@@ -21,7 +21,7 @@ struct PrivacySettingsView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Privacy")
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .font(.headline)
             }
         }
@@ -34,11 +34,11 @@ struct PrivacySettingsView: View {
 // MARK: - PrivacySettingsView Sections
 private extension PrivacySettingsView {
     var locationSharingSection: some View {
-        Section(header: Text("Trail Location Sharing").foregroundColor(Color("pine"))) {
+        Section(header: Text("Trail Location Sharing").foregroundColor(AppColors.pine)) {
             Toggle("Share with Friends", isOn: $localShareWithFriends)
-                .tint(Color("sage"))
-                .listRowBackground(Color("beige").opacity(0.9))
-                .foregroundColor(Color("pine"))
+                .tint(AppColors.sage)
+                .listRowBackground(AppColors.beige.opacity(0.9))
+                .foregroundColor(AppColors.pine)
                 .onChange(of: localShareWithFriends) { oldValue, newValue in
                     updateSetting(key: "shareWithFriends", oldValue: oldValue, newValue: newValue) {
                         try await userManager.updatePrivacySettings(shareWithFriends: newValue)
@@ -46,9 +46,9 @@ private extension PrivacySettingsView {
                 }
 
             Toggle("Share with Event Host", isOn: $localShareWithHost)
-                .tint(Color("sage"))
-                .foregroundColor(Color("pine"))
-                .listRowBackground(Color("beige").opacity(0.9))
+                .tint(AppColors.sage)
+                .foregroundColor(AppColors.pine)
+                .listRowBackground(AppColors.beige.opacity(0.9))
                 .onChange(of: localShareWithHost) { oldValue, newValue in
                     updateSetting(key: "shareWithHost", oldValue: oldValue, newValue: newValue) {
                         try await userManager.updatePrivacySettings(shareWithHost: newValue)
@@ -56,9 +56,9 @@ private extension PrivacySettingsView {
                 }
 
             Toggle("Share with Entire Event Group", isOn: $localShareWithGroup)
-                .tint(Color("sage"))
-                .foregroundColor(Color("pine"))
-                .listRowBackground(Color("beige").opacity(0.9))
+                .tint(AppColors.sage)
+                .foregroundColor(AppColors.pine)
+                .listRowBackground(AppColors.beige.opacity(0.9))
                 .onChange(of: localShareWithGroup) { oldValue, newValue in
                     updateSetting(key: "shareWithGroup", oldValue: oldValue, newValue: newValue) {
                         try await userManager.updatePrivacySettings(shareWithGroup: newValue)
@@ -68,11 +68,11 @@ private extension PrivacySettingsView {
     }
 
     var eventSettingsSection: some View {
-        Section(header: Text("Event Settings").foregroundColor(Color("pine"))) {
+        Section(header: Text("Event Settings").foregroundColor(AppColors.pine)) {
             Toggle("Allow Friends to Invite Others to My Events", isOn: $localAllowFriendsInvite)
-                .tint(Color("sage"))
-                .foregroundColor(Color("pine"))
-                .listRowBackground(Color("beige").opacity(0.9))
+                .tint(AppColors.sage)
+                .foregroundColor(AppColors.pine)
+                .listRowBackground(AppColors.beige.opacity(0.9))
                 .onChange(of: localAllowFriendsInvite) { oldValue, newValue in
                     updateSetting(key: "allowFriendsInvite", oldValue: oldValue, newValue: newValue) {
                         try await userManager.updatePrivacySettings(allowFriendsInvite: newValue)

@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import Firebase
+import FirebaseAppCheck
 import FirebaseAuth
 import UserNotifications
 
@@ -17,6 +18,11 @@ struct TrailMatesApp: App {
     static let firebaseConfigured: Void = {
         if FirebaseApp.app() == nil {
             print("🔥 Configuring Firebase in TrailMatesApp")
+            #if DEBUG
+            AppCheck.setAppCheckProviderFactory(AppCheckDebugProviderFactory())
+            #else
+            AppCheck.setAppCheckProviderFactory(DeviceCheckProviderFactory())
+            #endif
             FirebaseApp.configure()
             // Set Firebase logger level
             #if DEBUG

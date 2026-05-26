@@ -2,7 +2,7 @@
 title: Swift 6 Concurrency Migration
 created: 2025-01-25
 priority: urgent
-status: complete
+status: completed
 tags: [swift-concurrency, swift-6, refactoring]
 skill: swift-concurrency-expert
 ---

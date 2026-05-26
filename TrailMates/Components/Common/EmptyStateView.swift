@@ -75,17 +75,17 @@ struct EmptyStateView: View {
         VStack(spacing: 20) {
             Image(systemName: systemImage)
                 .font(.system(size: 56))
-                .foregroundColor(Color("pine").opacity(0.4))
+                .foregroundColor(AppColors.pine.opacity(0.4))
 
             VStack(spacing: 8) {
                 Text(title)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
 
                 Text(message)
                     .font(.subheadline)
-                    .foregroundColor(Color("pine").opacity(0.7))
+                    .foregroundColor(AppColors.pine.opacity(0.7))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
             }
@@ -95,10 +95,10 @@ struct EmptyStateView: View {
                     Text(actionTitle)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundColor(Color("alwaysBeige"))
+                        .foregroundColor(AppColors.alwaysBeige)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
-                        .background(Color("pumpkin"))
+                        .background(AppColors.pumpkin)
                         .cornerRadius(12)
                 }
                 .padding(.top, 8)
@@ -113,17 +113,17 @@ struct EmptyStateView: View {
         VStack(spacing: 12) {
             Image(systemName: systemImage)
                 .font(.system(size: 36))
-                .foregroundColor(Color("pine").opacity(0.4))
+                .foregroundColor(AppColors.pine.opacity(0.4))
 
             VStack(spacing: 4) {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
 
                 Text(message)
                     .font(.caption)
-                    .foregroundColor(Color("pine").opacity(0.6))
+                    .foregroundColor(AppColors.pine.opacity(0.6))
                     .multilineTextAlignment(.center)
             }
 
@@ -132,7 +132,7 @@ struct EmptyStateView: View {
                     Text(actionTitle)
                         .font(.caption)
                         .fontWeight(.medium)
-                        .foregroundColor(Color("pumpkin"))
+                        .foregroundColor(AppColors.pumpkin)
                 }
             }
         }
@@ -144,16 +144,16 @@ struct EmptyStateView: View {
         VStack(spacing: 16) {
             Image(systemName: systemImage)
                 .font(.system(size: 40))
-                .foregroundColor(Color("pine").opacity(0.5))
+                .foregroundColor(AppColors.pine.opacity(0.5))
 
             VStack(spacing: 6) {
                 Text(title)
                     .font(.headline)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
 
                 Text(message)
                     .font(.caption)
-                    .foregroundColor(Color("pine").opacity(0.7))
+                    .foregroundColor(AppColors.pine.opacity(0.7))
                     .multilineTextAlignment(.center)
             }
 
@@ -162,10 +162,10 @@ struct EmptyStateView: View {
                     Text(actionTitle)
                         .font(.caption)
                         .fontWeight(.medium)
-                        .foregroundColor(Color("alwaysBeige"))
+                        .foregroundColor(AppColors.alwaysBeige)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(Color("pumpkin"))
+                        .background(AppColors.pumpkin)
                         .cornerRadius(8)
                 }
             }
@@ -174,7 +174,7 @@ struct EmptyStateView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color("beige").opacity(0.5))
+                .fill(AppColors.beige.opacity(0.5))
                 .shadow(color: Color.black.opacity(0.05), radius: 8)
         )
     }
@@ -206,7 +206,7 @@ struct EmptyStateView: View {
         style: .compact
     )
     .frame(height: 200)
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Card Style") {
@@ -227,7 +227,7 @@ struct EmptyStateView: View {
         }
         .padding()
     }
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Search Empty State") {

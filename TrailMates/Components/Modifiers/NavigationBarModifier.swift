@@ -5,7 +5,7 @@ struct NavigationBarModifier: ViewModifier {
     let title: String
     let rightButtonIcon: String?
     let rightButtonAction: (() -> Void)?
-    let backgroundColor: Color = Color("beige")
+    let backgroundColor: Color = AppColors.beige
     
     func body(content: Content) -> some View {
         content
@@ -19,13 +19,13 @@ struct NavigationBarModifier: ViewModifier {
                     // Content
                     HStack {
                         Text(title)
-                            .font(Font.custom("Magic Retro", size: 24))
-                            .foregroundColor(Color("pine"))
+                            .font(AppTypography.displaySmall)
+                            .foregroundColor(AppColors.pine)
                         Spacer()
                         if let icon = rightButtonIcon, let action = rightButtonAction {
                             Button(action: action) {
                                 Image(systemName: icon)
-                                    .foregroundColor(Color("pine"))
+                                    .foregroundColor(AppColors.pine)
                                     .font(.system(size: 24))
                             }
                         }

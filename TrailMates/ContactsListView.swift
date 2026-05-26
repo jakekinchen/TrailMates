@@ -23,9 +23,9 @@ struct ContactsListView: View {
                     // Search Bar
                     HStack {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(Color("pine"))
+                            .foregroundColor(AppColors.pine)
                         TextField("Search contacts", text: $viewModel.searchText)
-                            .foregroundColor(Color("pine"))
+                            .foregroundColor(AppColors.pine)
                             .focused($focusedField, equals: .search)
                             .onSubmit {
                                 focusedField = nil
@@ -48,7 +48,7 @@ struct ContactsListView: View {
                                 Image(systemName: "person.crop.circle.badge.plus")
                                 Text("Add More Contacts")
                             }
-                            .foregroundColor(Color("pine"))
+                            .foregroundColor(AppColors.pine)
                             .padding()
                             .frame(maxWidth: .infinity)
                             .background(Color("altBeige"))
@@ -103,20 +103,18 @@ struct ContactsListView: View {
                         Image(systemName: "chevron.left")
                         Text("Add Friends")
                     }
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                 }
             }
 
             ToolbarItem(placement: .principal) {
                 Text("Contacts")
                     .font(.headline)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
             }
         }
-        .onAppear {
-            Task {
-                await viewModel.loadAndMatchContacts(userManager: userManager)
-            }
+        .task {
+            await viewModel.loadAndMatchContacts(userManager: userManager)
         }
         .alert("Contacts Access Required", isPresented: $showContactsPermissionAlert) {
             Button("Open Settings") {
@@ -166,7 +164,7 @@ private struct MatchedUsersSection: View {
                     )
                     if matchedContact.id != filteredMatchedUsers.last?.id {
                         Divider()
-                            .background(Color("pine").opacity(0.2))
+                            .background(AppColors.pine.opacity(0.2))
                             .padding(.horizontal)
                     }
                 }
@@ -197,12 +195,12 @@ private struct MatchedUserRow: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(matchedContact.contact.givenName) \(matchedContact.contact.familyName)")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color("pine"))
-                    
+                        .font(AppTypography.headingSecondary)
+                        .foregroundColor(AppColors.pine)
+
                     Text("@\(matchedContact.user.username)")
-                        .font(.system(size: 14))
-                        .foregroundColor(Color("pine").opacity(0.7))
+                        .font(AppTypography.bodySmall)
+                        .foregroundColor(AppColors.pine.opacity(0.7))
                 }
 
                 Spacer()
@@ -220,17 +218,17 @@ private struct MatchedUserRow: View {
                                 await sendFriendRequest()
                             }
                         }
-                        .foregroundColor(Color("beige"))
+                        .foregroundColor(AppColors.beige)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(Color("pine"))
+                        .background(AppColors.pine)
                         .cornerRadius(8)
                     }
                 }
             }
             .padding(.vertical, 12)
             .padding(.horizontal)
-            .background(Color("beige").opacity(0.1))
+            .background(AppColors.beige.opacity(0.1))
         }
         .alert("Error", isPresented: .constant(error != nil), presenting: error) { _ in
             Button("OK") { error = nil }

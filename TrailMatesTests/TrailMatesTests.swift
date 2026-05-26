@@ -10,8 +10,29 @@ import Testing
 
 struct TrailMatesTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test("User defaults are suitable for a new account")
+    func newUserDefaults() {
+        let user = User(
+            id: "smoke-user-id",
+            firstName: "Smoke",
+            lastName: "Test",
+            username: "smoketest",
+            phoneNumber: "+15125551234"
+        )
+
+        #expect(user.initials == "ST")
+        #expect(user.isActive)
+        #expect(user.friends.isEmpty)
+        #expect(user.attendingEventIds.isEmpty)
+        #expect(user.receiveFriendRequests)
+        #expect(user.shareLocationWithFriends)
     }
 
+    @Test("AppError exposes user-facing validation messages")
+    func appErrorValidationMessage() {
+        let error = AppError.invalidInput("Phone number is invalid.")
+
+        #expect(error.errorDescription == "Phone number is invalid.")
+        #expect(error.isRetryable == false)
+    }
 }

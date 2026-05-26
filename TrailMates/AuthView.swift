@@ -16,9 +16,9 @@ enum AuthField: Hashable {
 struct AuthView: View {
     // MARK: - Environment
     @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authViewModel: AuthViewModel
 
     // MARK: - State
-    @StateObject private var authViewModel = AuthViewModel()
     @State private var phoneNumber = ""
     @State private var verificationCode = ""
     @State private var showingLoginFields = false
@@ -80,7 +80,7 @@ private extension AuthView {
         )
 
         ZStack {
-            Color("alwaysPine")
+            AppColors.alwaysPine
 
             Image("background")
                 .resizable()
@@ -101,7 +101,7 @@ private extension AuthView {
                 .padding(.top, authHeaderTopPadding)
 
             Circle()
-                .fill(Color("pumpkin"))
+                .fill(AppColors.pumpkin)
                 .frame(width: 60, height: 60)
                 .padding(.top, 20)
         }
@@ -119,8 +119,8 @@ private extension AuthView {
             }
 
             Text("TrailMates")
-                .font(.custom("Magic Retro", size: 48))
-                .foregroundColor(Color("alwaysPine"))
+                .font(AppTypography.displayLarge)
+                .foregroundColor(AppColors.alwaysPine)
         }
     }
 
@@ -128,7 +128,7 @@ private extension AuthView {
     var backButton: some View {
         Button(action: handleBackAction) {
             Image(systemName: "arrow.left")
-                .foregroundColor(Color("alwaysPine"))
+                .foregroundColor(AppColors.alwaysPine)
                 .imageScale(.large)
                 .padding(.leading, 20)
                 .offset(x: 8)
@@ -202,17 +202,17 @@ private extension AuthView {
     @ViewBuilder
     var errorMessageView: some View {
         Text(authViewModel.errorMessage)
-            .font(.system(size: 14, weight: .medium))
-            .foregroundColor(Color("alwaysBeige"))
+            .font(AppTypography.labelPrimary)
+            .foregroundColor(AppColors.alwaysBeige)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color("alwaysPine"))
+                    .fill(AppColors.alwaysPine)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color("pumpkin"), lineWidth: 1)
+                            .stroke(AppColors.pumpkin, lineWidth: 1)
                     )
             )
             .padding(.horizontal, 20)
@@ -308,37 +308,23 @@ private extension AuthView {
         withAnimation(.easeOut(duration: 0.2)) {
             if !phoneNumber.isEmpty {
                 isCheckingPhoneNumber = true
-                #if DEBUG
-                print("Login - Starting phone number check: \(phoneNumber)")
-                #endif
                 Task {
-                    #if DEBUG
-                    print("Login - Checking if user exists")
-                    #endif
-                    if await userManager.checkUserExists(phoneNumber: phoneNumber) {
-                        #if DEBUG
-                        print("Login - User found, proceeding with verification")
-                        #endif
-                        authViewModel.phoneNumber = phoneNumber
-                        if await authViewModel.sendCode() {
-                            isVerificationStage = true
-                            showingLoginFields = true
-                            showingSignupFields = false
-                            isVerificationSent = true
-                        }
-                    } else {
-                        #if DEBUG
-                        print("Login - No user found with phone number")
-                        #endif
-                        authViewModel.showError = true
-                        authViewModel.errorMessage = "No account found with this phone number. Please sign up instead."
+                    let result = await authViewModel.handleLogin(phoneNumber: phoneNumber)
+                    switch result {
+                    case .showFields:
+                        showingLoginFields = true
+                        showingSignupFields = false
+                    case .codeSent:
+                        isVerificationStage = true
+                        showingLoginFields = true
+                        showingSignupFields = false
+                        isVerificationSent = true
+                    case .failed:
+                        break
                     }
                     isCheckingPhoneNumber = false
                 }
             } else {
-                #if DEBUG
-                print("Login - Empty phone number field")
-                #endif
                 showingLoginFields = true
                 showingSignupFields = false
             }
@@ -350,19 +336,18 @@ private extension AuthView {
             if !phoneNumber.isEmpty {
                 isCheckingPhoneNumber = true
                 Task {
-                    if await userManager.checkUserExists(phoneNumber: phoneNumber) {
-                        authViewModel.showError = true
-                        authViewModel.errorMessage = "An account already exists with this phone number. Please log in instead."
-                        isCheckingPhoneNumber = false
-                        return
-                    }
-                    authViewModel.phoneNumber = phoneNumber
-                    authViewModel.isSigningUp = true
-                    if await authViewModel.sendCode() {
+                    let result = await authViewModel.handleSignup(phoneNumber: phoneNumber)
+                    switch result {
+                    case .showFields:
+                        showingSignupFields = true
+                        showingLoginFields = false
+                    case .codeSent:
                         isVerificationStage = true
                         showingSignupFields = true
                         showingLoginFields = false
                         isVerificationSent = true
+                    case .failed:
+                        break
                     }
                     isCheckingPhoneNumber = false
                 }
@@ -465,7 +450,7 @@ private struct AuthSubmitButtonContent: View {
             }
 
             Text(isLoading ? loadingTitle : title)
-                .font(.system(size: 16, weight: .bold))
+                .font(AppTypography.buttonDefault)
         }
         .foregroundColor(foregroundColor)
         .frame(maxWidth: .infinity)
@@ -477,11 +462,11 @@ private struct AuthSubmitButtonContent: View {
     }
 
     private var foregroundColor: Color {
-        primary ? Color("alwaysBeige") : Color("pumpkin")
+        primary ? AppColors.alwaysBeige : AppColors.pumpkin
     }
 
     private var backgroundColor: Color {
-        primary ? Color("pumpkin") : Color("alwaysBeige")
+        primary ? AppColors.pumpkin : AppColors.alwaysBeige
     }
 }
 
@@ -489,11 +474,11 @@ private struct AuthSubmitButtonContent: View {
 private extension Text {
     func authButtonStyle(primary: Bool) -> some View {
         self
-            .font(.system(size: 16, weight: .bold))
-            .foregroundColor(primary ? Color("alwaysBeige") : Color("pumpkin"))
+            .font(AppTypography.buttonDefault)
+            .foregroundColor(primary ? AppColors.alwaysBeige : AppColors.pumpkin)
             .frame(maxWidth: .infinity)
             .padding()
-            .background(primary ? Color("pumpkin") : Color("alwaysBeige"))
+            .background(primary ? AppColors.pumpkin : AppColors.alwaysBeige)
             .cornerRadius(25)
     }
 }
@@ -512,5 +497,7 @@ extension AnyTransition {
 struct AuthView_Previews: PreviewProvider {
     static var previews: some View {
         AuthView()
+            .environmentObject(UserManager.shared)
+            .environmentObject(AuthViewModel())
     }
 }

@@ -15,12 +15,12 @@ struct NotificationSettingsView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Notifications")
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .font(.headline)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
         .themedBackground()
     }
 }
@@ -28,7 +28,7 @@ struct NotificationSettingsView: View {
 // MARK: - NotificationSettingsView Sections
 private extension NotificationSettingsView {
     var socialSection: some View {
-        Section(header: Text("Social").foregroundColor(Color("pine"))) {
+        Section(header: Text("Social").foregroundColor(AppColors.pine)) {
             Toggle("Friend Requests", isOn: Binding(
                 get: { userManager.currentUser?.receiveFriendRequests ?? true },
                 set: { newValue in
@@ -37,9 +37,9 @@ private extension NotificationSettingsView {
                     }
                 }
             ))
-            .tint(Color("sage"))
-            .listRowBackground(Color("beige").opacity(0.9))
-            .foregroundColor(Color("pine"))
+            .tint(AppColors.sage)
+            .listRowBackground(AppColors.beige.opacity(0.9))
+            .foregroundColor(AppColors.pine)
 
             Toggle("New Events from Friends", isOn: Binding(
                 get: { userManager.currentUser?.receiveFriendEvents ?? true },
@@ -49,14 +49,14 @@ private extension NotificationSettingsView {
                     }
                 }
             ))
-            .tint(Color("sage"))
-            .listRowBackground(Color("beige").opacity(0.9))
-            .foregroundColor(Color("pine"))
+            .tint(AppColors.sage)
+            .listRowBackground(AppColors.beige.opacity(0.9))
+            .foregroundColor(AppColors.pine)
         }
     }
 
     var eventsSection: some View {
-        Section(header: Text("Events").foregroundColor(Color("pine"))) {
+        Section(header: Text("Events").foregroundColor(AppColors.pine)) {
             Toggle("Event Updates & Changes", isOn: Binding(
                 get: { userManager.currentUser?.receiveEventUpdates ?? true },
                 set: { newValue in
@@ -65,9 +65,9 @@ private extension NotificationSettingsView {
                     }
                 }
             ))
-            .tint(Color("sage"))
-            .listRowBackground(Color("beige").opacity(0.9))
-            .foregroundColor(Color("pine"))
+            .tint(AppColors.sage)
+            .listRowBackground(AppColors.beige.opacity(0.9))
+            .foregroundColor(AppColors.pine)
         }
     }
 }

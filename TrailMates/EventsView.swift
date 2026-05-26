@@ -15,6 +15,7 @@ struct EventsView: View {
     @State private var showEventDetails = false
     @State private var selectedEvent: Event?
     @State private var showOnlyMyEvents = false
+    @State private var actionErrorMessage: String?
     
     // MARK: - Event Filtering and Grouping
 
@@ -28,18 +29,22 @@ struct EventsView: View {
         }
         
         private func emptyStateView() -> some View {
-            VStack(spacing: 12) {
-                Image(systemName: "calendar.badge.exclamationmark")
-                    .font(.system(size: 50))
-                    .foregroundColor(Color("pine"))
-                
-                Text(emptyStateMessage)
-                    .font(.headline)
-                    .foregroundColor(Color("pine"))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
+            EmptyStateView(
+                title: emptyStateTitle,
+                message: emptyStateMessage,
+                systemImage: "calendar.badge.exclamationmark",
+                style: .compact
+            )
             .padding(.top, 40)
+        }
+
+        private var emptyStateTitle: String {
+            switch activeSegment {
+            case "circle": return "No Circle Events"
+            case "explore": return "No Public Events"
+            case "myEvents": return "No Events Yet"
+            default: return "No Events"
+            }
         }
         
         private var emptyStateMessage: String {
@@ -63,16 +68,14 @@ struct EventsView: View {
             onJoinTap: {
                 if let userId = userManager.currentUser?.id {
                     Task {
-                        try await eventViewModel.attendEvent(userId: userId, eventId: event.id)
-                        try await userManager.attendEvent(event.id)
+                        await joinEvent(event, userId: userId)
                     }
                 }
             },
             onLeaveTap: {
                 if let userId = userManager.currentUser?.id {
                     Task {
-                        try await eventViewModel.leaveEvent(userId: userId, eventId: event.id)
-                        try await userManager.leaveEvent(event.id)
+                        await leaveEvent(event, userId: userId)
                     }
                 }
             }
@@ -86,21 +89,12 @@ struct EventsView: View {
     private func makeEventsList(_ groups: [EventGroup]) -> some View {
         LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
             if groups.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "calendar.badge.exclamationmark")
-                        .font(.system(size: 50))
-                        .foregroundColor(Color("pine"))
-                    
-                    Text(activeSegment == "circle" ?
-                         "No events from your circle yet.\nConnect with more friends to see their events!" :
-                         activeSegment == "explore" ?
-                         "No public events available.\nCheck back later for new events!" :
-                         "You haven't created any events yet.\nTap the + button to get started!")
-                        .font(.headline)
-                        .foregroundColor(Color("pine"))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
+                EmptyStateView(
+                    title: emptyStateTitle,
+                    message: emptyStateMessage,
+                    systemImage: "calendar.badge.exclamationmark",
+                    style: .compact
+                )
                 .padding(.top, 40)
             } else {
                 ForEach(groups) { group in
@@ -156,6 +150,14 @@ struct EventsView: View {
                     )
                 }
             }
+            .alert("Event Error", isPresented: .init(
+                get: { actionErrorMessage != nil },
+                set: { if !$0 { actionErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(actionErrorMessage ?? "An unknown error occurred")
+            }
         }
 
     
@@ -171,5 +173,27 @@ struct EventsView: View {
                 return "TrailMates"
             }
         }
+
+    private func joinEvent(_ event: Event, userId: String) async {
+        do {
+            try await eventViewModel.attendEvent(userId: userId, eventId: event.id)
+            try await userManager.attendEvent(event.id)
+        } catch is CancellationError {
+            return
+        } catch {
+            actionErrorMessage = AppError.classify(error).errorDescription ?? "Unable to join this event."
+        }
+    }
+
+    private func leaveEvent(_ event: Event, userId: String) async {
+        do {
+            try await eventViewModel.leaveEvent(userId: userId, eventId: event.id)
+            try await userManager.leaveEvent(event.id)
+        } catch is CancellationError {
+            return
+        } catch {
+            actionErrorMessage = AppError.classify(error).errorDescription ?? "Unable to leave this event."
+        }
+    }
     
 }

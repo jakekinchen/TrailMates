@@ -32,9 +32,10 @@ protocol UserDataProviding {
     /// - Returns: The `User` if found, `nil` otherwise.
     func fetchUser(by id: String) async -> User?
 
-    /// Fetches all users from the database.
-    /// - Returns: Array of all `User` objects.
-    func fetchAllUsers() async -> [User]
+    /// Fetches users from the database with an optional limit.
+    /// - Parameter limit: Maximum number of users to return (default 50).
+    /// - Returns: Array of `User` objects.
+    func fetchAllUsers(limit: Int) async -> [User]
 
     /// Saves a new user to the database during initial registration.
     /// - Parameter user: The user to save.
@@ -45,6 +46,21 @@ protocol UserDataProviding {
     /// - Parameter user: The user with updated data.
     /// - Throws: `AppError` if the update operation fails.
     func saveUser(_ user: User) async throws
+
+    /// Applies a partial update to a user document without rewriting the full record.
+    /// - Parameters:
+    ///   - userId: The user document ID.
+    ///   - fields: Firestore field/value updates.
+    /// - Throws: `AppError` if the update operation fails.
+    func updateUserFields(userId: String, fields: [String: Any]) async throws
+
+    /// Atomically adds or removes an event ID from the user's attending event list.
+    /// - Parameters:
+    ///   - userId: The user document ID.
+    ///   - eventId: The event ID to add or remove.
+    ///   - isAttending: `true` to add with arrayUnion, `false` to remove with arrayRemove.
+    /// - Throws: `AppError` if the update operation fails.
+    func updateAttendingEvent(userId: String, eventId: String, isAttending: Bool) async throws
 
     // MARK: - User Queries
 
@@ -141,9 +157,11 @@ protocol UserDataProviding {
 protocol EventDataProviding {
     // MARK: - Event CRUD Operations
 
-    /// Fetches all events from the database.
-    /// - Returns: Array of all `Event` objects.
-    func fetchAllEvents() async -> [Event]
+    /// Fetches events from the database with an optional limit.
+    /// - Parameter limit: Maximum number of events to return (default 50).
+    /// - Returns: Array of `Event` objects.
+    /// - Throws: `AppError` if the fetch fails (network, permission, etc.).
+    func fetchAllEvents(limit: Int) async throws -> [Event]
 
     /// Fetches a single event by its ID.
     /// - Parameter id: The event's unique identifier.
@@ -165,6 +183,15 @@ protocol EventDataProviding {
     /// - Returns: The updated `Event` with new status.
     func updateEventStatus(_ event: Event) async -> Event
 
+    /// Atomically adds or removes a user from an event's attendee list.
+    /// - Parameters:
+    ///   - eventId: The event ID to update.
+    ///   - userId: The user ID to add or remove.
+    ///   - isAttending: `true` to add with arrayUnion, `false` to remove with arrayRemove.
+    /// - Returns: The event after the atomic attendance update.
+    /// - Throws: `AppError` if the update or follow-up fetch fails.
+    func updateAttendance(eventId: String, userId: String, isAttending: Bool) async throws -> Event
+
     // MARK: - Event Queries
 
     /// Fetches all events created by a specific user.
@@ -181,7 +208,8 @@ protocol EventDataProviding {
 
     /// Fetches all public events.
     /// - Returns: Array of public `Event` objects.
-    func fetchPublicEvents() async -> [Event]
+    /// - Throws: `AppError` if the fetch fails (network, permission, etc.).
+    func fetchPublicEvents() async throws -> [Event]
 
     /// Fetches events the user is attending.
     /// - Parameter userId: The user's ID.

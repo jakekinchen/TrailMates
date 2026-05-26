@@ -170,21 +170,10 @@ class UserDataProvider {
     }
 
     func fetchAllUsers(limit: Int = 50) async -> [User] {
-        do {
-            // Use retry logic for network fetch
-            let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection(FirestoreConstants.Collections.users)
-                    .limit(to: limit)
-                    .getDocuments()
-            }
-            return snapshot.documents.compactMap { try? $0.data(as: User.self) }
-        } catch {
-            let appError = AppError.classify(error)
-            #if DEBUG
-            print("UserDataProvider: Error fetching all users: \(appError.errorDescription ?? "Unknown")")
-            #endif
-            return []
-        }
+        #if DEBUG
+        print("UserDataProvider: fetchAllUsers is disabled; use targeted searchUsers/fetchPublicUserProfile callables instead.")
+        #endif
+        return []
     }
 
     func saveInitialUser(_ user: User) async throws {
@@ -200,6 +189,8 @@ class UserDataProvider {
               user.id == currentUser.uid else {
             throw AppError.invalidData("User ID must match Firebase Auth UID")
         }
+
+        try Self.normalizePhoneNumberForPersistence(user)
 
         let userRef = db.collection(FirestoreConstants.Collections.users).document(user.id)
 
@@ -241,6 +232,8 @@ class UserDataProvider {
                 throw AppError.missingRequiredFields("First name, last name, and username are required")
             }
         }
+
+        try Self.normalizePhoneNumberForPersistence(user)
 
         let userData = user
         #if DEBUG
@@ -287,6 +280,30 @@ class UserDataProvider {
             #endif
             throw appError
         }
+    }
+
+    func updateUserFields(userId: String, fields: [String: Any]) async throws {
+        guard !fields.isEmpty else { return }
+
+        let userRef = db.collection(FirestoreConstants.Collections.users).document(userId)
+        do {
+            try await withRetry(maxAttempts: 3) {
+                try await userRef.updateData(fields)
+            }
+        } catch {
+            throw try AppError.from(error)
+        }
+    }
+
+    func updateAttendingEvent(userId: String, eventId: String, isAttending: Bool) async throws {
+        let eventUpdate = isAttending
+            ? FieldValue.arrayUnion([eventId])
+            : FieldValue.arrayRemove([eventId])
+
+        try await updateUserFields(
+            userId: userId,
+            fields: ["attendingEventIds": eventUpdate]
+        )
     }
 
     // MARK: - User Query Methods
@@ -339,43 +356,12 @@ class UserDataProvider {
         #if DEBUG
         print("UserDataProvider: Fetching user by phone number")
         #endif
-        let hashedNumber = PhoneNumberHasher.shared.hashPhoneNumber(phoneNumber)
-        #if DEBUG
-        print("   Hashed number: '\(hashedNumber)'")
-        #endif
-
         do {
-            #if DEBUG
-            print("Querying Firestore for hashed phone: '\(hashedNumber)'")
-            #endif
-
-            // Use retry logic for network fetch
-            let snapshot = try await withRetry(maxAttempts: 3) {
-                try await self.db.collection(FirestoreConstants.Collections.users)
-                    .whereField("hashedPhoneNumber", isEqualTo: hashedNumber)
-                    .limit(to: 1)
-                    .getDocuments()
-            }
-
-            if let doc = snapshot.documents.first {
-                #if DEBUG
-                print("UserDataProvider: Found user document: \(doc.documentID)")
-                #endif
-                let user = try doc.data(as: User.self)
-                #if DEBUG
-                print("   User details: \(user.firstName) \(user.lastName)")
-                #endif
-                return user
-            } else {
-                #if DEBUG
-                print("UserDataProvider: No user document found for hashed phone: '\(hashedNumber)'")
-                #endif
-                return nil
-            }
+            return try await searchUsers(username: nil, phoneNumber: phoneNumber).first
         } catch {
             let appError = AppError.classify(error)
             #if DEBUG
-            print("UserDataProvider: Error fetching user by phone: \(appError.errorDescription ?? "Unknown")")
+            print("UserDataProvider: Error fetching user by phone callable: \(appError.errorDescription ?? "Unknown")")
             #endif
             return nil
         }
@@ -686,5 +672,15 @@ class UserDataProvider {
         let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
         let withoutPrefix = trimmed.hasPrefix("@") ? String(trimmed.dropFirst()) : trimmed
         return withoutPrefix.lowercased()
+    }
+
+    private static func normalizePhoneNumberForPersistence(_ user: User) throws {
+        guard let storagePhone = PhoneNumberService.shared.format(user.phoneNumber, for: .storage) else {
+            throw AppError.invalidData("Phone number must be valid before saving.")
+        }
+
+        if user.phoneNumber != storagePhone {
+            user.updatePhoneNumber(storagePhone)
+        }
     }
 }

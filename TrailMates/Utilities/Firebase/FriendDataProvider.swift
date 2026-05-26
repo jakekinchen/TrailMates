@@ -2,6 +2,7 @@ import Foundation
 import Firebase
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseFunctions
 import FirebaseDatabase
 
 /// Handles all friend-related Firebase operations
@@ -15,6 +16,13 @@ class FriendDataProvider {
     private lazy var db = Firestore.firestore()
     private lazy var rtdb = Database.database().reference()
     private lazy var auth = Auth.auth()
+    private lazy var functions: Functions = {
+        let functions = Functions.functions(region: "us-central1")
+        #if DEBUG
+        functions.useEmulator(withHost: "127.0.0.1", port: 5001)
+        #endif
+        return functions
+    }()
 
     // MARK: - Observer State
     private var friendRequestsHandle: DatabaseHandle?
@@ -65,7 +73,7 @@ class FriendDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             requestRef.setValue(requestData) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     continuation.resume()
                 }
@@ -74,30 +82,18 @@ class FriendDataProvider {
     }
 
     func acceptFriendRequest(requestId: String, userId: String, friendId: String) async throws {
-        // Get Firebase UID for the accepting user (for RTDB operations)
-        let userDoc = try await db.collection(FirestoreConstants.Collections.users).document(userId).getDocument()
-        guard let firebaseUid = userDoc.get("id") as? String else {
-            throw AppError.invalidData("Could not find Firebase UID for user")
+        guard let currentUser = auth.currentUser,
+              currentUser.uid == userId else {
+            throw AppError.notAuthenticated("Cannot accept a request on behalf of another user")
         }
 
-        // Add friend relationship in Firestore using SwiftData UUIDs
-        try await addFriend(friendId, to: userId)
-        try await addFriend(userId, to: friendId)
-
-        // Clean up friend request and notification in RTDB using Firebase UID
-        let updates: [String: Any?] = [
-            "\(FirestoreConstants.RTDBPaths.friendRequests)/\(firebaseUid)/\(requestId)": nil,
-            "\(FirestoreConstants.RTDBPaths.notifications)/\(firebaseUid)/\(requestId)": nil
-        ]
-
-        return try await withCheckedThrowingContinuation { continuation in
-            rtdb.updateChildValues(updates as [AnyHashable : Any]) { error, _ in
-                if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
-                } else {
-                    continuation.resume()
-                }
+        let callable = functions.httpsCallable(FirestoreConstants.Functions.acceptFriendRequest)
+        do {
+            _ = try await withRetry(maxAttempts: 3) {
+                try await callable.call(["requestId": requestId])
             }
+        } catch {
+            throw try AppError.from(error)
         }
     }
 
@@ -115,7 +111,7 @@ class FriendDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             rtdb.updateChildValues(updates as [AnyHashable : Any]) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     continuation.resume()
                 }
@@ -135,7 +131,7 @@ class FriendDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             requestRef.updateChildValues(["status": status.rawValue]) { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     continuation.resume()
                 }
@@ -149,71 +145,22 @@ class FriendDataProvider {
         guard friendId != userId else {
             throw AppError.invalidInput("You cannot add yourself as a friend.")
         }
-
-        let userRef = db.collection(FirestoreConstants.Collections.users).document(userId)
-        let friendRef = db.collection(FirestoreConstants.Collections.users).document(friendId)
-
-        _ = try await db.runTransaction { transaction, errorPointer in
-            let userDoc: DocumentSnapshot
-            let friendDoc: DocumentSnapshot
-
-            do {
-                userDoc = try transaction.getDocument(userRef)
-                friendDoc = try transaction.getDocument(friendRef)
-            } catch let fetchError as NSError {
-                errorPointer?.pointee = fetchError
-                return nil
-            }
-
-            // Get current friend lists
-            var userFriends = userDoc.get("friends") as? [String] ?? []
-            var friendFriends = friendDoc.get("friends") as? [String] ?? []
-
-            // Add friend IDs if not already present
-            if !userFriends.contains(friendId) {
-                userFriends.append(friendId)
-            }
-            if !friendFriends.contains(userId) {
-                friendFriends.append(userId)
-            }
-
-            // Update both documents
-            transaction.updateData(["friends": userFriends], forDocument: userRef)
-            transaction.updateData(["friends": friendFriends], forDocument: friendRef)
-
-            return nil
-        }
+        throw AppError.unauthorized("Use friend requests to add friends.")
     }
 
     func removeFriend(_ friendId: String, from userId: String) async throws {
-        let userRef = db.collection(FirestoreConstants.Collections.users).document(userId)
-        let friendRef = db.collection(FirestoreConstants.Collections.users).document(friendId)
+        guard let currentUser = auth.currentUser,
+              currentUser.uid == userId else {
+            throw AppError.notAuthenticated("Cannot remove a friend on behalf of another user")
+        }
 
-        _ = try await db.runTransaction { transaction, errorPointer in
-            let userDoc: DocumentSnapshot
-            let friendDoc: DocumentSnapshot
-
-            do {
-                userDoc = try transaction.getDocument(userRef)
-                friendDoc = try transaction.getDocument(friendRef)
-            } catch let fetchError as NSError {
-                errorPointer?.pointee = fetchError
-                return nil
+        let callable = functions.httpsCallable(FirestoreConstants.Functions.removeFriend)
+        do {
+            _ = try await withRetry(maxAttempts: 3) {
+                try await callable.call(["friendId": friendId])
             }
-
-            // Get current friend lists
-            var userFriends = userDoc.get("friends") as? [String] ?? []
-            var friendFriends = friendDoc.get("friends") as? [String] ?? []
-
-            // Remove friend IDs
-            userFriends.removeAll { $0 == friendId }
-            friendFriends.removeAll { $0 == userId }
-
-            // Update both documents
-            transaction.updateData(["friends": userFriends], forDocument: userRef)
-            transaction.updateData(["friends": friendFriends], forDocument: friendRef)
-
-            return nil
+        } catch {
+            throw try AppError.from(error)
         }
     }
 
@@ -278,7 +225,7 @@ class FriendDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             requestsRef.removeValue { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     #if DEBUG
                     print("FriendDataProvider: Deleted all friend requests for user \(userId)")

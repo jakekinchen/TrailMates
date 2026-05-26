@@ -13,6 +13,7 @@ class LocationPickerViewModel: ObservableObject {
     
     private let logger = Logger(subsystem: "com.bridges.trailmatesatx", category: "LocationPicker")
     private var lastGeocodingTime: Date = .distantPast
+    private var geocodingTask: Task<Void, Never>?
     
     init(initialLocation: LocationSelection? = nil) {
         self.selectedLocation = initialLocation
@@ -53,25 +54,34 @@ class LocationPickerViewModel: ObservableObject {
         }
     }
     
-    func updateCustomLocation(for coordinate: CLLocationCoordinate2D) async {
+    func scheduleCustomLocationUpdate(for coordinate: CLLocationCoordinate2D) {
+        // Cancel any in-flight geocoding task before starting a new one
+        geocodingTask?.cancel()
+        geocodingTask = Task {
+            await updateCustomLocation(for: coordinate)
+        }
+    }
+
+    private func updateCustomLocation(for coordinate: CLLocationCoordinate2D) async {
         let now = Date()
         guard now.timeIntervalSince(lastGeocodingTime) > 0.5 else { return }
-        
+
         guard isValidCoordinate(coordinate) else {
             logger.debug("Invalid coordinate for custom location")
             return
         }
-        
+
         let locationName = await getLocationName(for: coordinate)
-        await MainActor.run {
-            currentCustomLocation = LocationSelection(
-                coordinate: coordinate,
-                name: locationName,
-                isRecommended: false
-            )
-            lastGeocodingTime = now
-            logger.debug("Updated custom location: \(locationName)")
-        }
+
+        guard !Task.isCancelled else { return }
+
+        currentCustomLocation = LocationSelection(
+            coordinate: coordinate,
+            name: locationName,
+            isRecommended: false
+        )
+        lastGeocodingTime = now
+        logger.debug("Updated custom location: \(locationName)")
     }
     
     var menuLabel: String {

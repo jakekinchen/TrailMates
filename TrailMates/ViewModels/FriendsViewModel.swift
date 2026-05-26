@@ -110,7 +110,7 @@ class FriendsViewModel: ObservableObject {
             sentFriendRequestUserIds.insert(user.id)
             friendLookupMessage = "Friend request sent to \(user.firstName)."
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             friendLookupMessage = appError.errorDescription
         }
     }
@@ -165,7 +165,7 @@ class FriendsViewModel: ObservableObject {
             let users = try await userManager.searchUsers(usernameOrPhone: query)
             return users.first
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             friendLookupMessage = appError.errorDescription
             return nil
         }

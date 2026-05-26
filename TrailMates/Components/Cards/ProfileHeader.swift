@@ -23,18 +23,18 @@ struct ProfileHeader: View {
         VStack(spacing: 16) {
             // Profile Image
             UserAvatarView(user: user, size: 120)
-                .overlay(Circle().strokeBorder(Color("pine"), lineWidth: 3))
+                .overlay(Circle().strokeBorder(AppColors.pine, lineWidth: 3))
                 .shadow(radius: 5)
             
             VStack(spacing: 8) {
                 Text("\(user.firstName) \(user.lastName)")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                 
                 Text("@\(user.username)")
                     .font(.subheadline)
-                    .foregroundColor(Color("pine").opacity(0.8))
+                    .foregroundColor(AppColors.pine.opacity(0.8))
             }
             
             actionButton

@@ -17,7 +17,7 @@ struct AboutView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("About")
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .font(.headline)
             }
         }
@@ -36,10 +36,10 @@ private extension AboutView {
                 Text("TrailMates")
                     .font(.title)
                     .fontWeight(.bold)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
 
                 Text("Version \(appVersion) (\(buildNumber))")
-                    .foregroundColor(Color("pine").opacity(0.7))
+                    .foregroundColor(AppColors.pine.opacity(0.7))
             }
             .frame(maxWidth: .infinity)
             .listRowInsets(EdgeInsets())
@@ -48,35 +48,35 @@ private extension AboutView {
     }
 
     var appInfoSection: some View {
-        Section(header: Text("App Info").foregroundColor(Color("pine"))) {
+        Section(header: Text("App Info").foregroundColor(AppColors.pine)) {
             infoRow("Version", value: appVersion)
             infoRow("Build", value: buildNumber)
         }
-        .listRowBackground(Color("beige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .listRowBackground(AppColors.beige.opacity(0.9))
+        .foregroundColor(AppColors.pine)
     }
 
     var legalSection: some View {
-        Section(header: Text("Legal").foregroundColor(Color("pine"))) {
+        Section(header: Text("Legal").foregroundColor(AppColors.pine)) {
             NavigationLink("Terms of Service") {
-                WebViewContainer(url: URL(string: "https://trailmates.app/terms")!)
+                WebViewContainer(url: URL(string: AppConstants.termsOfServiceURL)!)
             }
 
             NavigationLink("Privacy Policy") {
-                WebViewContainer(url: URL(string: "https://trailmates.app/privacy")!)
+                WebViewContainer(url: URL(string: AppConstants.privacyPolicyURL)!)
             }
 
             NavigationLink("Acknowledgments") {
                 AcknowledgmentsView()
             }
         }
-        .listRowBackground(Color("beige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .listRowBackground(AppColors.beige.opacity(0.9))
+        .foregroundColor(AppColors.pine)
     }
 
     var socialSection: some View {
-        Section(header: Text("Follow Us").foregroundColor(Color("pine"))) {
-            Link(destination: URL(string: "https://twitter.com/trailmates")!) {
+        Section(header: Text("Follow Us").foregroundColor(AppColors.pine)) {
+            Link(destination: URL(string: AppConstants.twitterURL)!) {
                 HStack {
                     Text("Twitter")
                     Spacer()
@@ -84,7 +84,7 @@ private extension AboutView {
                 }
             }
 
-            Link(destination: URL(string: "https://instagram.com/trailmates")!) {
+            Link(destination: URL(string: AppConstants.instagramURL)!) {
                 HStack {
                     Text("Instagram")
                     Spacer()
@@ -92,8 +92,8 @@ private extension AboutView {
                 }
             }
         }
-        .listRowBackground(Color("beige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .listRowBackground(AppColors.beige.opacity(0.9))
+        .foregroundColor(AppColors.pine)
     }
 }
 
@@ -111,14 +111,14 @@ private extension AboutView {
                 .cornerRadius(22)
                 .overlay(
                     RoundedRectangle(cornerRadius: 22)
-                        .stroke(Color("pine").opacity(0.1), lineWidth: 1)
+                        .stroke(AppColors.pine.opacity(0.1), lineWidth: 1)
                 )
         } else {
             Image(systemName: "app.fill")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 100, height: 100)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
         }
     }
 }
@@ -127,7 +127,7 @@ private extension AboutView {
 private extension AboutView {
     func infoRow(_ title: String, value: String) -> some View {
         HStack {
-            Text(title).foregroundColor(Color("pine"))
+            Text(title).foregroundColor(AppColors.pine)
             Spacer()
             Text(value).foregroundColor(.gray)
         }
@@ -142,7 +142,7 @@ struct WebViewContainer: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            Color("beige").ignoresSafeArea()
+            AppColors.beige.ignoresSafeArea()
             WebView(url: url)
         }
         .navigationBarTitleDisplayMode(.inline)

@@ -13,16 +13,16 @@ struct SettingsRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 22))
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
 
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundColor(Color("pine").opacity(0.7))
+                    .foregroundColor(AppColors.pine.opacity(0.7))
             }
 
             Spacer()
@@ -48,16 +48,16 @@ struct PreferenceToggleRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundColor(Color("pine").opacity(0.7))
+                    .foregroundColor(AppColors.pine.opacity(0.7))
             }
 
             Spacer()
 
             Toggle("", isOn: $isEnabled)
-                .tint(Color("sage"))
+                .tint(AppColors.sage)
         }
     }
 }

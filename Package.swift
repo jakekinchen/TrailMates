@@ -66,10 +66,7 @@ let package = Package(
     targets: [
         .target(
             name: "TrailMates",
-            dependencies: [],
-            swiftSettings: [
-                .unsafeFlags(["-suppress-warnings"])
-            ]
+            dependencies: []
         )
     ]
-) 
+)

@@ -2,7 +2,7 @@ import SwiftUI
 import MapKit
 
 extension Color {
-    static let bottomSheetBackground = Color("beige").opacity(0.95)
+    static let bottomSheetBackground = AppColors.beige.opacity(0.95)
 }
 
 // MARK: - Main Map View
@@ -61,7 +61,7 @@ struct MapView: View {
                 bottomSheetContent
             }
         }
-        .background(Color("beige"))
+        .background(AppColors.beige)
         .sheet(isPresented: $showNotifications) {
             NotificationsView()
         }
@@ -75,11 +75,9 @@ struct MapView: View {
                 )
             }
         }
-        .onAppear {
-            Task {
-                await loadData()
-                startLocationUpdates()
-            }
+        .task {
+            await loadData()
+            startLocationUpdates()
         }
         .onDisappear {
             stopLocationUpdates()
@@ -235,7 +233,7 @@ struct FriendsSection: View {
                     UserAvatarView(user: friend, size: 40)
                     VStack(alignment: .leading) {
                         Text("\(friend.firstName) \(friend.lastName)")
-                            .foregroundColor(Color("pine"))
+                            .foregroundColor(AppColors.pine)
                         if friend.isActive {
                             Text("Now")
                                 .font(.caption)

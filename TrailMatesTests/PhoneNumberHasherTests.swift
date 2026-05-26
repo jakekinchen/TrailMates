@@ -33,6 +33,27 @@ final class PhoneNumberHasherTests: XCTestCase {
             XCTAssertEqual(hash.count, 64, "Hash should be 64 characters (SHA-256)")
         }
     }
+
+    func testPhoneNormalizationAndHashConsistencyAcrossAuthAndSearchPaths() {
+        // These inputs mirror the same number moving through signup, login,
+        // friend search, and change-phone screens.
+        let pathInputs = [
+            "signup": "(512) 555-1234",
+            "login": "5125551234",
+            "search": "+1 512 555 1234",
+            "changePhone": "+15125551234"
+        ]
+
+        let normalizedNumbers = pathInputs.mapValues {
+            PhoneNumberService.shared.format($0, for: .storage)
+        }
+        let hashes = pathInputs.mapValues {
+            PhoneNumberHasher.shared.hashPhoneNumber($0)
+        }
+
+        XCTAssertTrue(normalizedNumbers.values.allSatisfy { $0 == "+15125551234" })
+        XCTAssertEqual(Set(hashes.values).count, 1, "Every path should produce the same hashed phone value")
+    }
     
     func testHashPhoneNumberWithInvalidNumbers() {
         // Test invalid phone numbers
@@ -137,4 +158,4 @@ final class PhoneNumberHasherTests: XCTestCase {
         
         XCTAssertEqual(hashes.count, testCases.count, "Each international number should hash uniquely")
     }
-} 
+}

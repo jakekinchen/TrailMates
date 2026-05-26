@@ -141,7 +141,7 @@ private extension FloatingLabelTextField {
 
     var floatingLabel: some View {
         Text(placeholder)
-            .font(.custom("SF Pro", size: isAnimated ? 12 : 16))
+            .font(isAnimated ? AppTypography.inputLabel : AppTypography.inputText)
             .foregroundColor(labelColor.opacity(0.8))
             .offset(x: 10, y: isAnimated ? -14 : 0)
             .animation(.spring(response: 0.2), value: isAnimated)
@@ -157,7 +157,7 @@ private extension FloatingLabelTextField {
                 .autocapitalization(autocapitalization)
                 .autocorrectionDisabled(autocorrectionDisabled)
                 .disabled(!isEnabled)
-                .font(.custom("SF Pro", size: 16))
+                .font(AppTypography.inputText)
                 .foregroundColor(foregroundColor)
                 .tint(foregroundColor)
                 .padding(.leading, 12)

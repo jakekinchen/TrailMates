@@ -31,14 +31,14 @@ struct PermissionCard: View {
         HStack(alignment: .top, spacing: 15) {
             Image(systemName: iconName)
                 .font(.title2)
-                .foregroundColor(Color("pumpkin"))
+                .foregroundColor(AppColors.pumpkin)
                 .frame(width: 30)
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
                     Text(title)
                         .font(.headline)
-                        .foregroundColor(Color("alwaysPine"))
+                        .foregroundColor(AppColors.alwaysPine)
 
                     Spacer()
 
@@ -47,7 +47,7 @@ struct PermissionCard: View {
 
                 Text(description)
                     .font(.subheadline)
-                    .foregroundColor(Color("alwaysSage"))
+                    .foregroundColor(AppColors.alwaysSage)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -67,7 +67,7 @@ struct PermissionCard: View {
                 .foregroundColor(.red)
         case .partial:
             return Image(systemName: "exclamationmark.circle.fill")
-                .foregroundColor(Color("pumpkin"))
+                .foregroundColor(AppColors.pumpkin)
         case .notRequested:
             return Image(systemName: "circle")
                 .foregroundColor(.gray)

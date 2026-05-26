@@ -89,7 +89,7 @@ struct ImageCropper: View {
                             Text("Choose")
                                 .foregroundColor(.white)
                                 .padding()
-                                .background(Color("pumpkin"))
+                                .background(AppColors.pumpkin)
                                 .cornerRadius(8)
                         }
                     }

@@ -11,7 +11,7 @@ struct AcknowledgmentsView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Acknowledgements")
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .font(.headline)
             }
         }
@@ -23,20 +23,20 @@ struct AcknowledgmentsView: View {
 // MARK: - AcknowledgmentsView Sections
 private extension AcknowledgmentsView {
     var openSourceSection: some View {
-        Section(header: Text("Open Source Libraries").foregroundColor(Color("pine"))) {
+        Section(header: Text("Open Source Libraries").foregroundColor(AppColors.pine)) {
             acknowledgmentRow(title: "Firebase", description: "Mobile and web application development platform")
             acknowledgmentRow(title: "SwiftUI", description: "User interface framework by Apple")
         }
-        .listRowBackground(Color("beige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .listRowBackground(AppColors.beige.opacity(0.9))
+        .foregroundColor(AppColors.pine)
     }
 
     var assetsSection: some View {
-        Section(header: Text("Assets").foregroundColor(Color("pine"))) {
+        Section(header: Text("Assets").foregroundColor(AppColors.pine)) {
             acknowledgmentRow(title: "SF Symbols", description: "Icons by Apple Inc.")
         }
-        .listRowBackground(Color("beige").opacity(0.9))
-        .foregroundColor(Color("pine"))
+        .listRowBackground(AppColors.beige.opacity(0.9))
+        .foregroundColor(AppColors.pine)
     }
 }
 
@@ -46,10 +46,10 @@ private extension AcknowledgmentsView {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
             Text(description)
                 .font(.caption)
-                .foregroundColor(Color("pine").opacity(0.7))
+                .foregroundColor(AppColors.pine.opacity(0.7))
         }
     }
 }

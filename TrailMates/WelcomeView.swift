@@ -43,7 +43,7 @@ struct WelcomeView: View {
                     TransparentBlurView(removeAllFilters: false, tintColor: UIColor(named: "beige"))
                         .opacity(0.8)
                     
-                    Color("beige")
+                    AppColors.beige
                         .opacity(0.8)
                 }
                 .ignoresSafeArea()
@@ -55,13 +55,13 @@ struct WelcomeView: View {
                     VStack(spacing: 20) {
                         Text("Welcome to the TrailMates ATX Community")
                             .font(.system(size: 40, weight: .bold, design: .rounded))
-                            .foregroundColor(Color("pine"))
+                            .foregroundColor(AppColors.pine)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                         
                         Text("TrailMates connects you with friends on the Town Lake Trail. Coordinate events with your friends to go walking, running, or biking!")
                             .font(.system(size: 18, weight: .medium, design: .rounded))
-                            .foregroundColor(Color("pine").opacity(0.9))
+                            .foregroundColor(AppColors.pine.opacity(0.9))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                     }
@@ -84,18 +84,10 @@ struct WelcomeView: View {
                     
                     Spacer()
                     
-                    Button(action: {
+                    PrimaryButton("Get Started", size: .large) {
                         onComplete()
-                    }) {
-                        Text("Get Started")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color("pumpkin"))
-                            .cornerRadius(15)
-                            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
                     }
+                    .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
                     .accessibilityHint("Double tap to begin setting up your profile")
                     .padding(.horizontal, 30)
                     .padding(.bottom, 40)

@@ -79,5 +79,15 @@ service cloud.firestore {
       // Allow delete only if the user is the host
       allow delete: if isHost();
     }
+
+    //////////////////////////
+    // LANDMARKS COLLECTION //
+    //////////////////////////
+    match /landmarks/{landmarkId} {
+      // Landmarks are app-managed reference data. Signed-in clients can read
+      // them, but writes must come from trusted backend/admin tooling.
+      allow get, list: if isAuthenticated();
+      allow create, update, delete: if false;
+    }
   }
 }

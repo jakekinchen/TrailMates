@@ -40,13 +40,13 @@ struct PrimaryButton: View {
 
         var backgroundColor: Color {
             switch self {
-            case .default: return Color("pumpkin")
+            case .default: return AppColors.pumpkin
             case .destructive: return Color.red
             }
         }
 
         var foregroundColor: Color {
-            Color("alwaysBeige")
+            AppColors.alwaysBeige
         }
     }
 
@@ -161,7 +161,7 @@ extension PrimaryButton {
         PrimaryButton("Continue") {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Loading State") {
@@ -170,7 +170,7 @@ extension PrimaryButton {
         PrimaryButton("Submit", isLoading: false) {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Disabled State") {
@@ -179,7 +179,7 @@ extension PrimaryButton {
         PrimaryButton("Save", isDisabled: false) {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Destructive Style") {
@@ -188,7 +188,7 @@ extension PrimaryButton {
         PrimaryButton("Remove Friend", style: .destructive, size: .small) {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Sizes") {
@@ -198,5 +198,5 @@ extension PrimaryButton {
         PrimaryButton("Large", size: .large) {}
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }

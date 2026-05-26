@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import FirebaseFirestore
 
 /// Unified error type for the TrailMates application.
 ///
@@ -20,10 +21,13 @@ import Foundation
 /// // Throwing typed errors
 /// throw AppError.notAuthenticated()
 ///
-/// // Converting from other errors
+/// // Converting from other errors (in async/throwing contexts)
 /// catch let error {
-///     throw AppError.from(error)
+///     throw try AppError.from(error)
 /// }
+///
+/// // Converting from other errors (in non-throwing contexts like callbacks)
+/// let appError = AppError.classify(error)
 ///
 /// // Checking if retry is appropriate
 /// if error.isRetryable {
@@ -189,14 +193,37 @@ enum AppError: LocalizedError {
 
     // MARK: - Error Conversion
 
-    /// Converts any error to an AppError for consistent handling.
+    /// Converts any error to an AppError, re-throwing `CancellationError` so that
+    /// Swift Concurrency cancellation propagates correctly instead of being wrapped.
     ///
-    /// Use this to wrap errors from Firebase, URLSession, or other sources
-    /// into the unified AppError type for consistent user messaging.
+    /// Use this in async/throwing contexts (e.g., inside `withRetry`, provider methods
+    /// that `throw`). For non-throwing contexts like completion-handler callbacks,
+    /// use `classify(_:)` instead.
+    ///
+    /// Classifies Firestore errors into appropriate AppError cases so that transient
+    /// errors (unavailable, deadline-exceeded, aborted) are marked retryable.
     ///
     /// - Parameter error: The original error to convert
     /// - Returns: An appropriate AppError case
-    static func from(_ error: Error) -> AppError {
+    /// - Throws: Re-throws `CancellationError` to preserve cancellation semantics
+    static func from(_ error: Error) throws -> AppError {
+        // Let cancellation propagate -- never wrap it
+        if error is CancellationError {
+            throw error
+        }
+
+        return classify(error)
+    }
+
+    /// Converts any error to an AppError without throwing.
+    ///
+    /// Use this in non-throwing contexts such as completion-handler callbacks,
+    /// snapshot listeners, or logging-only catch blocks where CancellationError
+    /// is not expected.
+    ///
+    /// - Parameter error: The original error to convert
+    /// - Returns: An appropriate AppError case
+    static func classify(_ error: Error) -> AppError {
         // Already an AppError
         if let appError = error as? AppError {
             return appError
@@ -224,6 +251,36 @@ enum AppError: LocalizedError {
         // Firebase Auth errors
         if nsError.domain == "FIRAuthErrorDomain" {
             return .authenticationFailed(error.localizedDescription)
+        }
+
+        // Firestore errors
+        if nsError.domain == FirestoreErrorDomain {
+            if let code = FirestoreErrorCode.Code(rawValue: nsError.code) {
+                switch code {
+                case .permissionDenied:
+                    return .unauthorized("You do not have permission to perform this operation.")
+                case .notFound:
+                    return .notFound("Requested resource")
+                case .unavailable:
+                    return .networkError("The service is temporarily unavailable. Please try again.")
+                case .deadlineExceeded:
+                    return .timeout("The operation timed out. Please try again.")
+                case .alreadyExists:
+                    return .alreadyExists("Resource")
+                case .unauthenticated:
+                    return .notAuthenticated("Your session has expired. Please sign in again.")
+                case .resourceExhausted:
+                    return .serverError("Too many requests. Please wait a moment and try again.")
+                case .aborted:
+                    // Transaction aborted -- retryable
+                    return .serverError("The operation was interrupted. Please try again.")
+                case .cancelled:
+                    // Firestore-level cancellation -- treat as a retryable network issue
+                    return .networkError("The request was cancelled. Please try again.")
+                default:
+                    return .unknown(error)
+                }
+            }
         }
 
         // Default to unknown
@@ -256,10 +313,15 @@ func withRetry<T>(
         do {
             return try await operation()
         } catch let error {
+            // Let cancellation propagate immediately -- never retry a cancelled task
+            if error is CancellationError {
+                throw error
+            }
+
             lastError = error
 
             // Check if error is retryable
-            let appError = AppError.from(error)
+            let appError = try AppError.from(error)
             guard appError.isRetryable && attempt < maxAttempts else {
                 throw appError
             }

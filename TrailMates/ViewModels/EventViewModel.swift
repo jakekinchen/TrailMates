@@ -42,9 +42,18 @@ class EventViewModel: ObservableObject {
     /// Asynchronously loads all events from the data provider
     func loadEvents() async {
         isLoading = true
+        errorMessage = nil
         defer { isLoading = false }
 
-        self.events = await eventProvider.fetchAllEvents()
+        do {
+            self.events = try await eventProvider.fetchAllEvents()
+        } catch {
+            let appError = AppError.classify(error)
+            self.errorMessage = appError.errorDescription
+            #if DEBUG
+            print("EventViewModel: Error loading events: \(appError.errorDescription ?? "Unknown")")
+            #endif
+        }
     }
     
     /// Groups events by their date sections
@@ -138,42 +147,46 @@ class EventViewModel: ObservableObject {
     
     /// Allows a user to attend an event
     func attendEvent(userId: String, eventId: String) async throws {
+        let previousAttendees = events.first(where: { $0.id == eventId })?.attendeeIds
+
         // Optimistically update local state first for immediate UI feedback
         if let index = events.firstIndex(where: { $0.id == eventId }) {
             events[index].attendeeIds.insert(userId)
         }
 
-        guard var event = await eventProvider.fetchEvent(by: eventId) else {
-            // Revert optimistic update on error
-            if let index = events.firstIndex(where: { $0.id == eventId }) {
-                events[index].attendeeIds.remove(userId)
-            }
-            throw AppError.notFound("Event")
+        do {
+            let updatedEvent = try await eventProvider.updateAttendance(
+                eventId: eventId,
+                userId: userId,
+                isAttending: true
+            )
+            replaceLocalEvent(updatedEvent)
+        } catch {
+            restoreLocalAttendees(eventId: eventId, attendees: previousAttendees)
+            throw error
         }
-
-        event.attendeeIds.insert(userId)
-        try await eventProvider.saveEvent(event)
-        // No need to reload - local state is already correct
     }
 
     /// Allows a user to leave an event
     func leaveEvent(userId: String, eventId: String) async throws {
+        let previousAttendees = events.first(where: { $0.id == eventId })?.attendeeIds
+
         // Optimistically update local state first for immediate UI feedback
         if let index = events.firstIndex(where: { $0.id == eventId }) {
             events[index].attendeeIds.remove(userId)
         }
 
-        guard var event = await eventProvider.fetchEvent(by: eventId) else {
-            // Revert optimistic update on error
-            if let index = events.firstIndex(where: { $0.id == eventId }) {
-                events[index].attendeeIds.insert(userId)
-            }
-            throw AppError.notFound("Event")
+        do {
+            let updatedEvent = try await eventProvider.updateAttendance(
+                eventId: eventId,
+                userId: userId,
+                isAttending: false
+            )
+            replaceLocalEvent(updatedEvent)
+        } catch {
+            restoreLocalAttendees(eventId: eventId, attendees: previousAttendees)
+            throw error
         }
-
-        event.attendeeIds.remove(userId)
-        try await eventProvider.saveEvent(event)
-        // No need to reload - local state is already correct
     }
 
     /// Cancels an event if the requester is the host
@@ -283,5 +296,19 @@ class EventViewModel: ObservableObject {
         default:
             return []
         }
+    }
+
+    private func replaceLocalEvent(_ event: Event) {
+        if let index = events.firstIndex(where: { $0.id == event.id }) {
+            events[index] = event
+        }
+    }
+
+    private func restoreLocalAttendees(eventId: String, attendees: Set<String>?) {
+        guard let attendees,
+              let index = events.firstIndex(where: { $0.id == eventId }) else {
+            return
+        }
+        events[index].attendeeIds = attendees
     }
 }

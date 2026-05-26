@@ -87,9 +87,9 @@ struct CreateEventView: View {
 private extension CreateEventView {
     @ViewBuilder
     var eventDetailsSection: some View {
-        Section(header: Text("Event Details").foregroundColor(Color("pine"))) {
+        Section(header: Text("Event Details").foregroundColor(AppColors.pine)) {
             TextField("Title", text: $title)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .focused($focusedField, equals: .title)
                 .submitLabel(.next)
                 .onSubmit {
@@ -97,7 +97,7 @@ private extension CreateEventView {
                 }
 
             TextField("Description", text: $eventDescription)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .focused($focusedField, equals: .description)
                 .submitLabel(.next)
 
@@ -127,7 +127,7 @@ private extension CreateEventView {
 
     @ViewBuilder
     var locationSection: some View {
-        Section(header: Text("Location").foregroundColor(Color("pine"))) {
+        Section(header: Text("Location").foregroundColor(AppColors.pine)) {
             LocationSelector(
                 selectedLocationInfo: $selectedLocationInfo,
                 onTap: handleLocationSelection
@@ -138,7 +138,7 @@ private extension CreateEventView {
 
     @ViewBuilder
     var tagsSection: some View {
-        Section(header: Text("Tags").foregroundColor(Color("pine"))) {
+        Section(header: Text("Tags").foregroundColor(AppColors.pine)) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     ForEach(availableTags, id: \.self) { tag in
@@ -170,12 +170,12 @@ private extension CreateEventView {
 
     @ViewBuilder
     var privacySection: some View {
-        Section(header: Text("Privacy").foregroundColor(Color("pine"))) {
+        Section(header: Text("Privacy").foregroundColor(AppColors.pine)) {
             Toggle("Public Event", isOn: Binding(
                 get: { !isPublic },
                 set: { isPublic = !$0 }
             ))
-            .tint(Color("pine"))
+            .tint(AppColors.pine)
         }
     }
 
@@ -185,10 +185,10 @@ private extension CreateEventView {
             Button(action: createEvent) {
                 Text("Create Event")
                     .frame(maxWidth: .infinity)
-                    .foregroundColor(Color("alwaysBeige"))
+                    .foregroundColor(AppColors.alwaysBeige)
                     .fontWeight(.semibold)
             }
-            .listRowBackground(Color("pumpkin"))
+            .listRowBackground(AppColors.pumpkin)
             .buttonStyle(BorderlessButtonStyle())
         }
     }
@@ -198,7 +198,7 @@ private extension CreateEventView {
         Button("Cancel") {
             dismiss()
         }
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
     }
 
     @ViewBuilder
@@ -395,7 +395,7 @@ private struct LocationSelector: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(selectedLocationInfo?.name ?? "Select Location")
-                        .foregroundColor(selectedLocationInfo == nil ? .gray : Color("pine"))
+                        .foregroundColor(selectedLocationInfo == nil ? .gray : AppColors.pine)
                         .onAppear {
                             #if DEBUG
                             print("LocationSelector appeared with location: \(String(describing: selectedLocationInfo))")
@@ -426,14 +426,14 @@ private struct LocationSelector: View {
                 span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
             ))), interactionModes: []) {
                 Marker("", coordinate: location.coordinate)
-                    .tint(Color("pine"))
+                    .tint(AppColors.pine)
             }
             .frame(width: 60, height: 60)
             .cornerRadius(8)
             .disabled(true)
         } else {
             Image(systemName: "mappin.circle.fill")
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
         }
     }
 
@@ -457,8 +457,8 @@ struct TagButton: View {
                 .font(.subheadline)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(isSelected ? Color("pine") : Color.gray.opacity(0.2))
-                .foregroundColor(isSelected ? Color("beige") : Color("pine"))
+                .background(isSelected ? AppColors.pine : Color.gray.opacity(0.2))
+                .foregroundColor(isSelected ? AppColors.beige : AppColors.pine)
                 .cornerRadius(16)
         }
     }

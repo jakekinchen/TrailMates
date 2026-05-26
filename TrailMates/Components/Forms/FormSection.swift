@@ -46,7 +46,7 @@ struct FormSection<Content: View>: View {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(Color("pine"))
+                    .foregroundColor(AppColors.pine)
                     .padding(.horizontal, 4)
             }
 
@@ -58,7 +58,7 @@ struct FormSection<Content: View>: View {
                 Group {
                     if showBackground {
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color("beige").opacity(0.5))
+                            .fill(AppColors.beige.opacity(0.5))
                     }
                 }
             )
@@ -66,7 +66,7 @@ struct FormSection<Content: View>: View {
             if let footer = footer {
                 Text(footer)
                     .font(.caption)
-                    .foregroundColor(Color("pine").opacity(0.6))
+                    .foregroundColor(AppColors.pine.opacity(0.6))
                     .padding(.horizontal, 4)
             }
         }
@@ -92,7 +92,7 @@ struct FormSection<Content: View>: View {
         }
         .padding()
     }
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("With Footer") {
@@ -108,7 +108,7 @@ struct FormSection<Content: View>: View {
         }
         .padding()
     }
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("No Background") {
@@ -129,7 +129,7 @@ struct FormSection<Content: View>: View {
         }
         .padding()
     }
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Multiple Sections") {
@@ -158,5 +158,5 @@ struct FormSection<Content: View>: View {
         }
         .padding()
     }
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }

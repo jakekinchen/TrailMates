@@ -71,7 +71,7 @@ struct BottomSheet<Content: View>: View {
                                 .blur(radius: 0)
                             
                             // Color tint overlay
-                            Color("beige")
+                            AppColors.beige
                                 .opacity(0.75)
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 15))
@@ -145,7 +145,7 @@ struct BottomSheet<Content: View>: View {
         @State private var isOpen = false
         var body: some View {
             ZStack {
-                Color("beige").ignoresSafeArea()
+                AppColors.beige.ignoresSafeArea()
                 Text("Main Content")
 
                 BottomSheet(isOpen: $isOpen, maxHeight: 500) {

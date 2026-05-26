@@ -9,16 +9,20 @@ import SwiftUI
 import FirebaseStorage
 
 /// FirebaseDataProvider serves as a facade/coordinator for all Firebase operations.
-/// For new code, prefer using the focused sub-providers directly:
-/// - UserDataProvider: User CRUD, authentication, username operations
-/// - EventDataProvider: Event CRUD and queries
-/// - FriendDataProvider: Friend requests and relationships
-/// - ImageStorageProvider: Profile image upload/download
-/// - LandmarkDataProvider: Landmark operations
-/// - LocationDataProvider: Real-time location updates
-/// - NotificationDataProvider: Push notifications
 ///
-/// Methods in this class are being progressively deprecated in favor of sub-providers.
+/// **Deprecated**: This class has zero callers in production code. All operations have
+/// been migrated to focused sub-providers. Use them directly instead:
+/// - `UserDataProvider`: User CRUD, authentication, username operations
+/// - `EventDataProvider`: Event CRUD and queries
+/// - `FriendDataProvider`: Friend requests and relationships
+/// - `ImageStorageProvider`: Profile image upload/download
+/// - `LandmarkDataProvider`: Landmark operations
+/// - `LocationDataProvider`: Real-time location updates
+/// - `NotificationDataProvider`: Push notifications
+///
+/// This file is retained only for the integration test suite (`FirebaseDataProviderTests`)
+/// and can be deleted once those tests are migrated to use sub-providers directly.
+@available(*, deprecated, message: "Use focused sub-providers (UserDataProvider, EventDataProvider, etc.) instead")
 @MainActor
 class FirebaseDataProvider {
     // MARK: - Singleton
@@ -165,8 +169,8 @@ class FirebaseDataProvider {
     }
 
     @available(*, deprecated, message: "Use UserDataProvider.shared.fetchAllUsers() instead")
-    func fetchAllUsers() async -> [User] {
-        return await userProvider.fetchAllUsers()
+    func fetchAllUsers(limit: Int = 50) async -> [User] {
+        return await userProvider.fetchAllUsers(limit: limit)
     }
     
     @available(*, deprecated, message: "Use UserDataProvider.shared.saveInitialUser() instead")
@@ -192,8 +196,8 @@ class FirebaseDataProvider {
     // MARK: - Event Operations (Deprecated - use EventDataProvider.shared instead)
 
     @available(*, deprecated, message: "Use EventDataProvider.shared.fetchAllEvents() instead")
-    func fetchAllEvents() async -> [Event] {
-        return await eventProvider.fetchAllEvents()
+    func fetchAllEvents(limit: Int = 50) async -> [Event] {
+        return (try? await eventProvider.fetchAllEvents(limit: limit)) ?? []
     }
 
     @available(*, deprecated, message: "Use EventDataProvider.shared.fetchEvent(by:) instead")
@@ -213,7 +217,7 @@ class FirebaseDataProvider {
 
     @available(*, deprecated, message: "Use EventDataProvider.shared.fetchPublicEvents() instead")
     func fetchPublicEvents() async -> [Event] {
-        return await eventProvider.fetchPublicEvents()
+        return (try? await eventProvider.fetchPublicEvents()) ?? []
     }
 
     @available(*, deprecated, message: "Use EventDataProvider.shared.saveEvent() instead")

@@ -70,18 +70,18 @@ struct ErrorView: View {
         VStack(spacing: 20) {
             Image(systemName: systemImage)
                 .font(.system(size: 48))
-                .foregroundColor(Color("pumpkin"))
+                .foregroundColor(AppColors.pumpkin)
 
             VStack(spacing: 8) {
                 if let title = title {
                     Text(title)
                         .font(.headline)
-                        .foregroundColor(Color("pine"))
+                        .foregroundColor(AppColors.pine)
                 }
 
                 Text(message)
                     .font(.subheadline)
-                    .foregroundColor(Color("pine").opacity(0.8))
+                    .foregroundColor(AppColors.pine.opacity(0.8))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
@@ -99,11 +99,11 @@ struct ErrorView: View {
         VStack(spacing: 12) {
             Image(systemName: systemImage)
                 .font(.system(size: 32))
-                .foregroundColor(Color("pumpkin"))
+                .foregroundColor(AppColors.pumpkin)
 
             Text(message)
                 .font(.caption)
-                .foregroundColor(Color("pine").opacity(0.8))
+                .foregroundColor(AppColors.pine.opacity(0.8))
                 .multilineTextAlignment(.center)
 
             if let retryAction = retryAction {
@@ -117,11 +117,11 @@ struct ErrorView: View {
     private var inlineView: some View {
         HStack(spacing: 12) {
             Image(systemName: systemImage)
-                .foregroundColor(Color("pumpkin"))
+                .foregroundColor(AppColors.pumpkin)
 
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(Color("pine").opacity(0.8))
+                .foregroundColor(AppColors.pine.opacity(0.8))
 
             Spacer()
 
@@ -132,14 +132,14 @@ struct ErrorView: View {
                     Text("Retry")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundColor(Color("pumpkin"))
+                        .foregroundColor(AppColors.pumpkin)
                 }
             }
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color("pumpkin").opacity(0.1))
+                .fill(AppColors.pumpkin.opacity(0.1))
         )
     }
 }
@@ -168,7 +168,7 @@ private struct RetryButton: View {
                 if isLoading {
                     ProgressView()
                         .scaleEffect(style == .small ? 0.8 : 1.0)
-                        .tint(Color("alwaysBeige"))
+                        .tint(AppColors.alwaysBeige)
                 } else {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -176,10 +176,10 @@ private struct RetryButton: View {
             }
             .font(style == .small ? .caption : .subheadline)
             .fontWeight(.medium)
-            .foregroundColor(Color("alwaysBeige"))
+            .foregroundColor(AppColors.alwaysBeige)
             .padding(.horizontal, style == .small ? 16 : 24)
             .padding(.vertical, style == .small ? 8 : 12)
-            .background(Color("pumpkin"))
+            .background(AppColors.pumpkin)
             .cornerRadius(style == .small ? 8 : 12)
         }
         .disabled(isLoading)
@@ -217,7 +217,7 @@ private struct RetryButton: View {
         style: .compact
     )
     .frame(width: 200, height: 200)
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Inline Style") {
@@ -231,5 +231,5 @@ private struct RetryButton: View {
         .padding()
         Spacer()
     }
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }

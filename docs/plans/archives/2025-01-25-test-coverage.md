@@ -2,7 +2,7 @@
 title: Test Coverage Expansion
 created: 2025-01-25
 priority: backlog
-status: complete
+status: completed
 tags: [testing, quality, automation]
 skill: ios-debugger-agent
 ---

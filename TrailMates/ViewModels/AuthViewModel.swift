@@ -23,50 +23,140 @@ class AuthViewModel: ObservableObject {
     private let auth = Auth.auth()
     private let userManager = UserManager.shared
     private let providers = FirebaseProviderContainer.shared
+
+    /// Monotonically increasing counter to discard stale verification callbacks.
+    /// Each verification request increments this; callbacks from earlier attempts are ignored.
+    private var sendCodeAttempt: UInt = 0
     
     @discardableResult
     func sendCode() async -> Bool {
-        isLoading = true
-        showError = false
-        
         do {
             let formattedNumber = try formatPhoneNumber(phoneNumber)
-            return await withCheckedContinuation { continuation in
-                PhoneAuthProvider.provider()
-                    .verifyPhoneNumber(formattedNumber, uiDelegate: nil) { [weak self] verificationId, error in
-                        guard let self = self else {
+            phoneNumber = formattedNumber
+            return await requestVerificationCode(for: formattedNumber)
+        } catch {
+            present(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func sendPhoneChangeCode(to newPhoneNumber: String) async -> Bool {
+        do {
+            guard auth.currentUser != nil else {
+                throw AppError.notAuthenticated()
+            }
+
+            let formattedNumber = try formatPhoneNumber(newPhoneNumber)
+            if isCurrentPhoneNumber(formattedNumber) {
+                throw AppError.invalidInput("Please enter a different phone number.")
+            }
+
+            if await userManager.checkUserExists(phoneNumber: formattedNumber) {
+                throw AppError.alreadyExists("Phone number already registered")
+            }
+
+            phoneNumber = formattedNumber
+            verificationCode = ""
+            isSigningUp = false
+            return await requestVerificationCode(for: formattedNumber)
+        } catch {
+            present(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func verifyPhoneChangeCode() async throws -> String {
+        guard let verificationId = verificationId else {
+            let error = AppError.invalidData("Missing verification ID")
+            present(error)
+            throw error
+        }
+
+        guard let currentUser = auth.currentUser else {
+            let error = AppError.notAuthenticated()
+            present(error)
+            throw error
+        }
+
+        let formattedNumber = try formatPhoneNumber(phoneNumber)
+        let credential = PhoneAuthProvider.provider().credential(
+            withVerificationID: verificationId,
+            verificationCode: verificationCode
+        )
+
+        isLoading = true
+        showError = false
+        defer { isLoading = false }
+
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                currentUser.updatePhoneNumber(credential) { error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume()
+                    }
+                }
+            }
+
+            phoneNumber = formattedNumber
+            self.verificationId = nil
+            verificationCode = ""
+            isVerifying = false
+            return formattedNumber
+        } catch {
+            let appError = try AppError.from(error)
+            showError = true
+            errorMessage = appError.errorDescription ?? "Unable to update phone number."
+            throw appError
+        }
+    }
+
+    private func requestVerificationCode(for formattedNumber: String) async -> Bool {
+        // Increment the attempt counter so any in-flight callback from a prior call is ignored.
+        sendCodeAttempt &+= 1
+        let currentAttempt = sendCodeAttempt
+
+        isLoading = true
+        showError = false
+
+        return await withCheckedContinuation { continuation in
+            PhoneAuthProvider.provider()
+                .verifyPhoneNumber(formattedNumber, uiDelegate: nil) { [weak self] verificationId, error in
+                    guard let self = self else {
+                        continuation.resume(returning: false)
+                        return
+                    }
+
+                    Task { @MainActor in
+                        // Discard this callback if a newer attempt has been started.
+                        guard self.sendCodeAttempt == currentAttempt else {
                             continuation.resume(returning: false)
                             return
                         }
 
-                        Task { @MainActor in
-                            self.isLoading = false
+                        self.isLoading = false
 
-                            if let error = error {
-                                self.showError = true
-                                self.errorMessage = error.localizedDescription
-                                continuation.resume(returning: false)
-                                return
-                            }
-
-                            guard let verificationId = verificationId else {
-                                self.showError = true
-                                self.errorMessage = "Unable to start phone verification. Please try again."
-                                continuation.resume(returning: false)
-                                return
-                            }
-
-                            self.verificationId = verificationId
-                            self.isVerifying = true
-                            continuation.resume(returning: true)
+                        if let error = error {
+                            self.present(error)
+                            continuation.resume(returning: false)
+                            return
                         }
+
+                        guard let verificationId = verificationId else {
+                            self.showError = true
+                            self.errorMessage = "Unable to start phone verification. Please try again."
+                            continuation.resume(returning: false)
+                            return
+                        }
+
+                        self.verificationId = verificationId
+                        self.isVerifying = true
+                        continuation.resume(returning: true)
                     }
-            }
-        } catch {
-            self.isLoading = false
-            self.showError = true
-            self.errorMessage = error.localizedDescription
-            return false
+                }
         }
     }
     
@@ -81,6 +171,9 @@ class AuthViewModel: ObservableObject {
         showError = false
         
         do {
+            let formattedPhoneNumber = try formatPhoneNumber(phoneNumber)
+            phoneNumber = formattedPhoneNumber
+
             let credential = PhoneAuthProvider.provider().credential(
                 withVerificationID: verificationId,
                 verificationCode: verificationCode
@@ -94,7 +187,7 @@ class AuthViewModel: ObservableObject {
             
             do { 
                 // Check if user exists in our database
-                let userExists = await userManager.checkUserExists(phoneNumber: phoneNumber)
+                let userExists = await userManager.checkUserExists(phoneNumber: formattedPhoneNumber)
                 
                 if isSigningUp && userExists {
                     // Prevent existing users from using signup
@@ -106,11 +199,11 @@ class AuthViewModel: ObservableObject {
                 
                 if isSigningUp {
                     // For signup, create new user with Firebase UID
-                    try await userManager.createNewUser(phoneNumber: phoneNumber, id: authResult.user.uid)
+                    try await userManager.createNewUser(phoneNumber: formattedPhoneNumber, id: authResult.user.uid)
                     print("📱 New user created successfully")
                 } else {
                     // For login, initialize existing user
-                    try await userManager.login(phoneNumber: phoneNumber, id: authResult.user.uid)
+                    try await userManager.login(phoneNumber: formattedPhoneNumber, id: authResult.user.uid)
                     print("📱 Existing user logged in successfully")
                 }
                 
@@ -121,7 +214,7 @@ class AuthViewModel: ObservableObject {
                 self.isVerifying = false
                 print("✅ Auth state updated: isAuthenticated=true, isLoggedIn=true")
             } catch {
-                let appError = AppError.from(error)
+                let appError = AppError.classify(error)
                 #if DEBUG
                 print("User initialization failed: \(appError.errorDescription ?? "Unknown")")
                 #endif
@@ -133,7 +226,7 @@ class AuthViewModel: ObservableObject {
                 throw appError
             }
         } catch {
-            let appError = AppError.from(error)
+            let appError = AppError.classify(error)
             #if DEBUG
             print("Verification failed: \(appError.errorDescription ?? "Unknown")")
             #endif
@@ -146,11 +239,106 @@ class AuthViewModel: ObservableObject {
         }
     }
 
+    /// Result of a login/signup attempt indicating what the view should do next.
+    enum PhoneSubmitResult {
+        case showFields       // Phone was empty, just show the input fields
+        case codeSent         // Verification code was sent successfully
+        case failed           // Error occurred (errorMessage is already set)
+    }
+
+    /// Handles login flow: checks if user exists, then sends verification code.
+    func handleLogin(phoneNumber: String) async -> PhoneSubmitResult {
+        guard !phoneNumber.isEmpty else {
+            return .showFields
+        }
+
+        #if DEBUG
+        print("Login - Starting phone number check: \(phoneNumber)")
+        print("Login - Checking if user exists")
+        #endif
+
+        let formattedPhoneNumber: String
+        do {
+            formattedPhoneNumber = try formatPhoneNumber(phoneNumber)
+        } catch {
+            present(error)
+            return .failed
+        }
+
+        if await userManager.checkUserExists(phoneNumber: formattedPhoneNumber) {
+            #if DEBUG
+            print("Login - User found, proceeding with verification")
+            #endif
+            self.phoneNumber = formattedPhoneNumber
+            self.isSigningUp = false
+            if await sendCode() {
+                return .codeSent
+            } else {
+                return .failed
+            }
+        } else {
+            #if DEBUG
+            print("Login - No user found with phone number")
+            #endif
+            showError = true
+            errorMessage = "No account found with this phone number. Please sign up instead."
+            return .failed
+        }
+    }
+
+    /// Handles signup flow: checks user does not exist, then sends verification code.
+    func handleSignup(phoneNumber: String) async -> PhoneSubmitResult {
+        guard !phoneNumber.isEmpty else {
+            return .showFields
+        }
+
+        let formattedPhoneNumber: String
+        do {
+            formattedPhoneNumber = try formatPhoneNumber(phoneNumber)
+        } catch {
+            present(error)
+            return .failed
+        }
+
+        if await userManager.checkUserExists(phoneNumber: formattedPhoneNumber) {
+            showError = true
+            errorMessage = "An account already exists with this phone number. Please log in instead."
+            return .failed
+        }
+
+        self.phoneNumber = formattedPhoneNumber
+        self.isSigningUp = true
+        if await sendCode() {
+            return .codeSent
+        } else {
+            return .failed
+        }
+    }
+
     private func formatPhoneNumber(_ number: String) throws -> String {
         guard let formatted = PhoneNumberService.shared.format(number, for: .storage) else {
             throw AppError.invalidInput("Invalid phone number format")
         }
         return formatted
+    }
+
+    private func isCurrentPhoneNumber(_ formattedNumber: String) -> Bool {
+        let candidates = [
+            userManager.currentUser?.phoneNumber,
+            auth.currentUser?.phoneNumber
+        ]
+
+        return candidates.contains { candidate in
+            guard let candidate else { return false }
+            return PhoneNumberService.shared.format(candidate, for: .storage) == formattedNumber
+        }
+    }
+
+    private func present(_ error: Error) {
+        let appError = AppError.classify(error)
+        isLoading = false
+        showError = true
+        errorMessage = appError.errorDescription ?? "An error occurred"
     }
     
     func signOut() async {
@@ -256,7 +444,7 @@ class AuthViewModel: ObservableObject {
             #if DEBUG
             print("   ❌ Error deleting Auth account: \(error.localizedDescription)")
             #endif
-            throw AppError.from(error)
+            throw try AppError.from(error)
         }
 
         // 8. Clear local state

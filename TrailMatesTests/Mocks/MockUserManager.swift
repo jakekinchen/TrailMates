@@ -146,8 +146,10 @@ class MockUserManager: ObservableObject {
 
     func checkUserExists(phoneNumber: String) async -> Bool {
         if mockUserExists { return true }
-        let normalizedPhone = normalizePhoneNumber(phoneNumber)
-        return users.values.contains { normalizePhoneNumber($0.phoneNumber) == normalizedPhone }
+        let normalizedPhone = PhoneNumberService.shared.format(phoneNumber, for: .digitsOnly) ?? phoneNumber
+        return users.values.contains {
+            PhoneNumberService.shared.format($0.phoneNumber, for: .digitsOnly) == normalizedPhone
+        }
     }
 
     func isUsernameTaken(_ username: String) async -> Bool {
@@ -371,20 +373,25 @@ class MockUserManager: ObservableObject {
     // MARK: - Utility Methods
 
     func normalizePhoneNumber(_ phoneNumber: String) -> String {
-        return phoneNumber.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
+        return PhoneNumberService.shared.format(phoneNumber, for: .digitsOnly) ?? phoneNumber.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
     }
 
     func findUserByPhoneNumber(_ phoneNumber: String) async -> User? {
-        let normalized = normalizePhoneNumber(phoneNumber)
-        return users.values.first { normalizePhoneNumber($0.phoneNumber) == normalized }
+        let normalized = PhoneNumberService.shared.format(phoneNumber, for: .digitsOnly) ?? phoneNumber
+        return users.values.first {
+            PhoneNumberService.shared.format($0.phoneNumber, for: .digitsOnly) == normalized
+        }
     }
 
     func findUsersByPhoneNumbers(_ phoneNumbers: [String]) async throws -> [User] {
         if shouldFailOnFetch {
             throw mockError ?? MockError.fetchFailed
         }
-        let normalizedNumbers = phoneNumbers.map { normalizePhoneNumber($0) }
-        return users.values.filter { normalizedNumbers.contains(normalizePhoneNumber($0.phoneNumber)) }
+        let normalizedNumbers = phoneNumbers.compactMap { PhoneNumberService.shared.format($0, for: .digitsOnly) }
+        return users.values.filter {
+            guard let userDigits = PhoneNumberService.shared.format($0.phoneNumber, for: .digitsOnly) else { return false }
+            return normalizedNumbers.contains(userDigits)
+        }
     }
 
     // MARK: - Stats Operations

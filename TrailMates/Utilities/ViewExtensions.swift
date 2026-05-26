@@ -34,7 +34,7 @@ struct ThemedBackgroundModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         ZStack {
-            Color("beige").ignoresSafeArea()
+            AppColors.beige.ignoresSafeArea()
             content
                 .scrollContentBackground(.hidden)
                 .background(overlayColor)

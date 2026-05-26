@@ -100,7 +100,7 @@ class LocationDataProvider {
                     print("4. Write Result: Failed")
                     print("   - Error: \(error.localizedDescription)")
                     #endif
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     #if DEBUG
                     print("4. Write Result: Success")
@@ -176,7 +176,7 @@ class LocationDataProvider {
         return try await withCheckedThrowingContinuation { continuation in
             locationRef.removeValue { error, _ in
                 if let error = error {
-                    continuation.resume(throwing: AppError.from(error))
+                    continuation.resume(throwing: AppError.classify(error))
                 } else {
                     #if DEBUG
                     print("LocationDataProvider: Deleted location data for user \(userId)")

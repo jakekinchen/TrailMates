@@ -16,6 +16,8 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     private var authorizationCallback: ((CLAuthorizationStatus) -> Void)?
     private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
+    /// Guards against overlapping permission requests that would overwrite the pending continuation
+    private var isRequestingPermission = false
 
     // Add properties for logging throttling
     private var lastLocationLogTime: Date?
@@ -77,6 +79,17 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             return authorizationStatus
         }
 
+        // Prevent overlapping calls from creating a new continuation
+        // while one is already pending (which would leak the old one).
+        guard !isRequestingPermission else {
+            // Another call is already waiting; return the current status.
+            // The first caller will get the real result via the delegate.
+            return authorizationStatus
+        }
+
+        isRequestingPermission = true
+        defer { isRequestingPermission = false }
+
         // Request permission and wait for the result
         return await withCheckedContinuation { continuation in
             authorizationContinuation = continuation
@@ -85,6 +98,14 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func requestAlwaysAuthorization() async -> CLAuthorizationStatus {
+        // Prevent overlapping calls from overwriting the pending continuation
+        guard !isRequestingPermission else {
+            return authorizationStatus
+        }
+
+        isRequestingPermission = true
+        defer { isRequestingPermission = false }
+
         return await withCheckedContinuation { continuation in
             authorizationContinuation = continuation
             manager.requestAlwaysAuthorization()

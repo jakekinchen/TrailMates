@@ -91,7 +91,7 @@ struct FormField: View {
         if error != nil {
             return .red
         }
-        return isFocused ? Color("pumpkin") : Color("pine").opacity(0.3)
+        return isFocused ? AppColors.pumpkin : AppColors.pine.opacity(0.3)
     }
 
     var body: some View {
@@ -108,7 +108,7 @@ struct FormField: View {
                 HStack(spacing: 12) {
                     if let icon = icon {
                         Image(systemName: icon)
-                            .foregroundColor(Color("pine").opacity(0.6))
+                            .foregroundColor(AppColors.pine.opacity(0.6))
                             .frame(width: 20)
                     }
 
@@ -117,7 +117,7 @@ struct FormField: View {
                         if showFloatingLabel {
                             Text(label)
                                 .font(.caption)
-                                .foregroundColor(error != nil ? .red : Color("pine").opacity(0.6))
+                                .foregroundColor(error != nil ? .red : AppColors.pine.opacity(0.6))
                                 .transition(.asymmetric(
                                     insertion: .opacity.combined(with: .move(edge: .bottom)),
                                     removal: .opacity
@@ -133,7 +133,7 @@ struct FormField: View {
                             isSecureVisible.toggle()
                         } label: {
                             Image(systemName: isSecureVisible ? "eye.slash" : "eye")
-                                .foregroundColor(Color("pine").opacity(0.5))
+                                .foregroundColor(AppColors.pine.opacity(0.5))
                         }
                     }
                 }
@@ -174,7 +174,7 @@ struct FormField: View {
             }
         }
         .font(.body)
-        .foregroundColor(Color("pine"))
+        .foregroundColor(AppColors.pine)
         .focused($isFocused)
         .disabled(isDisabled)
     }
@@ -187,7 +187,7 @@ struct FormField: View {
         FormField("Username", text: .constant("jakekinchen"))
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("With Icons") {
@@ -197,7 +197,7 @@ struct FormField: View {
         FormField("Phone", text: .constant(""), type: .phone, icon: "phone")
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Field Types") {
@@ -208,7 +208,7 @@ struct FormField: View {
         FormField("Password", text: .constant("secret123"), type: .secure)
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("With Errors") {
@@ -217,7 +217,7 @@ struct FormField: View {
         FormField("Email", text: .constant("invalid"), type: .email, error: "Please enter a valid email")
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("Disabled State") {
@@ -225,7 +225,7 @@ struct FormField: View {
         FormField("Phone", text: .constant("512-555-1234"), type: .phone, isDisabled: true)
     }
     .padding()
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }
 
 #Preview("In Form Section") {
@@ -243,5 +243,5 @@ struct FormField: View {
         }
         .padding()
     }
-    .background(Color("beige"))
+    .background(AppColors.beige)
 }

@@ -16,6 +16,7 @@ struct EventDetailView: View {
     @EnvironmentObject var userManager: UserManager
     @State private var camera: MapCameraPosition
     @State private var localAttendeeIds: Set<String>
+    @State private var actionErrorMessage: String?
     private let eventEditViewDelegate = EventEditViewDelegate()
         
         init(event: Event, eventViewModel: EventViewModel) {
@@ -63,7 +64,7 @@ struct EventDetailView: View {
                         Text(event.title)
                             .font(.title)
                             .fontWeight(.bold)
-                            .foregroundColor(Color("pine"))
+                            .foregroundColor(AppColors.pine)
 
                         Text("Hosted by \(isHostedByUser ? "You" : "Friend")")
                             .font(.subheadline)
@@ -74,7 +75,7 @@ struct EventDetailView: View {
                     Image(systemName: event.eventType == .walk ? "figure.walk" :
                             event.eventType == .bike ? "bicycle" : "figure.run")
                         .font(.system(size: 40))
-                        .foregroundColor(Color("pine"))
+                        .foregroundColor(AppColors.pine)
                 }
 
                 // Event Details
@@ -93,7 +94,7 @@ struct EventDetailView: View {
                     span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
                 ))), interactionModes: []) {
                     Marker(event.getLocationName(), coordinate: event.location)
-                            .tint(Color("pine"))
+                            .tint(AppColors.pine)
                 }
                 .frame(height: 200)
                 .cornerRadius(12)
@@ -108,31 +109,21 @@ struct EventDetailView: View {
                                 if !isHostedByUser {
                                     Button {
                                         Task {
-                                            if isUserAttending {
-                                                try await eventViewModel.leaveEvent(userId: currentUser.id, eventId: event.id)
-                                                try await userManager.leaveEvent(event.id)
-                                                localAttendeeIds.remove(currentUser.id) // Update local state
-                                            } else {
-                                                try await eventViewModel.attendEvent(userId: currentUser.id, eventId: event.id)
-                                                try await userManager.attendEvent(event.id)
-                                                localAttendeeIds.insert(currentUser.id) // Update local state
-                                            }
+                                            await toggleAttendance(for: currentUser)
                                         }
                                     } label: {
                                         Text(isUserAttending ? "Leave Event" : "Join Event")
                                             .font(.headline)
-                                            .foregroundColor(Color("alwaysBeige"))
+                                            .foregroundColor(AppColors.alwaysBeige)
                                             .frame(maxWidth: .infinity)
                                             .padding()
-                                            .background(isUserAttending ? Color.red : Color("pumpkin"))
+                                            .background(isUserAttending ? Color.red : AppColors.pumpkin)
                                             .cornerRadius(12)
                                     }
                                 } else {
                                         Button {
                                             Task {
-                                                if try await eventViewModel.cancelEvent(eventId: event.id, hostId: currentUser.id) {
-                                                    dismiss()
-                                                }
+                                                await cancelEvent(for: currentUser)
                                             }
                                         } label: {
                                             Text("Cancel Event")
@@ -150,7 +141,7 @@ struct EventDetailView: View {
                                         } label: {
                                             Text("Add to Calendar")
                                                 .font(.headline)
-                                                .foregroundColor(Color("pine"))
+                                                .foregroundColor(AppColors.pine)
                                                 .frame(maxWidth: .infinity)
                                                 .padding(.top, 8)
                                         }
@@ -165,159 +156,65 @@ struct EventDetailView: View {
                 Button("Done") {
                     dismiss()
                 }
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
             }
+        }
+        .alert("Event Error", isPresented: .init(
+            get: { actionErrorMessage != nil },
+            set: { if !$0 { actionErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(actionErrorMessage ?? "An unknown error occurred")
         }
     }
     
     private func openInMaps(coordinate: CLLocationCoordinate2D) {
-        let placemark = MKPlacemark(coordinate: coordinate)
-        let mapItem = MKMapItem(placemark: placemark)
-        mapItem.name = event.title
-
-        let alert = UIAlertController(title: "Open in Maps", message: nil, preferredStyle: .actionSheet)
-
-        // Apple Maps option
-        alert.addAction(UIAlertAction(title: "Apple Maps", style: .default) { _ in
-            mapItem.openInMaps()
-        })
-
-        // Google Maps option
-        alert.addAction(UIAlertAction(title: "Google Maps", style: .default) { _ in
-            let urlString = "comgooglemaps://?saddr=&daddr=\(coordinate.latitude),\(coordinate.longitude)&directionsmode=driving"
-            if let url = URL(string: urlString) {
-                if UIApplication.shared.canOpenURL(url) {
-                    UIApplication.shared.open(url)
-                } else {
-                    // If Google Maps is not installed, open in browser
-                    let webUrlString = "https://www.google.com/maps/dir/?api=1&destination=\(coordinate.latitude),\(coordinate.longitude)"
-                    if let webUrl = URL(string: webUrlString) {
-                        UIApplication.shared.open(webUrl)
-                    }
-                }
-            }
-        })
-
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-
-        // Find the topmost view controller to present the alert
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootController = windowScene.windows.first?.rootViewController {
-            // Traverse to the topmost presented view controller
-            var topController = rootController
-            while let presented = topController.presentedViewController {
-                topController = presented
-            }
-            topController.present(alert, animated: true)
-        }
+        SharingService.openInMaps(coordinate: coordinate, title: event.title)
     }
-    
+
     private func addToCalendar() {
-        let alert = UIAlertController(title: "Add to Calendar", message: nil, preferredStyle: .actionSheet)
-            
-            // Apple Calendar option
-            alert.addAction(UIAlertAction(title: "Apple Calendar", style: .default) { [self] _ in
-                let eventStore = EKEventStore()
-
-                Task { @MainActor in
-                    do {
-                        // Handle calendar access based on iOS version
-                        let granted: Bool
-                        if #available(iOS 17.0, *) {
-                            granted = try await eventStore.requestWriteOnlyAccessToEvents()
-                        } else {
-                            granted = try await eventStore.requestAccess(to: .event)
-                        }
-                        if granted {
-                            self.createCalendarEvent(store: eventStore)
-                        }
-                    } catch {
-                        print("Calendar access error: \(error)")
-                    }
-                }
-            })
-        
-        // Google Calendar option
-        alert.addAction(UIAlertAction(title: "Google Calendar", style: .default) { [self] _ in
-            let timeZone = eventExportTimeZone
-            let startDate = googleCalendarDateString(from: event.dateTime, timeZone: timeZone)
-            let endDate = googleCalendarDateString(from: eventEndDate, timeZone: timeZone)
-
-            var components = URLComponents(string: "https://calendar.google.com/calendar/render")
-            components?.queryItems = [
-                URLQueryItem(name: "action", value: "TEMPLATE"),
-                URLQueryItem(name: "text", value: event.title),
-                URLQueryItem(name: "dates", value: "\(startDate)/\(endDate)"),
-                URLQueryItem(name: "ctz", value: timeZone.identifier),
-                URLQueryItem(name: "location", value: event.getLocationName())
-            ]
-
-            if let url = components?.url {
-                UIApplication.shared.open(url)
-            }
-        })
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-
-        // Present the alert
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootController = windowScene.windows.first?.rootViewController {
-            var topController = rootController
-            while let presented = topController.presentedViewController {
-                topController = presented
-            }
-            topController.present(alert, animated: true)
-        }
+        SharingService.addToCalendar(
+            title: event.title,
+            startDate: event.dateTime,
+            endDate: eventEndDate,
+            locationName: event.getLocationName(),
+            coordinate: event.location,
+            timeZone: eventExportTimeZone,
+            editViewDelegate: eventEditViewDelegate
+        )
     }
-    
-    private func createCalendarEvent(store: EKEventStore) {
-        let calendarEvent = EKEvent(eventStore: store)
-        calendarEvent.title = event.title
-        calendarEvent.startDate = event.dateTime
-        calendarEvent.endDate = eventEndDate
-        calendarEvent.timeZone = eventExportTimeZone
 
-        // Set the structured location with coordinates
-        let structuredLocation = EKStructuredLocation(title: event.getLocationName())
-        structuredLocation.geoLocation = CLLocation(latitude: event.location.latitude, longitude: event.location.longitude)
-        calendarEvent.structuredLocation = structuredLocation
-
-        guard let defaultCalendar = store.defaultCalendarForNewEvents else {
-            print("Failed to get default calendar")
+    private func toggleAttendance(for currentUser: User) async {
+        do {
+            if isUserAttending {
+                try await eventViewModel.leaveEvent(userId: currentUser.id, eventId: event.id)
+                try await userManager.leaveEvent(event.id)
+                localAttendeeIds.remove(currentUser.id)
+            } else {
+                try await eventViewModel.attendEvent(userId: currentUser.id, eventId: event.id)
+                try await userManager.attendEvent(event.id)
+                localAttendeeIds.insert(currentUser.id)
+            }
+        } catch is CancellationError {
             return
+        } catch {
+            actionErrorMessage = AppError.classify(error).errorDescription ?? "Unable to update this event."
         }
+    }
 
-        calendarEvent.calendar = defaultCalendar
-
-        let eventViewController = EKEventEditViewController()
-        eventViewController.event = calendarEvent
-        eventViewController.eventStore = store
-        eventViewController.editViewDelegate = eventEditViewDelegate
-
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootController = windowScene.windows.first?.rootViewController {
-            var topController = rootController
-            while let presented = topController.presentedViewController {
-                topController = presented
+    private func cancelEvent(for currentUser: User) async {
+        do {
+            if try await eventViewModel.cancelEvent(eventId: event.id, hostId: currentUser.id) {
+                dismiss()
             }
-            topController.present(eventViewController, animated: true)
+        } catch is CancellationError {
+            return
+        } catch {
+            actionErrorMessage = AppError.classify(error).errorDescription ?? "Unable to cancel this event."
         }
     }
 
-    private static let googleCalendarFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyyMMdd'T'HHmmss"
-        return formatter
-    }()
-
-    private func googleCalendarDateString(from date: Date, timeZone: TimeZone) -> String {
-        let formatter = Self.googleCalendarFormatter
-        formatter.timeZone = timeZone
-        return formatter.string(from: date)
-    }
-    
 }
 
 class EventEditViewDelegate: NSObject, EKEventEditViewDelegate {
@@ -333,7 +230,7 @@ struct DetailRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 0) {
             Image(systemName: icon)
-                .foregroundColor(Color("pine"))
+                .foregroundColor(AppColors.pine)
                 .frame(width: 24, alignment: .center) // Fixed width for icons
                 .padding(.trailing, 12)  // Consistent spacing after icons
             

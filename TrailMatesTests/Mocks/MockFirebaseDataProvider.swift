@@ -131,9 +131,9 @@ actor MockFirebaseDataProvider {
         return users.values.first { $0.hashedPhoneNumber == hashedNumber }
     }
 
-    func fetchAllUsers() async -> [User] {
+    func fetchAllUsers(limit: Int = 50) async -> [User] {
         if shouldFailOnFetch { return [] }
-        return Array(users.values)
+        return Array(users.values.prefix(limit))
     }
 
     func fetchFriends(for user: User) async -> [User] {
@@ -182,10 +182,10 @@ actor MockFirebaseDataProvider {
 
     // MARK: - Event Operations
 
-    func fetchAllEvents() async -> [Event] {
+    func fetchAllEvents(limit: Int = 50) async -> [Event] {
         fetchAllEventsCallCount += 1
         if shouldFailOnFetch { return [] }
-        return Array(events.values)
+        return Array(events.values.prefix(limit))
     }
 
     func fetchEvent(by id: String) async -> Event? {

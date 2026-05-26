@@ -71,7 +71,7 @@ class TransparentBlurViewHelper: UIVisualEffectView {
 #Preview("Default Blur") {
     ZStack {
         LinearGradient(
-            colors: [Color("pine"), Color("pumpkin")],
+            colors: [AppColors.pine, AppColors.pumpkin],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -87,7 +87,7 @@ class TransparentBlurViewHelper: UIVisualEffectView {
     ZStack {
         Image(systemName: "map.fill")
             .font(.system(size: 200))
-            .foregroundColor(Color("pine"))
+            .foregroundColor(AppColors.pine)
 
         TransparentBlurView(tintColor: UIColor(named: "pine"))
             .frame(width: 150, height: 150)

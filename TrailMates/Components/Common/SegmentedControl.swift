@@ -39,18 +39,18 @@ struct SegmentedControl: View {
                             Group {
                                 if activeSegment == segment {
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color("beige"))
+                                        .fill(AppColors.beige)
                                         .padding(4)
                                 }
                             }
                         )
                         .foregroundColor(
-                            activeSegment == segment ? Color("pine") : Color("beige")
+                            activeSegment == segment ? AppColors.pine : AppColors.beige
                         )
                 }
             }
         }
-        .background(Color("pine"))
+        .background(AppColors.pine)
         .cornerRadius(12)
     }
 }
