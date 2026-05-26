@@ -384,4 +384,5 @@ Related plans:
 
 ## Release Handoff
 - 2026-05-25: Bumped TrailMates ATX to `1.0.4` / build `14`, exported `build/export-1.0.4-14/TrailMatesATX.ipa`, uploaded it to App Store Connect, and confirmed delivery status `VALID` for delivery UUID `54d10952-5f54-471d-86d9-ed353fee4016`.
-- App Store Connect version `1.0.4` was created in `PREPARE_FOR_SUBMISSION`; the uploaded build may still need to finish Apple-side processing before it can be selected for review submission.
+- 2026-05-26: Associated ASC build `14` (`54d10952-5f54-471d-86d9-ed353fee4016`) with version `1.0.4`, added `en-US` What's New text, and submitted review submission `10a5a522-9778-4b90-a689-ffe91aa1bcc0`.
+- App Store Connect confirmed the review submission state as `WAITING_FOR_REVIEW` at `2026-05-26T11:54:33.88Z`.
