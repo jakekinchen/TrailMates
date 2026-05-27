@@ -142,7 +142,7 @@ private extension AddFriendsView {
                     text: $viewModel.friendLookupText,
                     keyboardType: .namePhonePad,
                     autocapitalization: .none,
-                    colorStyle: .dark,
+                    colorStyle: .inverted,
                     autocorrectionDisabled: true,
                     submitLabel: .search,
                     onSubmit: handleFriendSearch
@@ -160,9 +160,9 @@ private extension AddFriendsView {
                                 .foregroundColor(AppColors.textOnAccent)
                         }
                     }
-                    .frame(width: 50, height: 50)
+                    .frame(width: 56, height: 56)
                     .background(AppColors.buttonPrimary)
-                    .cornerRadius(10)
+                    .cornerRadius(8)
                 }
                 .disabled(viewModel.isSearchingForFriend)
                 .accessibilityLabel("Search friends")
