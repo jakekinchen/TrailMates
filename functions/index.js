@@ -184,8 +184,13 @@ exports.findUsersByPhoneNumbers = onCall(
 
             matchedUserIds.add(doc.id);
 
-            // Only return necessary user data for matching
-            matchedUsers.push(publicUserPayload(doc));
+            const userData = doc.data() || {};
+            const payload = publicUserPayload(doc);
+            if (typeof userData.hashedPhoneNumber === "string") {
+              payload.matchedPhoneHash = userData.hashedPhoneNumber;
+            }
+
+            matchedUsers.push(payload);
           });
         }
 

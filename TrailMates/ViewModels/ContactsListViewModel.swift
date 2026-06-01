@@ -24,6 +24,10 @@ class ContactsListViewModel: ObservableObject {
         let user: User
     }
 
+    private struct ContactPhoneMatch {
+        let contact: CNContact
+    }
+
     var filteredMatchedUsers: [MatchedContact] {
         if searchText.isEmpty {
             return matchedUsers
@@ -68,29 +72,9 @@ class ContactsListViewModel: ObservableObject {
             let matchedUsers = try await userManager.findUsersByPhoneNumbers(cleansedNumbers)
             print("📞 Found \(matchedUsers.count) matching users")
             
-            // 4. Create MatchedContact objects using a more efficient approach
-            var newMatches: [MatchedContact] = []
-            
-            // Create a lookup dictionary for faster matching
-            let usersByPhone = Dictionary(uniqueKeysWithValues: 
-                matchedUsers.map { ($0.phoneNumber, $0) }
-            )
-            
-            for contact in loadedContacts {
-                // Get cleansed numbers for this contact
-                let contactNumbers = contact.phoneNumbers.map { $0.value.stringValue }
-                    .compactMap { PhoneNumberService.shared.cleanseSingleNumber($0) }
-                
-                // Find first matching user using the lookup dictionary
-                if let matchingNumber = contactNumbers.first(where: { usersByPhone[$0] != nil }),
-                   let matchedUser = usersByPhone[matchingNumber] {
-                    newMatches.append(MatchedContact(
-                        id: UUID(),
-                        contact: contact,
-                        user: matchedUser
-                    ))
-                }
-            }
+            // 4. Create MatchedContact objects using the privacy-safe hash echoed
+            // by the contact-matching Cloud Function.
+            let newMatches = Self.matchedContacts(from: loadedContacts, matchedUsers: matchedUsers)
             
             print("✅ Found \(newMatches.count) matches out of \(loadedContacts.count) contacts")
             
@@ -111,10 +95,8 @@ class ContactsListViewModel: ObservableObject {
         let store = CNContactStore()
         do {
             let granted = try await store.requestAccess(for: .contacts)
-            if granted {
-                self.hasFullContactsAccess = true
-            }
-            return granted
+            checkContactsAccess()
+            return granted && hasFullContactsAccess
         } catch {
             print("Error requesting contacts access: \(error)")
             return false
@@ -123,6 +105,55 @@ class ContactsListViewModel: ObservableObject {
 
     private func checkContactsAccess() {
         let status = CNContactStore.authorizationStatus(for: .contacts)
-        hasFullContactsAccess = status == .authorized
+        hasFullContactsAccess = Self.contactsAccessAllowsReads(status)
+    }
+
+    static func matchedContacts(from contacts: [CNContact], matchedUsers: [User]) -> [MatchedContact] {
+        let contactsByHash = contactMatchesByHash(from: contacts)
+        var seenUserIds = Set<String>()
+
+        return matchedUsers.compactMap { user in
+            guard let matchedPhoneHash = user.matchedPhoneHash,
+                  let contactMatch = contactsByHash[matchedPhoneHash],
+                  !seenUserIds.contains(user.id) else {
+                return nil
+            }
+
+            seenUserIds.insert(user.id)
+            return MatchedContact(
+                id: UUID(),
+                contact: contactMatch.contact,
+                user: user
+            )
+        }
+    }
+
+    private static func contactMatchesByHash(from contacts: [CNContact]) -> [String: ContactPhoneMatch] {
+        var matchesByHash: [String: ContactPhoneMatch] = [:]
+
+        for contact in contacts {
+            for phoneNumber in contact.phoneNumbers.map({ $0.value.stringValue }) {
+                guard let normalizedPhone = PhoneNumberService.shared.cleanseSingleNumber(phoneNumber) else {
+                    continue
+                }
+
+                let phoneHash = PhoneNumberHasher.shared.hashPhoneNumber(normalizedPhone)
+                matchesByHash[phoneHash] = ContactPhoneMatch(contact: contact)
+            }
+        }
+
+        return matchesByHash
+    }
+
+    static func contactsAccessAllowsReads(_ status: CNAuthorizationStatus) -> Bool {
+        if status == .authorized {
+            return true
+        }
+
+        if #available(iOS 18.0, *), status == .limited {
+            return true
+        }
+
+        return false
     }
 }

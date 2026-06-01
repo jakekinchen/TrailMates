@@ -1,17 +1,14 @@
 import SwiftUI
 
 enum TrailMatesDeepLink {
-    static let universalLinkHost = "trailmates.app"
+    private static let universalLinkHosts: Set<String> = []
     static let appStoreFallbackURL = URL(string: "https://apps.apple.com/app/id6737356482")!
 
     static func inviteURL(senderId: String) -> URL {
         var components = URLComponents()
-        components.scheme = "https"
-        components.host = universalLinkHost
-        components.path = "/invite/\(senderId)"
-        components.queryItems = [
-            URLQueryItem(name: "fallback", value: appStoreFallbackURL.absoluteString)
-        ]
+        components.scheme = "trailmates"
+        components.host = "invite"
+        components.path = "/\(senderId)"
 
         return components.url ?? appStoreFallbackURL
     }
@@ -35,7 +32,8 @@ enum TrailMatesDeepLink {
         }
 
         guard scheme == "https",
-              host == universalLinkHost || host == "www.\(universalLinkHost)",
+              let host,
+              universalLinkHosts.contains(host),
               let route = pathParts.first,
               route == "profile" || route == "invite" else {
             return nil

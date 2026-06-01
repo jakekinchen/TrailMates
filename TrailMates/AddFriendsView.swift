@@ -140,9 +140,11 @@ private extension AddFriendsView {
                 FloatingLabelTextField<Bool>(
                     placeholder: "Username or Phone Number",
                     text: $viewModel.friendLookupText,
-                    keyboardType: .namePhonePad,
+                    keyboardType: .asciiCapable,
+                    textContentType: .username,
                     autocapitalization: .none,
                     colorStyle: .inverted,
+                    showClearButton: true,
                     autocorrectionDisabled: true,
                     submitLabel: .search,
                     onSubmit: handleFriendSearch
@@ -295,7 +297,16 @@ private extension AddFriendsView {
     var inviteMessage: String {
         let senderName = userManager.currentUser.map { "\($0.firstName) \($0.lastName)" }
             ?? "I"
-        return "\(senderName) invited you to TrailMates ATX. Add them here: \(inviteURL.absoluteString)"
+
+        guard userManager.currentUser?.id != nil else {
+            return "\(senderName) invited you to TrailMates ATX. Download the app: \(TrailMatesDeepLink.appStoreFallbackURL.absoluteString)"
+        }
+
+        return """
+        \(senderName) invited you to TrailMates ATX.
+        Already have TrailMates? Open the invite: \(inviteURL.absoluteString)
+        Need the app? Download TrailMates ATX: \(TrailMatesDeepLink.appStoreFallbackURL.absoluteString)
+        """
     }
 
     func handleFriendSearch() {
@@ -334,7 +345,8 @@ private extension AddFriendsView {
         Task { @MainActor in
             do {
                 let granted = try await store.requestAccess(for: .contacts)
-                if granted {
+                refreshContactsAccessStatus()
+                if granted && contactsAccessGranted {
                     contactsAccessGranted = true
                     navigationPath.append(NavigationDestination.contacts)
                 } else {
@@ -347,7 +359,9 @@ private extension AddFriendsView {
     }
 
     func refreshContactsAccessStatus() {
-        contactsAccessGranted = CNContactStore.authorizationStatus(for: .contacts) == .authorized
+        contactsAccessGranted = ContactsListViewModel.contactsAccessAllowsReads(
+            CNContactStore.authorizationStatus(for: .contacts)
+        )
     }
 
     func openSettings() {

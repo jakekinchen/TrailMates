@@ -12,6 +12,7 @@ final class User: Codable, Identifiable, Equatable {
     var username: String
     private(set) var phoneNumber: String
     var joinDate: Date
+    var matchedPhoneHash: String?
     
     // Computed property for hashed phone number
     var hashedPhoneNumber: String {
@@ -98,6 +99,7 @@ final class User: Codable, Identifiable, Equatable {
         self.username = username
         self.phoneNumber = phoneNumber
         self.joinDate = joinDate
+        self.matchedPhoneHash = nil
         self.isActive = true
         self.friends = []
         self.doNotDisturb = false

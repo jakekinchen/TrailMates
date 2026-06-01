@@ -138,6 +138,10 @@ mocha.describe("Phone Number Functions", () => {
       assert.equal(result.users.length, 2);
       assert.equal(result.users[0].id, "user1");
       assert.equal(result.users[1].id, "user2");
+      assert.equal(result.users[0].matchedPhoneHash, "hash1");
+      assert.equal(result.users[1].matchedPhoneHash, "hash2");
+      assert.equal(result.users[0].phoneNumber, undefined);
+      assert.equal(result.users[1].phoneNumber, undefined);
       assert(firestoreStub.collection.calledWith("users"));
       assert(whereStub.calledWith(
           "hashedPhoneNumber",

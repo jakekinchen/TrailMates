@@ -516,6 +516,7 @@ class UserDataProvider {
 
         user.profileImageUrl = userData["profileImageUrl"] as? String
         user.profileThumbnailUrl = userData["profileThumbnailUrl"] as? String
+        user.matchedPhoneHash = userData["matchedPhoneHash"] as? String
         user.isActive = userData["isActive"] as? Bool ?? user.isActive
         user.friends = userData["friends"] as? [String] ?? user.friends
         user.doNotDisturb = userData["doNotDisturb"] as? Bool ?? false

@@ -180,7 +180,6 @@ private extension SettingsView {
                 )
             }
 
-            // TODO: Replace placeholder App Store ID with real ID once available
             Button(action: {
                 if let url = URL(string: AppConstants.appStoreURL) {
                     UIApplication.shared.open(url)
